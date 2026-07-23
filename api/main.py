@@ -18,7 +18,7 @@ import urllib.request
 import zipfile
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import psutil
@@ -36,6 +36,7 @@ from agentic.model_gateway import (
     model_preflight,
 )
 from agentic.pm_router import PMModelRouter
+from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from security.app_security import (
     CSRF_COOKIE,
     SECURE_COOKIES,
@@ -247,6 +248,7 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
     ]
 
 SECURITY_STORE = SecurityStore(DATA_DIR)
+TOOL_REGISTRY = ToolRegistry(DATA_DIR, WEB_DIR.parent)
 
 
 
@@ -259,9 +261,91 @@ class SessionRevokeRequest(BaseModel):
     session_id: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]+$")
 
 
+class MCPServerRequest(BaseModel):
+    id: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9._-]+$")
+    name: str = Field(min_length=2, max_length=120)
+    transport: str = Field(pattern=r"^(http|https)$")
+    endpoint: str = Field(min_length=8, max_length=500)
+    permission: ToolPermission = ToolPermission.READ
+    notes: str = Field(default="", max_length=500)
+
+
+class MCPServerToggleRequest(BaseModel):
+    enabled: bool
+
+
+class ToolInvokeRequest(BaseModel):
+    tool_id: str = Field(min_length=2, max_length=120)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
+
+
+@app.get("/api/tools/registry")
+def tools_registry(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"tools": TOOL_REGISTRY.tools(), "skills": TOOL_REGISTRY.skills(), "servers": TOOL_REGISTRY.servers(), "policy": {"newly_discovered_tools_enabled": False, "raw_terminal": "blocked"}}
+
+
+@app.get("/api/mcp/manifest")
+def mcp_manifest(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"name": "AIOS ONE Local MCP", "version": "0.1.0", "status": "registry_foundation", "capabilities": {"tools": True, "resources": True, "prompts": True, "remote_protocol_client": False}, "tools": TOOL_REGISTRY.tools(), "prompts": TOOL_REGISTRY.skills()}
+
+
+@app.post("/api/mcp/servers")
+def mcp_add_server(req: MCPServerRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    endpoint = req.endpoint.strip()
+    if not endpoint.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Only HTTP and HTTPS endpoints are allowed.")
+    value = TOOL_REGISTRY.add_server(MCPServerDefinition(req.id, req.name, req.transport, endpoint, False, req.permission, notes=req.notes))
+    SECURITY_STORE.audit("mcp.server_added", request, server_id=req.id)
+    return value
+
+
+@app.post("/api/mcp/servers/{server_id}/toggle")
+def mcp_toggle_server(server_id: str, req: MCPServerToggleRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    if not TOOL_REGISTRY.set_server_enabled(server_id, req.enabled):
+        raise HTTPException(status_code=404, detail="MCP server not found.")
+    return {"updated": True, "enabled": req.enabled}
+
+
+@app.post("/api/mcp/servers/{server_id}/test")
+def mcp_test_server(server_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        return TOOL_REGISTRY.test_server(server_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="MCP server not found.") from exc
+
+
+@app.delete("/api/mcp/servers/{server_id}")
+def mcp_remove_server(server_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    if not TOOL_REGISTRY.remove_server(server_id):
+        raise HTTPException(status_code=404, detail="MCP server not found.")
+    return {"removed": True}
+
+
+@app.post("/api/tools/invoke")
+def invoke_registered_tool(req: ToolInvokeRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        result = TOOL_REGISTRY.invoke(req.tool_id, req.arguments)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Tool not found.") from exc
+    SECURITY_STORE.audit("tool.invoked", request, tool_id=req.tool_id, status=result.get("status"))
+    return result
 
 
 @app.get("/api/auth/status")
