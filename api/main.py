@@ -20,7 +20,7 @@ from typing import Literal
 from uuid import uuid4
 
 import psutil
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +34,18 @@ from agentic.model_gateway import (
     model_preflight,
 )
 from agentic.pm_router import PMModelRouter
+from security.app_security import (
+    CSRF_COOKIE,
+    SECURE_COOKIES,
+    SESSION_COOKIE,
+    SESSION_SECONDS,
+    SecurityStore,
+    owner_is_configured,
+    require_csrf,
+    require_owner,
+    require_session,
+    verify_owner,
+)
 from security.provider_credentials import (
     delete_provider_key,
     provider_key_source,
@@ -63,7 +75,8 @@ app.add_middleware(
         if origin.strip()
     ],
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "X-CSRF-Token"],
+    allow_credentials=True,
 )
 
 WEB_DIR = Path(__file__).resolve().parents[1] / "web"
@@ -229,6 +242,153 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
         }
         for index, (agent, label, task_location) in enumerate(tasks, start=1)
     ]
+
+SECURITY_STORE = SecurityStore(DATA_DIR)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=256)
+
+
+@app.get("/api/auth/status")
+def auth_status(request: Request):
+    token = request.cookies.get(SESSION_COOKIE, "")
+    session = SECURITY_STORE.get_session(token)
+    return {
+        "configured": owner_is_configured(),
+        "authenticated": bool(session),
+        "user": (
+            {"username": session.get("username"), "role": session.get("role")}
+            if session else None
+        ),
+        "csrf_token": session.get("csrf") if session else "",
+    }
+
+
+@app.post("/api/auth/login")
+def auth_login(req: LoginRequest, request: Request, response: Response):
+    SECURITY_STORE.check_rate_limit(request)
+    if not verify_owner(req.username, req.password):
+        SECURITY_STORE.record_failed_login(request)
+        SECURITY_STORE.audit("login.failed", request, username=req.username)
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+
+    token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        httponly=True,
+        secure=SECURE_COOKIES,
+        samesite="strict",
+        max_age=SESSION_SECONDS,
+        path="/",
+    )
+    response.set_cookie(
+        CSRF_COOKIE,
+        csrf,
+        httponly=False,
+        secure=SECURE_COOKIES,
+        samesite="strict",
+        max_age=SESSION_SECONDS,
+        path="/",
+    )
+    SECURITY_STORE.audit("login.success", request, username=req.username)
+    return {
+        "authenticated": True,
+        "user": {"username": req.username, "role": "owner"},
+        "csrf_token": csrf,
+        "expires_at": expires_at,
+    }
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response):
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    SECURITY_STORE.revoke_session(token)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("logout", request)
+    return {"authenticated": False}
+
+
+@app.post("/api/auth/revoke-all")
+def auth_revoke_all(request: Request, response: Response):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    count = SECURITY_STORE.revoke_all()
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("sessions.revoked_all", request, count=count)
+    return {"revoked": count}
+
+
+@app.get("/api/auth/audit")
+def auth_audit(request: Request, limit: int = 100):
+    require_owner(request, SECURITY_STORE)
+    if not SECURITY_STORE.audit_file.exists():
+        return {"items": []}
+    lines = SECURITY_STORE.audit_file.read_text(encoding="utf-8").splitlines()
+    items = []
+    for line in lines[-max(1, min(limit, 500)):]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            continue
+    return {"items": list(reversed(items))}
+
+
+SECURITY_PUBLIC_PATHS = {
+    "/",
+    "/health",
+    "/api/auth/status",
+    "/api/auth/login",
+}
+SECURITY_PUBLIC_PREFIXES = ("/assets/",)
+
+
+@app.middleware("http")
+async def security_boundary(request: Request, call_next):
+    if os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1":
+        return await call_next(request)
+
+    path = request.url.path
+    if path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES):
+        return await call_next(request)
+
+    # API reads need authentication. API writes also need CSRF.
+    if path.startswith("/api/") or path == "/chat":
+        try:
+            require_session(request, SECURITY_STORE)
+            if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+                require_csrf(request, SECURITY_STORE)
+            if path.startswith("/api/desktop-companion"):
+                require_owner(request, SECURITY_STORE)
+        except HTTPException as exc:
+            SECURITY_STORE.audit(
+                "access.denied",
+                request,
+                status=exc.status_code,
+                detail=exc.detail,
+            )
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+            )
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+        "connect-src 'self'; frame-ancestors 'none'"
+    )
+    return response
+
 
 @app.get("/")
 def index():
@@ -3306,3 +3466,5 @@ def health():
         "service": "aios-one-command-center",
         "agent_backend": AGENT_BACKEND_AVAILABLE,
     }
+
+

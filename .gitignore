@@ -20,17 +20,11 @@ diagnostics/
 playwright-report/
 test-results/
 quality-gate-results.json
+.env.security
+data/security_sessions.json
+data/security_login_attempts.json
+data/security_audit.jsonl
 
-# Local databases and backups
-*.db
-*.db-shm
-*.db-wal
-*.bak
+data/agent_team.db
 data/obsidian_backups/
-
-# Python-generated files
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
+*.bak

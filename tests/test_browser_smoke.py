@@ -39,6 +39,15 @@ def test_critical_browser_flow() -> None:
     playwright = pytest.importorskip("playwright.sync_api")
     port = free_port()
     env = os.environ.copy()
+    from security.app_security import hash_password
+    env["AIOS_OWNER_USERNAME"] = "owner"
+    env["AIOS_OWNER_PASSWORD_SALT"] = "playwright-salt"
+    env["AIOS_OWNER_PASSWORD_HASH"] = hash_password(
+        "correct horse battery staple",
+        "playwright-salt",
+    )
+    env["AIOS_SECURE_COOKIES"] = "0"
+    env["AIOS_SECURITY_TEST_BYPASS"] = "0"
     process = subprocess.Popen(
         [
             sys.executable,
@@ -65,6 +74,11 @@ def test_critical_browser_flow() -> None:
             page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle")
 
             assert page.locator("body").is_visible()
+            page.locator("#securityUsername").fill("owner")
+            page.locator("#securityPassword").fill("correct horse battery staple")
+            page.locator("#securityLoginForm button[type=submit]").click()
+            page.wait_for_timeout(500)
+            assert page.locator("#securityLogin").is_hidden()
             assert page.locator('[data-view="roadmap"]').first.is_visible()
 
             page.locator('[data-view="roadmap"]').first.click()
