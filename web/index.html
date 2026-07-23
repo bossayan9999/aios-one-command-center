@@ -1,11 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
-  <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1d-governance-2" />
+  <title>AIOS ONE â€” Hybrid Agentic Command Center</title>
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1d-governance-final" />
 </head>
 <body>
 
@@ -34,20 +34,20 @@
         <div><strong>AIOS ONE</strong><span>Agentic Command</span></div>
       </div>
       <nav>
-        <button class="nav-item active" data-view="mission">⌁ Mission Control</button>
-        <button class="nav-item" data-view="copilot">✦ Copilot Chat</button>
-        <button class="nav-item" data-view="workflow">◇ Workflow Map</button>
-        <button class="nav-item" data-view="agents">◎ Specialists</button>
-        <button class="nav-item" data-view="knowledge">⌘ Knowledge Graph</button>
+        <button class="nav-item active" data-view="mission">âŒ Mission Control</button>
+        <button class="nav-item" data-view="copilot">âœ¦ Copilot Chat</button>
+        <button class="nav-item" data-view="workflow">â—‡ Workflow Map</button>
+        <button class="nav-item" data-view="agents">â—Ž Specialists</button>
+        <button class="nav-item" data-view="knowledge">âŒ˜ Knowledge Graph</button>
 <button data-view="tools-skills"><span>Tools &amp; Skills</span></button>
-        <button class="nav-item" data-view="connectors">↗ Connectors</button>
-        <button class="nav-item" data-view="ai-settings">✦ AI & Providers</button>
-        <button class="nav-item" data-view="system-health">◉ System Health</button>
-        <button class="nav-item" data-view="roadmap">◆ Roadmap & Progress</button>
-        <button class="nav-item" data-view="governance">⚖ Validation Center</button>
-        <button class="nav-item" data-view="approvals">✓ Approval Center</button>
-        <button class="nav-item" data-view="mobile">▣ Mobile Control</button>
-        <button class="nav-item" data-view="budget">₱ Budget & Usage</button>
+        <button class="nav-item" data-view="connectors">â†— Connectors</button>
+        <button class="nav-item" data-view="ai-settings">âœ¦ AI & Providers</button>
+        <button class="nav-item" data-view="system-health">â—‰ System Health</button>
+        <button class="nav-item" data-view="roadmap">â—† Roadmap & Progress</button>
+        <button class="nav-item" data-view="governance">âš– Validation Center</button>
+        <button class="nav-item" data-view="approvals">âœ“ Approval Center</button>
+        <button class="nav-item" data-view="mobile">â–£ Mobile Control</button>
+        <button class="nav-item" data-view="budget">â‚± Budget & Usage</button>
       </nav>
       <div class="side-status">
         <div><span class="pulse"></span> Cloud gateway online</div>
@@ -90,7 +90,7 @@
               </div>
               <div class="copilot-provider">
                 <span id="copilotProviderDot"></span>
-                <strong id="copilotProviderLabel">Checking provider…</strong>
+                <strong id="copilotProviderLabel">Checking providerâ€¦</strong>
               </div>
             </div>
 
@@ -104,7 +104,7 @@
 
             
             <form id="copilotChatForm" class="copilot-composer">
-              <textarea id="copilotMessageInput" rows="3" placeholder="Message Copilot…" required></textarea>
+              <textarea id="copilotMessageInput" rows="3" placeholder="Message Copilotâ€¦" required></textarea>
               <div class="copilot-composer-options">
                 <input id="copilotImageUrl" type="url" placeholder="Optional public image URL for analysis">
                 <select id="copilotProvider">
@@ -114,10 +114,10 @@
                   <option value="openai">OpenAI direct</option>
                 </select>
                 <select id="copilotModel">
-                  <option value="claude-haiku-4-5-20251001">Simple · Claude Haiku policy</option>
-                  <option value="claude-sonnet-5" selected>Standard · Claude Sonnet policy</option>
-                  <option value="claude-opus-4-8">Complex · Claude Opus policy</option>
-                  <option value="gpt-5-mini">Standard · GPT-5 mini</option>
+                  <option value="claude-haiku-4-5-20251001">Simple Â· Claude Haiku policy</option>
+                  <option value="claude-sonnet-5" selected>Standard Â· Claude Sonnet policy</option>
+                  <option value="claude-opus-4-8">Complex Â· Claude Opus policy</option>
+                  <option value="gpt-5-mini">Standard Â· GPT-5 mini</option>
                   <option value="gpt-5-nano">GPT-5 nano</option>
                   <option value="gpt-5.4-mini">GPT-5.4 mini</option>
                   <option value="gpt-5.4">GPT-5.4</option>
@@ -173,7 +173,7 @@
             <div class="panel-title">
               <div><p class="eyebrow">POLICY MATRIX</p><h2>Copilot and agent rules</h2></div>
             </div>
-            <div id="governanceRules"><p class="muted-copy">Loading governance rules...</p></div>
+            <div id="governanceRules"><div class="artifact"><span id="governanceRuleSummary">RULES</span><p><strong>Governance policy is enforced</strong><br>The complete rules open in a separate reading tab.</p></div></div><button id="openGovernanceRules" class="primary" type="button">View full rules</button>
           </article>
 
           <article class="panel">
@@ -196,7 +196,7 @@
             </div>
             <p class="muted-copy">Plans missions, routes work across local and cloud models, assigns specialists, enforces approvals, and validates evidence before completion.</p>
             <div class="command-row">
-              <input id="quickObjective" placeholder="Give Copilot a mission…" />
+              <input id="quickObjective" placeholder="Give Copilot a missionâ€¦" />
               <button id="quickLaunch" class="primary">Launch</button>
             </div>
             <div class="mission-suggestions">
@@ -261,7 +261,7 @@
               <input
                 id="missionHistorySearch"
                 type="search"
-                placeholder="Search title, objective, ID, status…"
+                placeholder="Search title, objective, ID, statusâ€¦"
               >
               <select id="missionHistoryStatus">
                 <option value="">All statuses</option>
@@ -278,7 +278,7 @@
             </div>
 
             <div id="missionHistoryList" class="mission-history-list">
-              <p class="muted-copy">Loading mission history…</p>
+              <p class="muted-copy">Loading mission historyâ€¦</p>
             </div>
           </article>
         </section>
@@ -389,7 +389,7 @@
               </div>
 
               <div id="unifiedSelectedModel" class="selected-provider-model">
-                Loading current selection…
+                Loading current selectionâ€¦
               </div>
 
               <div id="unifiedProviderStatus" class="provider-status-summary"></div>
@@ -399,7 +399,7 @@
                 <ul>
                   <li>Use local or low-cost models for routine tasks.</li>
                   <li>Require approval before premium or high-token calls.</li>
-                  <li>Fallback order: local → OpenRouter → Anthropic → OpenAI → deterministic.</li>
+                  <li>Fallback order: local â†’ OpenRouter â†’ Anthropic â†’ OpenAI â†’ deterministic.</li>
                   <li>Keep all provider keys server-side.</li>
                 </ul>
               </div>
@@ -421,14 +421,14 @@
                   <p class="eyebrow">MODEL SEARCH</p>
                   <h2>Find and select a model</h2>
                 </div>
-                <span id="unifiedModelCatalogSource" class="status-chip">Loading…</span>
+                <span id="unifiedModelCatalogSource" class="status-chip">Loadingâ€¦</span>
               </div>
 
               <div class="model-search-controls">
                 <input
                   id="unifiedModelSearchInput"
                   type="search"
-                  placeholder="Search Claude, GPT, Gemini, Llama, DeepSeek…"
+                  placeholder="Search Claude, GPT, Gemini, Llama, DeepSeekâ€¦"
                 >
                 <select id="unifiedModelProviderFilter">
                   <option value="">All providers</option>
@@ -458,7 +458,7 @@
                   <p class="eyebrow">LOCAL MODEL MANAGER</p>
                   <h2>Install and manage Ollama models</h2>
                 </div>
-                <span id="ollamaManagerStatus" class="status-chip">Checking…</span>
+                <span id="ollamaManagerStatus" class="status-chip">Checkingâ€¦</span>
               </div>
 
               <div class="ollama-install-row">
@@ -478,7 +478,7 @@
               <div id="ollamaDownloadProgress" class="ollama-download-progress hidden">
                 <div class="ollama-progress-label">
                   <strong id="ollamaProgressModel">Model</strong>
-                  <span id="ollamaProgressText">Starting…</span>
+                  <span id="ollamaProgressText">Startingâ€¦</span>
                 </div>
                 <progress id="ollamaProgressBar" max="100" value="0"></progress>
               </div>
@@ -498,7 +498,7 @@
                   <p class="eyebrow">MODEL FLOW GUARD</p>
                   <h2>Compatibility and workflow protection</h2>
                 </div>
-                <span id="modelFlowGuardStatus" class="status-chip">Checking…</span>
+                <span id="modelFlowGuardStatus" class="status-chip">Checkingâ€¦</span>
               </div>
 
               <div id="modelFlowGuardSummary" class="model-flow-summary"></div>
@@ -582,22 +582,22 @@
           <div class="health-grid">
             <article class="panel">
               <p class="eyebrow">ACTIVE RUNTIME</p>
-              <div id="healthRuntimeCard" class="health-card-body">Loading…</div>
+              <div id="healthRuntimeCard" class="health-card-body">Loadingâ€¦</div>
             </article>
 
             <article class="panel">
               <p class="eyebrow">RESOURCES</p>
-              <div id="healthResourceCard" class="health-card-body">Loading…</div>
+              <div id="healthResourceCard" class="health-card-body">Loadingâ€¦</div>
             </article>
 
             <article class="panel">
               <p class="eyebrow">NETWORK & PROVIDERS</p>
-              <div id="healthNetworkCard" class="health-card-body">Loading…</div>
+              <div id="healthNetworkCard" class="health-card-body">Loadingâ€¦</div>
             </article>
 
             <article class="panel emergency-panel">
               <p class="eyebrow">EMERGENCY CONTROL</p>
-              <div id="healthEmergencyCard" class="health-card-body">Loading…</div>
+              <div id="healthEmergencyCard" class="health-card-body">Loadingâ€¦</div>
             </article>
 
             <article class="panel backup-panel">
@@ -607,7 +607,7 @@
                   <h2>Local recovery</h2>
                 </div>
               </div>
-              <div id="healthBackupCard" class="health-card-body">Loading…</div>
+              <div id="healthBackupCard" class="health-card-body">Loadingâ€¦</div>
               <div class="stabilization-actions">
                 <button id="createSystemBackup" class="primary">Create backup</button>
                 <button id="restoreLatestBackup">Restore latest</button>
@@ -641,7 +641,7 @@
               </p>
             </div>
             <div class="roadmap-header-actions">
-              <span id="roadmapCurrentPhase" class="status-chip">Loading…</span>
+              <span id="roadmapCurrentPhase" class="status-chip">Loadingâ€¦</span>
               <button id="refreshRoadmap">Refresh</button>
             </div>
           </header>
@@ -754,7 +754,7 @@
                 before anything runs.
               </p>
             </div>
-            <span id="desktopCompanionStatus" class="status-chip">Checking…</span>
+            <span id="desktopCompanionStatus" class="status-chip">Checkingâ€¦</span>
           </div>
 
           <div id="desktopCompanionSummary" class="desktop-companion-summary"></div>
@@ -824,7 +824,7 @@
               <p class="eyebrow">OBSIDIAN CONNECTOR</p>
               <h2>AIOS Knowledge vault</h2>
             </div>
-            <span id="obsidianConnectionStatus" class="status-chip">Checking…</span>
+            <span id="obsidianConnectionStatus" class="status-chip">Checkingâ€¦</span>
           </div>
 
           <div class="obsidian-settings-grid">
@@ -867,7 +867,7 @@
 
           <div class="obsidian-workspace">
             <div class="obsidian-search-row">
-              <input id="obsidianSearchInput" type="search" placeholder="Search vault notes…">
+              <input id="obsidianSearchInput" type="search" placeholder="Search vault notesâ€¦">
               <button id="searchObsidianNotes">Search</button>
             </div>
 
@@ -896,7 +896,7 @@
                 <p class="eyebrow">AUTOMATIC EXPORT</p>
                 <h2>Validated AIOS outputs</h2>
               </div>
-              <span id="obsidianAutoExportStatus" class="status-chip">Loading…</span>
+              <span id="obsidianAutoExportStatus" class="status-chip">Loadingâ€¦</span>
             </div>
 
             <div class="obsidian-export-options">
@@ -956,7 +956,7 @@
           <div class="panel-title connector-title">
             <div><p class="eyebrow">MODEL, TOOL AND MCP HUB</p><h2>Connectors</h2></div>
             <div class="connector-controls">
-              <input id="connectorSearch" type="search" placeholder="Search connectors…" />
+              <input id="connectorSearch" type="search" placeholder="Search connectorsâ€¦" />
               <select id="connectorFilter">
                 <option value="all">All types</option>
                 <option value="cloud">Cloud</option>
@@ -1076,7 +1076,7 @@
           <div class="panel-title"><div><p class="eyebrow">HUMAN CONTROL GATE</p><h2>Approval Center</h2></div></div>
           <div id="approvalList" class="approval-list">
             <div class="empty-approval">
-              <span>✓</span>
+              <span>âœ“</span>
               <h3>No pending approvals</h3>
               <p>Sensitive commands, deployments, file writes, and network actions will appear here.</p>
             </div>
@@ -1090,7 +1090,7 @@
     <form id="connectorForm">
       <div class="dialog-head">
         <div><p class="eyebrow">CONNECTOR REGISTRY</p><h2>Add connector</h2></div>
-        <button type="button" id="closeConnectorDialog">×</button>
+        <button type="button" id="closeConnectorDialog">Ã—</button>
       </div>
       <label>Name<input name="name" required minlength="2" placeholder="My MCP Server" /></label>
       <div class="form-grid">
@@ -1110,8 +1110,8 @@
           </select>
         </label>
       </div>
-      <label>Server command or URL<input name="endpoint" required placeholder="npx -y @modelcontextprotocol/server-github or https://…" /></label>
-      <label>Documentation link<input name="docs_url" type="url" placeholder="https://…" /></label>
+      <label>Server command or URL<input name="endpoint" required placeholder="npx -y @modelcontextprotocol/server-github or https://â€¦" /></label>
+      <label>Documentation link<input name="docs_url" type="url" placeholder="https://â€¦" /></label>
       <label>Purpose<textarea name="description" placeholder="What this connector allows specialist agents to do."></textarea></label>
       <label class="checkbox-label"><input name="requires_approval" type="checkbox" checked /> Require approval for write actions</label>
       <div class="dialog-actions">
@@ -1130,7 +1130,7 @@
           <p class="eyebrow">SECURE SERVER SETUP</p>
           <h2 id="providerKeyDialogTitle">Connect AI provider</h2>
         </div>
-        <button type="button" id="closeProviderKeyDialog">×</button>
+        <button type="button" id="closeProviderKeyDialog">Ã—</button>
       </div>
 
       <input id="providerKeyProvider" name="provider" type="hidden">
@@ -1178,7 +1178,7 @@
     <form id="expenseForm">
       <div class="dialog-head">
         <div><p class="eyebrow">COST CONTROL</p><h2>Add expense or renewal</h2></div>
-        <button type="button" id="closeExpenseDialog">×</button>
+        <button type="button" id="closeExpenseDialog">Ã—</button>
       </div>
       <div class="form-grid">
         <label>Vendor<input name="vendor" required placeholder="OpenAI"></label>
@@ -1205,7 +1205,7 @@
 
   <dialog id="missionDialog">
     <form id="missionForm">
-      <div class="dialog-head"><div><p class="eyebrow">COPILOT INTAKE</p><h2>Create mission</h2></div><button type="button" id="closeDialog">×</button></div>
+      <div class="dialog-head"><div><p class="eyebrow">COPILOT INTAKE</p><h2>Create mission</h2></div><button type="button" id="closeDialog">Ã—</button></div>
       <label>Mission title<input name="title" required minlength="3" placeholder="Build hybrid agent workspace" /></label>
       <label>Objective<textarea name="objective" required minlength="3" placeholder="Describe the result Copilot must deliver and validate."></textarea></label>
       <div class="form-grid">
@@ -1219,35 +1219,37 @@
 
   <nav class="mobile-bottom-nav" aria-label="AIOS mobile navigation">
     <button class="mobile-nav-item active" data-view="mission">
-      <span>⌁</span><small>Mission</small>
+      <span>âŒ</span><small>Mission</small>
     </button>
     <button class="mobile-nav-item" data-view="workflow">
-      <span>◇</span><small>Workflow</small>
+      <span>â—‡</span><small>Workflow</small>
     </button>
     <button class="mobile-nav-item" data-view="agents">
-      <span>◎</span><small>Agents</small>
+      <span>â—Ž</span><small>Agents</small>
     </button>
     <button class="mobile-nav-item" data-view="connectors">
-      <span>↗</span><small>Connect</small>
+      <span>â†—</span><small>Connect</small>
     </button>
     <button class="mobile-nav-item" data-view="mobile">
-      <span>▣</span><small>Mobile</small>
+      <span>â–£</span><small>Mobile</small>
     </button>
     <button class="mobile-nav-item" id="mobileMoreBtn" type="button">
-      <span>•••</span><small>More</small>
+      <span>â€¢â€¢â€¢</span><small>More</small>
     </button>
   </nav>
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
-    <button type="button" data-view="copilot">✦ Copilot Chat</button>
-    <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>
-    <button type="button" data-view="approvals">✓ Approval Center</button>
-    <button type="button" data-view="budget">₱ Budget & Usage</button>
+    <button type="button" data-view="copilot">âœ¦ Copilot Chat</button>
+    <button type="button" data-view="knowledge">âŒ˜ Knowledge Graph</button>
+    <button type="button" data-view="approvals">âœ“ Approval Center</button>
+    <button type="button" data-view="budget">â‚± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1d-governance-2"></script>
+  <script src="/assets/app.js?v=phase1d-governance-final"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
 </body>
 </html>
+
+

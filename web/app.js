@@ -1,4 +1,4 @@
-const $ = (selector) => document.querySelector(selector);
+﻿const $ = (selector) => document.querySelector(selector);
 const dialog = $("#missionDialog");
 let dashboard = null;
 let currentMission = null;
@@ -203,11 +203,11 @@ function renderBrainResults(results = []) {
     <article class="brain-result-card">
       <div class="brain-result-head">
         <div><p class="eyebrow">${result.specialist_id.toUpperCase()} BRAIN</p><h3>${result.summary}</h3></div>
-        <span class="confidence">${result.confidence}% · ${(result.provider || "local").toUpperCase()}</span>
+        <span class="confidence">${result.confidence}% Â· ${(result.provider || "local").toUpperCase()}</span>
       </div>
       <ul>${result.findings.map(item => `<li>${item}</li>`).join("")}</ul>
       <div class="brain-result-foot">
-        <span>${result.status.toUpperCase()} · ${result.model || "fallback"}</span>
+        <span>${result.status.toUpperCase()} Â· ${result.model || "fallback"}</span>
         <span>${result.next_action}</span>
       </div>
     </article>
@@ -242,7 +242,7 @@ function renderWorkflow(mission) {
   $("#missionCount").textContent = String(Math.max(dashboard?.missions?.length || 0, 1));
   $("#artifactList").innerHTML = `
     <div class="artifact"><span>IN</span><p>${mission.objective}</p></div>
-    ${mission.evidence.map(item => `<div class="artifact"><span>✓</span><p>${item.label}</p></div>`).join("")}
+    ${mission.evidence.map(item => `<div class="artifact"><span>âœ“</span><p>${item.label}</p></div>`).join("")}
   `;
   renderBrainResults(mission.brain_results || []);
   setBrainControlState(mission);
@@ -308,7 +308,7 @@ $("#missionForm").addEventListener("submit", async (event) => {
   const submit = event.submitter;
 
   submit.disabled = true;
-  submit.textContent = "Planning…";
+  submit.textContent = "Planningâ€¦";
 
   try {
     const formData = new FormData(missionForm);
@@ -413,7 +413,7 @@ function renderBudget(payload) {
       <div>
         <strong>${expense.vendor}</strong>
         <p>${expense.description}</p>
-        <small>${expense.category} · due ${expense.due_date}${expense.recurring ? ` · ${expense.recurrence}` : ""}</small>
+        <small>${expense.category} Â· due ${expense.due_date}${expense.recurring ? ` Â· ${expense.recurrence}` : ""}</small>
       </div>
       <div class="expense-amount">
         <strong>${formatMoney(expense.amount, expense.currency)}</strong>
@@ -435,7 +435,7 @@ function renderBudget(payload) {
   document.querySelectorAll("[data-pay-expense]").forEach(button => {
     button.addEventListener("click", async () => {
       button.disabled = true;
-      button.textContent = "Recording…";
+      button.textContent = "Recordingâ€¦";
       try {
         const result = await api(`/api/budget/expenses/${button.dataset.payExpense}/paid`, { method: "POST" });
         showBrowserBudgetNotification(result.notification.message);
@@ -576,8 +576,8 @@ async function loadCopilotStatus() {
   if (!dot || !label) return;
   dot.dataset.live = String(status.live);
   label.textContent = status.live
-    ? `${String(status.provider).toUpperCase()} LIVE · ${status.default_model}`
-    : "DETERMINISTIC FALLBACK · key unavailable";
+    ? `${String(status.provider).toUpperCase()} LIVE Â· ${status.default_model}`
+    : "DETERMINISTIC FALLBACK Â· key unavailable";
 }
 
 async function loadCopilotConversation() {
@@ -603,7 +603,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   renderCopilotMessages([...(existing.messages || []), pending]);
 
   send.disabled = true;
-  send.textContent = "Thinking…";
+  send.textContent = "Thinkingâ€¦";
   $("#copilotChatStatus").textContent = "Copilot is using the live model gateway.";
 
   try {
@@ -717,9 +717,9 @@ async function loadModelCatalog() {
     free_only: String($("#freeModelsOnly").checked),
     limit: "120",
   });
-  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching models…</p>`;
+  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching modelsâ€¦</p>`;
   const payload = await api(`/api/models/catalog?${params.toString()}`);
-  $("#modelCatalogSource").textContent = `${payload.count} models · ${payload.source}`;
+  $("#modelCatalogSource").textContent = `${payload.count} models Â· ${payload.source}`;
   $("#modelCatalogResults").innerHTML = payload.models.length
     ? payload.models.map(model => `
       <article class="model-catalog-card">
@@ -935,7 +935,7 @@ $("#providerKeyForm")?.addEventListener("submit", async event => {
 
   const submit = event.currentTarget.querySelector('button[type="submit"]');
   submit.disabled = true;
-  submit.textContent = "Saving…";
+  submit.textContent = "Savingâ€¦";
 
   try {
     await api("/api/settings/providers/key", {
@@ -1050,11 +1050,11 @@ async function loadUnifiedModelCatalog() {
   });
 
   $("#unifiedModelCatalogResults").innerHTML =
-    `<p class="muted-copy">Searching models…</p>`;
+    `<p class="muted-copy">Searching modelsâ€¦</p>`;
 
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#unifiedModelCatalogSource").textContent =
-    `${payload.count} models · ${payload.source}`;
+    `${payload.count} models Â· ${payload.source}`;
 
   $("#unifiedModelCatalogResults").innerHTML = payload.models.length
     ? payload.models.map(model => `
@@ -1155,7 +1155,7 @@ function formatBytes(bytes) {
 async function loadOllamaManager() {
   const payload = await api("/api/ollama/status");
   $("#ollamaManagerStatus").textContent = payload.connected
-    ? `CONNECTED · ${payload.count} installed`
+    ? `CONNECTED Â· ${payload.count} installed`
     : "NOT RUNNING";
 
   $("#ollamaManagerStatus").classList.toggle("connected", payload.connected);
@@ -1192,7 +1192,7 @@ async function loadOllamaManager() {
     button.addEventListener("click", async () => {
       const model = button.dataset.testOllama;
       button.disabled = true;
-      button.textContent = "Testing…";
+      button.textContent = "Testingâ€¦";
       try {
         const result = await api("/api/ollama/test", {
           method: "POST",
@@ -1231,7 +1231,7 @@ async function pollOllamaPull(jobId) {
     try {
       const job = await api(`/api/ollama/jobs/${jobId}`);
       $("#ollamaProgressText").textContent =
-        `${job.status}${job.percent ? ` · ${job.percent}%` : ""}`;
+        `${job.status}${job.percent ? ` Â· ${job.percent}%` : ""}`;
       $("#ollamaProgressBar").value = job.percent || 0;
 
       if (job.state === "completed") {
@@ -1263,7 +1263,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
   const button = $("#installOllamaModel");
   button.disabled = true;
-  button.textContent = "Starting…";
+  button.textContent = "Startingâ€¦";
 
   try {
     const job = await api("/api/ollama/pull", {
@@ -1273,7 +1273,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
     $("#ollamaDownloadProgress").classList.remove("hidden");
     $("#ollamaProgressModel").textContent = model;
-    $("#ollamaProgressText").textContent = "Starting download…";
+    $("#ollamaProgressText").textContent = "Starting downloadâ€¦";
     $("#ollamaProgressBar").value = 0;
     pollOllamaPull(job.job_id);
   } catch (error) {
@@ -1296,7 +1296,7 @@ async function loadActiveModelIndicator() {
     const stateText = active.ready ? (active.fallback_active ? "FALLBACK ACTIVE" : "READY") : "OFFLINE";
     if (badge) {
       badge.className = `global-active-brain ${stateClass}`;
-      badge.innerHTML = `<span class="brain-dot ${stateClass}"></span><span><small>${stateText}</small><strong>${active.effective_provider} · ${active.effective_model}</strong></span>`;
+      badge.innerHTML = `<span class="brain-dot ${stateClass}"></span><span><small>${stateText}</small><strong>${active.effective_provider} Â· ${active.effective_model}</strong></span>`;
     }
     if (card) {
       card.innerHTML = `
@@ -1305,7 +1305,7 @@ async function loadActiveModelIndicator() {
           <div><small>${stateText}</small><strong>${active.effective_provider}</strong><code>${active.effective_model}</code></div>
         </div>
         ${active.fallback_active
-          ? `<p class="active-model-warning">Requested ${active.requested_provider} · ${active.requested_model}, but AIOS is using fallback.</p>`
+          ? `<p class="active-model-warning">Requested ${active.requested_provider} Â· ${active.requested_model}, but AIOS is using fallback.</p>`
           : `<p class="active-model-success">This is the model AIOS will use first.</p>`}
         <div class="active-model-actions">
           <button type="button" id="testActiveModel">Test active model</button>
@@ -1315,7 +1315,7 @@ async function loadActiveModelIndicator() {
       $("#testActiveModel")?.addEventListener("click", async event => {
         const button = event.currentTarget;
         button.disabled = true;
-        button.textContent = "Testing…";
+        button.textContent = "Testingâ€¦";
         try {
           if (active.effective_provider === "ollama") {
             const result = await api("/api/ollama/test", {
@@ -1410,10 +1410,10 @@ async function loadSystemHealthDashboard() {
     $("#healthResourceCard").innerHTML = `
       <div class="health-line"><span>Disk</span>${healthState(health.disk.healthy)}</div>
       <progress max="100" value="${health.disk.percent}"></progress>
-      <small>${health.disk.percent}% used · ${formatHealthBytes(health.disk.free_bytes)} free</small>
+      <small>${health.disk.percent}% used Â· ${formatHealthBytes(health.disk.free_bytes)} free</small>
       <div class="health-line"><span>Memory</span>${healthState(health.memory.healthy)}</div>
       <progress max="100" value="${health.memory.percent}"></progress>
-      <small>${health.memory.percent}% used · ${formatHealthBytes(health.memory.available_bytes)} available</small>
+      <small>${health.memory.percent}% used Â· ${formatHealthBytes(health.memory.available_bytes)} available</small>
     `;
 
     $("#healthNetworkCard").innerHTML = `
@@ -1501,7 +1501,7 @@ async function loadObsidianStatus() {
   try {
     const status = await api("/api/connectors/obsidian/status");
     $("#obsidianConnectionStatus").textContent = status.connected
-      ? `CONNECTED · ${status.note_count} notes`
+      ? `CONNECTED Â· ${status.note_count} notes`
       : "NOT CONNECTED";
     $("#obsidianConnectionStatus").classList.toggle("connected", status.connected);
     $("#obsidianVaultPath").value = status.vault_path || $("#obsidianVaultPath").value;
@@ -1738,7 +1738,7 @@ async function loadMissionHistory() {
     limit: "300",
   });
 
-  target.innerHTML = '<p class="muted-copy">Loading mission history…</p>';
+  target.innerHTML = '<p class="muted-copy">Loading mission historyâ€¦</p>';
 
   try {
     const payload = await api(`/api/missions?${params.toString()}`);
@@ -1806,7 +1806,7 @@ async function loadMissionHistory() {
     document.querySelectorAll("[data-reexport-history]").forEach(button => {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        button.textContent = "Exporting…";
+        button.textContent = "Exportingâ€¦";
         try {
           const result = await api(
             `/api/connectors/obsidian/reexport-mission/${button.dataset.reexportHistory}`,
@@ -1883,7 +1883,7 @@ function showAiosToast({ title, message, type = "success", actions = [] }) {
       <p>${escapeHtml(message)}</p>
     </div>
     <div class="aios-toast-actions"></div>
-    <button class="aios-toast-close" type="button" aria-label="Close">×</button>
+    <button class="aios-toast-close" type="button" aria-label="Close">Ã—</button>
   `;
 
   const actionsTarget = toast.querySelector(".aios-toast-actions");
@@ -2019,7 +2019,7 @@ async function loadDesktopCompanion() {
     ]);
 
     $("#desktopCompanionStatus").textContent = status.connected
-      ? `CONNECTED · ${status.pending_approvals} pending`
+      ? `CONNECTED Â· ${status.pending_approvals} pending`
       : "NOT ON WINDOWS";
     $("#desktopCompanionStatus").classList.toggle("connected", status.connected);
 
@@ -2036,7 +2036,7 @@ async function loadDesktopCompanion() {
           <div class="desktop-request-head">
             <div>
               <strong>${escapeHtml(item.tool)}</strong>
-              <small>${escapeHtml(item.id)} · ${escapeHtml(item.created_at)}</small>
+              <small>${escapeHtml(item.id)} Â· ${escapeHtml(item.created_at)}</small>
             </div>
             <span class="desktop-request-status ${escapeHtml(item.status)}">
               ${escapeHtml(String(item.status).replaceAll("_", " ").toUpperCase())}
@@ -2445,8 +2445,8 @@ $("#runNextBrain")?.addEventListener("click", async () => {
     return;
   }
   button.disabled = true;
-  button.textContent = "Agent running…";
-  setBrainControlState(currentMission, "Delegating the active task to its specialist brain…");
+  button.textContent = "Agent runningâ€¦";
+  setBrainControlState(currentMission, "Delegating the active task to its specialist brainâ€¦");
   try {
     const payload = await api(`/api/missions/${currentMission.id}/run-next`, {method: "POST"});
     renderWorkflow(payload.mission);
@@ -2471,7 +2471,7 @@ $("#runFullTeam")?.addEventListener("click", async () => {
 
   const button = $("#runFullTeam");
   button.disabled = true;
-  button.textContent = "Team executing…";
+  button.textContent = "Team executingâ€¦";
   setBrainControlState(currentMission, "Copilot is delegating the mission to the specialist team.");
 
   try {
@@ -2500,7 +2500,7 @@ $("#approveBrainStep")?.addEventListener("click", async () => {
   }
   const button = $("#approveBrainStep");
   button.disabled = true;
-  button.textContent = "Approving…";
+  button.textContent = "Approvingâ€¦";
   try {
     const mission = await api(`/api/missions/${currentMission.id}/approve`, {method: "POST"});
     renderWorkflow(mission);
@@ -2559,7 +2559,7 @@ async function loadPairedDevices() {
   try {
     const devices = await api("/api/mobile/devices");
     $("#pairedDevices").innerHTML = devices.length
-      ? devices.map(device => `<div class="artifact"><span>✓</span><p>${device.name} — paired ${new Date(device.paired_at).toLocaleString()}</p></div>`).join("")
+      ? devices.map(device => `<div class="artifact"><span>âœ“</span><p>${device.name} â€” paired ${new Date(device.paired_at).toLocaleString()}</p></div>`).join("")
       : `<div class="brain-action-status">No paired devices yet.</div>`;
   } catch (error) {
     $("#pairedDevices").innerHTML = `<div class="brain-action-status">Error: ${error.message}</div>`;
@@ -2606,7 +2606,7 @@ document.querySelectorAll("[data-mobile-command]").forEach(button => {
 
     const command = button.dataset.mobileCommand;
     button.disabled = true;
-    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}…`;
+    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}â€¦`;
 
     try {
       const result = await api("/api/mobile/command", {
@@ -2672,8 +2672,8 @@ async function loadSecurityAdmin() {
 
     $("#securitySummaryCards").innerHTML = `
       <article><span>Active sessions</span><strong>${summary.active_sessions}</strong></article>
-      <article><span>Failed logins · 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
-      <article><span>Denied requests · 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
+      <article><span>Failed logins Â· 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
+      <article><span>Denied requests Â· 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
       <article class="${summary.suspicious ? "security-warning" : ""}">
         <span>Security posture</span>
         <strong>${summary.suspicious ? "REVIEW" : "NORMAL"}</strong>
@@ -2686,7 +2686,7 @@ async function loadSecurityAdmin() {
             <div>
               <strong>${escapeHtml(item.username || "Owner")}</strong>
               <span>${item.current ? "Current session" : "Other session"}</span>
-              <small>Created ${securityDate(item.created_at)} · Expires ${securityDate(item.expires_at)}</small>
+              <small>Created ${securityDate(item.created_at)} Â· Expires ${securityDate(item.expires_at)}</small>
             </div>
             ${item.current
               ? '<span class="status-chip">CURRENT</span>'
@@ -2700,7 +2700,7 @@ async function loadSecurityAdmin() {
           <article class="security-audit-item">
             <strong>${escapeHtml(item.event || "event")}</strong>
             <span>${securityDate(item.at)}</span>
-            <small>${escapeHtml(item.ip || "unknown")} · ${escapeHtml(item.path || "")}</small>
+            <small>${escapeHtml(item.ip || "unknown")} Â· ${escapeHtml(item.path || "")}</small>
           </article>
         `).join("")
       : '<p class="muted-copy">No security events recorded.</p>';
@@ -2820,12 +2820,7 @@ async function loadGovernanceCenter() {
     document.getElementById("governanceBlockedCount").textContent = String(summary.blocked || 0);
     document.getElementById("governanceGateStatus").textContent = "ENFORCED";
 
-    rulesHost.innerHTML = rules.map(rule => `
-      <div class="artifact">
-        <span>${rule.mandatory ? "REQ" : "OPT"}</span>
-        <p><strong>${escapeHtml(rule.title)}</strong><br>${escapeHtml(rule.description)}</p>
-      </div>
-    `).join("");
+    const ruleSummary = document.getElementById("governanceRuleSummary"); if (ruleSummary) ruleSummary.textContent = `${rules.length} RULES`;
 
     approvalsHost.innerHTML = approvals.length
       ? approvals.slice().reverse().map(item => `
@@ -2833,7 +2828,7 @@ async function loadGovernanceCenter() {
           <span>${escapeHtml(String(item.status || "pending").toUpperCase())}</span>
           <p>
             <strong>${escapeHtml(item.tool_id || "unknown tool")}</strong><br>
-            ${escapeHtml(item.specialist || "unknown specialist")} · ${escapeHtml(item.risk || "unknown risk")}<br>
+            ${escapeHtml(item.specialist || "unknown specialist")} Â· ${escapeHtml(item.risk || "unknown risk")}<br>
             ${escapeHtml(item.reason || "No reason provided")}
           </p>
         </div>
@@ -2849,3 +2844,8 @@ document.addEventListener("click", event => {
   if (event.target.closest('[data-view="governance"]')) loadGovernanceCenter();
   if (event.target.closest("#refreshGovernance")) loadGovernanceCenter();
 });
+
+
+document.addEventListener("click", event => { if (event.target.closest("#openGovernanceRules")) { window.open("/assets/policy-rules.html?build=phase1d-governance-final", "_blank", "noopener,noreferrer"); } });
+
+
