@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -121,9 +121,9 @@ def main() -> int:
     required_failed = any(
         item["required"] and item["status"] != "passed" for item in checks
     )
-    payload = {
+    payload: dict[str, Any] = {
         "status": "failed" if required_failed else "passed",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "checks": checks,
         "summary": {
             "passed": sum(item["status"] == "passed" for item in checks),
@@ -141,7 +141,8 @@ def main() -> int:
             if detail:
                 print(detail[-2000:])
 
-    print(f"\nQuality gate: {payload['status'].upper()}")
+    quality_status = str(payload["status"])
+    print(f"\nQuality gate: {quality_status.upper()}")
     print(f"Results: {RESULT_FILE}")
     return 1 if required_failed else 0
 

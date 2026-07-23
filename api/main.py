@@ -1,44 +1,49 @@
+import io
+import json
+import os
+import platform
+import re
+import secrets
+import shutil
+import socket
 import subprocess
 import sys
-import shutil
-from fastapi.responses import StreamingResponse, JSONResponse
-import zipfile
-import traceback
 import tempfile
-import socket
-import platform
-import io
-import os
-import json
-import secrets
-import time
-import urllib.request
 import threading
-import psutil
 import time
-import re
-from datetime import datetime, timezone, date, timedelta
+import traceback
+import urllib.request
+import zipfile
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 from uuid import uuid4
 
+import psutil
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agentic import CopilotOrchestrator, list_specialists as list_brain_specialists
-from agentic.model_gateway import ModelGateway, MODEL_CAPABILITIES, model_preflight, validate_normalized_result
+from agentic import CopilotOrchestrator
+from agentic import list_specialists as list_brain_specialists
+from agentic.model_gateway import (
+    MODEL_CAPABILITIES,
+    ModelGateway,
+    model_preflight,
+)
 from agentic.pm_router import PMModelRouter
 from security.provider_credentials import (
-    save_provider_key, delete_provider_key, provider_key_source, get_provider_key
+    delete_provider_key,
+    provider_key_source,
+    save_provider_key,
 )
 
 try:
-    from agent.brain import run_turn, execute_approved_action
-    from agent.approval import approval_queue
     import agent.osint.recon  # noqa: F401
+    from agent.approval import approval_queue
+    from agent.brain import execute_approved_action, run_turn
     AGENT_BACKEND_AVAILABLE = True
 except Exception:
     AGENT_BACKEND_AVAILABLE = False
@@ -179,7 +184,7 @@ class ApprovalDecision(BaseModel):
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
@@ -1409,7 +1414,7 @@ def ollama_web_pull(req: OllamaPullRequest):
         try:
             _ollama_request("/api/tags", timeout=3)
         except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"Ollama is not running: {exc}")
+            raise HTTPException(status_code=503, detail=f"Ollama is not running: {exc}") from exc
 
     job_id = f"pull-{int(time.time() * 1000)}"
     with OLLAMA_JOBS_LOCK:
@@ -1455,7 +1460,7 @@ def ollama_web_delete(req: OllamaDeleteRequest):
             timeout=60,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not remove model: {exc}")
+        raise HTTPException(status_code=502, detail=f"Could not remove model: {exc}") from exc
     return {"deleted": True, "model": model}
 
 
@@ -1474,7 +1479,7 @@ def ollama_web_test(req: OllamaTestRequest):
             timeout=180,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Ollama test failed: {exc}")
+        raise HTTPException(status_code=502, detail=f"Ollama test failed: {exc}") from exc
 
     return {
         "model": model,
@@ -1535,7 +1540,7 @@ STABILIZATION_ALLOWED_DURING_STOP = {
 }
 
 def _utc_now_iso():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 def _read_emergency_stop():
     return _read_json(EMERGENCY_STOP_FILE, {
@@ -1634,7 +1639,7 @@ def _process_status():
         "cpu_percent": process.cpu_percent(interval=0.05),
         "threads": process.num_threads(),
         "started_at": datetime.fromtimestamp(
-            process.create_time(), tz=timezone.utc
+            process.create_time(), tz=UTC
         ).isoformat(),
     }
 
@@ -1769,7 +1774,7 @@ def list_system_backups():
             "filename": file.name,
             "size_bytes": file.stat().st_size,
             "modified_at": datetime.fromtimestamp(
-                file.stat().st_mtime, tz=timezone.utc
+                file.stat().st_mtime, tz=UTC
             ).isoformat(),
         })
     return {"items": items}
@@ -1956,7 +1961,7 @@ def search_obsidian_notes(query: str = "", limit: int = 50):
             "relative_path": relative,
             "title": file.stem,
             "modified_at": datetime.fromtimestamp(
-                file.stat().st_mtime, tz=timezone.utc
+                file.stat().st_mtime, tz=UTC
             ).isoformat(),
             "snippet": text[:280],
         })
@@ -2907,7 +2912,7 @@ def desktop_companion_approve(request_id: str, req: DesktopApprovalRequest):
 def desktop_companion_recover_stale():
     queue = _desktop_queue()
     recovered = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for record in queue:
         if record.get("status") != "running":
