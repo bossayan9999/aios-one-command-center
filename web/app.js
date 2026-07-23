@@ -2655,3 +2655,107 @@ Promise.allSettled([
 loadOllamaManager();
 
 loadActiveModelIndicator();
+
+
+function securityDate(timestamp) {
+  if (!timestamp) return "Unknown";
+  return new Date(timestamp * 1000).toLocaleString();
+}
+
+async function loadSecurityAdmin() {
+  try {
+    const [summary, sessions, audit] = await Promise.all([
+      api("/api/security/summary"),
+      api("/api/security/sessions"),
+      api("/api/security/audit?limit=100"),
+    ]);
+
+    $("#securitySummaryCards").innerHTML = `
+      <article><span>Active sessions</span><strong>${summary.active_sessions}</strong></article>
+      <article><span>Failed logins · 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
+      <article><span>Denied requests · 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
+      <article class="${summary.suspicious ? "security-warning" : ""}">
+        <span>Security posture</span>
+        <strong>${summary.suspicious ? "REVIEW" : "NORMAL"}</strong>
+      </article>
+    `;
+
+    $("#securitySessions").innerHTML = sessions.items.length
+      ? sessions.items.map(item => `
+          <article class="security-session-item">
+            <div>
+              <strong>${escapeHtml(item.username || "Owner")}</strong>
+              <span>${item.current ? "Current session" : "Other session"}</span>
+              <small>Created ${securityDate(item.created_at)} · Expires ${securityDate(item.expires_at)}</small>
+            </div>
+            ${item.current
+              ? '<span class="status-chip">CURRENT</span>'
+              : `<button data-revoke-session="${escapeHtml(item.id)}">Revoke</button>`}
+          </article>
+        `).join("")
+      : '<p class="muted-copy">No active sessions.</p>';
+
+    $("#securityAuditEvents").innerHTML = audit.items.length
+      ? audit.items.map(item => `
+          <article class="security-audit-item">
+            <strong>${escapeHtml(item.event || "event")}</strong>
+            <span>${securityDate(item.at)}</span>
+            <small>${escapeHtml(item.ip || "unknown")} · ${escapeHtml(item.path || "")}</small>
+          </article>
+        `).join("")
+      : '<p class="muted-copy">No security events recorded.</p>';
+  } catch (error) {
+    showFrontendBoundary(error, "Security administration");
+  }
+}
+
+$("#refreshSecurityAdmin")?.addEventListener("click", loadSecurityAdmin);
+
+$("#securitySessions")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-revoke-session]");
+  if (!button) return;
+  if (!confirm("Revoke this session?")) return;
+  await api("/api/security/sessions/revoke", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({session_id: button.dataset.revokeSession}),
+  });
+  await loadSecurityAdmin();
+});
+
+$("#revokeOtherSessions")?.addEventListener("click", async () => {
+  if (!confirm("Revoke every session except this one?")) return;
+  await api("/api/security/sessions/revoke-others", {method: "POST"});
+  await loadSecurityAdmin();
+});
+
+$("#passwordRotateForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const currentPassword = $("#currentOwnerPassword").value;
+  const newPassword = $("#newOwnerPassword").value;
+  const confirmation = $("#confirmOwnerPassword").value;
+  if (newPassword !== confirmation) {
+    $("#passwordRotateStatus").textContent = "New passwords do not match.";
+    return;
+  }
+  try {
+    const result = await api("/api/security/password/rotate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    $("#passwordRotateStatus").textContent =
+      `Password rotated. ${result.sessions_revoked} session(s) revoked. Sign in again.`;
+    setTimeout(() => location.reload(), 1200);
+  } catch (error) {
+    $("#passwordRotateStatus").textContent = error.message;
+  }
+});
+
+if (location.hash === "#security-admin") loadSecurityAdmin();
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#security-admin") loadSecurityAdmin();
+});

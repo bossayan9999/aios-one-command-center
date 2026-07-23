@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1a-security-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1b-security-admin-1" />
 </head>
 <body>
 
@@ -645,6 +645,58 @@
         </div>
       </section>
 
+      
+      <section id="view-security-admin" class="view">
+        <div class="page-header">
+          <div>
+            <p class="eyebrow">OWNER SECURITY</p>
+            <h1>Security Administration</h1>
+            <p>Review sessions, audit activity, suspicious access, and rotate the owner password.</p>
+          </div>
+          <button id="refreshSecurityAdmin">Refresh</button>
+        </div>
+
+        <div id="securitySummaryCards" class="security-summary-grid"></div>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">ACTIVE SESSIONS</p>
+              <h2>Signed-in devices</h2>
+            </div>
+            <button id="revokeOtherSessions">Revoke other sessions</button>
+          </div>
+          <div id="securitySessions" class="security-session-list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">PASSWORD ROTATION</p>
+              <h2>Change owner password</h2>
+            </div>
+          </div>
+          <form id="passwordRotateForm" class="security-password-form">
+            <label>Current password<input id="currentOwnerPassword" type="password" required></label>
+            <label>New password<input id="newOwnerPassword" type="password" minlength="12" required></label>
+            <label>Confirm new password<input id="confirmOwnerPassword" type="password" minlength="12" required></label>
+            <button type="submit" class="primary">Rotate password</button>
+            <p id="passwordRotateStatus" class="muted-copy"></p>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">SECURITY AUDIT</p>
+              <h2>Recent events</h2>
+            </div>
+          </div>
+          <div id="securityAuditEvents" class="security-audit-list"></div>
+        </article>
+      </section>
+
+
       <section id="view-connectors" class="app-view">
 
         <article class="panel desktop-companion-panel">
@@ -1148,7 +1200,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1a-security-1"></script>
+  <script src="/assets/app.js?v=phase1b-security-admin-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

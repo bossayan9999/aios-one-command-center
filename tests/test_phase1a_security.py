@@ -82,3 +82,60 @@ def test_logout_revokes_session(monkeypatch, tmp_path):
     response = client.post("/api/auth/logout", headers={"X-CSRF-Token": csrf})
     assert response.status_code == 200
     assert client.get("/api/dashboard").status_code == 401
+
+
+
+def test_security_session_listing_and_revoke_others(monkeypatch, tmp_path):
+    client, password = configured_client(monkeypatch, tmp_path)
+    first_csrf = login(client, password)
+
+    second = TestClient(client.app)
+    second_login = second.post(
+        "/api/auth/login",
+        json={"username": "owner", "password": password},
+    )
+    assert second_login.status_code == 200
+
+    sessions = client.get("/api/security/sessions")
+    assert sessions.status_code == 200
+    assert len(sessions.json()["items"]) == 2
+
+    revoked = client.post(
+        "/api/security/sessions/revoke-others",
+        headers={"X-CSRF-Token": first_csrf},
+    )
+    assert revoked.status_code == 200
+    assert revoked.json()["revoked"] == 1
+    assert client.get("/api/dashboard").status_code == 200
+    assert second.get("/api/dashboard").status_code == 401
+
+
+def test_password_rotation_revokes_sessions(monkeypatch, tmp_path):
+    client, password = configured_client(monkeypatch, tmp_path)
+    csrf = login(client, password)
+    response = client.post(
+        "/api/security/password/rotate",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "current_password": password,
+            "new_password": "a completely different secure password",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["rotated"] is True
+    assert client.get("/api/dashboard").status_code == 401
+
+
+def test_security_summary_flags_failed_logins(monkeypatch, tmp_path):
+    client, password = configured_client(monkeypatch, tmp_path)
+    login(client, password)
+    for _ in range(3):
+        failed = client.post(
+            "/api/auth/login",
+            json={"username": "owner", "password": "incorrect-password"},
+        )
+        assert failed.status_code == 401
+    summary = client.get("/api/security/summary")
+    assert summary.status_code == 200
+    assert summary.json()["failed_logins_last_hour"] >= 3
+    assert summary.json()["suspicious"] is True

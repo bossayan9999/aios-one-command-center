@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -40,6 +42,7 @@ from security.app_security import (
     SESSION_COOKIE,
     SESSION_SECONDS,
     SecurityStore,
+    hash_password,
     owner_is_configured,
     require_csrf,
     require_owner,
@@ -246,6 +249,16 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
 SECURITY_STORE = SecurityStore(DATA_DIR)
 
 
+
+class PasswordRotateRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
+
+
+class SessionRevokeRequest(BaseModel):
+    session_id: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]+$")
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
@@ -322,6 +335,108 @@ def auth_revoke_all(request: Request, response: Response):
     response.delete_cookie(CSRF_COOKIE, path="/")
     SECURITY_STORE.audit("sessions.revoked_all", request, count=count)
     return {"revoked": count}
+
+
+
+@app.get("/api/security/summary")
+def security_summary(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return SECURITY_STORE.security_summary()
+
+
+@app.get("/api/security/sessions")
+def security_sessions(request: Request):
+    require_owner(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    return {"items": SECURITY_STORE.list_sessions(token)}
+
+
+@app.post("/api/security/sessions/revoke")
+def security_revoke_session(req: SessionRevokeRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    current_id = hashlib.sha256(token.encode()).hexdigest()
+    if hmac.compare_digest(req.session_id, current_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Use logout to revoke the current session.",
+        )
+    removed = SECURITY_STORE.revoke_session_id(req.session_id)
+    SECURITY_STORE.audit(
+        "session.revoked",
+        request,
+        session_id=req.session_id[:12],
+        removed=removed,
+    )
+    return {"revoked": removed}
+
+
+@app.post("/api/security/sessions/revoke-others")
+def security_revoke_other_sessions(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    count = SECURITY_STORE.revoke_other_sessions(token)
+    SECURITY_STORE.audit("sessions.revoked_others", request, count=count)
+    return {"revoked": count}
+
+
+@app.get("/api/security/audit")
+def security_audit(request: Request, limit: int = 200):
+    require_owner(request, SECURITY_STORE)
+    return {"items": SECURITY_STORE.audit_events(limit)}
+
+
+@app.post("/api/security/password/rotate")
+def security_rotate_password(
+    req: PasswordRotateRequest,
+    request: Request,
+    response: Response,
+):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    username = str(require_session(request, SECURITY_STORE).get("username", ""))
+    if not verify_owner(username, req.current_password):
+        SECURITY_STORE.audit("password.rotate_failed", request)
+        raise HTTPException(status_code=401, detail="Current password is incorrect.")
+    if req.current_password == req.new_password:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different.",
+        )
+
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(req.new_password, salt)
+    env_path = WEB_DIR.parent / ".env.security"
+    existing: dict[str, str] = {}
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                key, value = line.split("=", 1)
+                existing[key] = value
+    existing.update({
+        "AIOS_OWNER_USERNAME": username,
+        "AIOS_OWNER_PASSWORD_SALT": salt,
+        "AIOS_OWNER_PASSWORD_HASH": password_hash,
+        "AIOS_SECURE_COOKIES": "1" if SECURE_COOKIES else "0",
+        "AIOS_SESSION_SECONDS": str(SESSION_SECONDS),
+    })
+    env_path.write_text(
+        "\n".join(f"{key}={value}" for key, value in existing.items()) + "\n",
+        encoding="utf-8",
+    )
+
+    import security.app_security as security_module
+    security_module.OWNER_USERNAME = username
+    security_module.OWNER_PASSWORD_SALT = salt
+    security_module.OWNER_PASSWORD_HASH = password_hash
+
+    revoked = SECURITY_STORE.revoke_all()
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("password.rotated", request, sessions_revoked=revoked)
+    return {"rotated": True, "sessions_revoked": revoked}
 
 
 @app.get("/api/auth/audit")
@@ -3466,5 +3581,3 @@ def health():
         "service": "aios-one-command-center",
         "agent_backend": AGENT_BACKEND_AVAILABLE,
     }
-
-

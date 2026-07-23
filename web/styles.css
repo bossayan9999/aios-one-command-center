@@ -1122,3 +1122,21 @@ button,
   border-radius:8px;padding:11px;background:var(--bg);color:var(--text)
 }
 .security-login-error{min-height:20px;margin:0;color:#ff9c98}
+
+
+.security-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.security-summary-grid article{display:grid;gap:5px;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
+.security-summary-grid span{font-size:10px;color:var(--muted)}
+.security-summary-grid strong{font-size:20px}
+.security-warning{border-color:#ff9c98!important}
+.security-session-list,.security-audit-list{display:grid;gap:8px}
+.security-session-item,.security-audit-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:9px;padding:12px}
+.security-session-item div,.security-audit-item{min-width:0}
+.security-session-item div{display:grid;gap:3px}
+.security-session-item span,.security-session-item small,.security-audit-item span,.security-audit-item small{color:var(--muted)}
+.security-password-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end}
+.security-password-form label{display:grid;gap:5px}
+.security-password-form input{width:100%;box-sizing:border-box}
+.security-password-form p{grid-column:1/-1}
+@media(max-width:850px){.security-summary-grid{grid-template-columns:1fr 1fr}.security-password-form{grid-template-columns:1fr}}
+@media(max-width:500px){.security-summary-grid{grid-template-columns:1fr}.security-session-item{align-items:flex-start;flex-direction:column}}
