@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1c-mcp-skills-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1d-governance-2" />
 </head>
 <body>
 
@@ -44,6 +44,7 @@
         <button class="nav-item" data-view="ai-settings">✦ AI & Providers</button>
         <button class="nav-item" data-view="system-health">◉ System Health</button>
         <button class="nav-item" data-view="roadmap">◆ Roadmap & Progress</button>
+        <button class="nav-item" data-view="governance">⚖ Validation Center</button>
         <button class="nav-item" data-view="approvals">✓ Approval Center</button>
         <button class="nav-item" data-view="mobile">▣ Mobile Control</button>
         <button class="nav-item" data-view="budget">₱ Budget & Usage</button>
@@ -147,6 +148,42 @@
             </div>
           </aside>
         </div>
+      </section>
+
+      <section id="view-governance" class="app-view">
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">INDEPENDENT GOVERNANCE GATE</p>
+              <h2>Validation Center</h2>
+            </div>
+            <span id="governanceGateStatus" class="status-badge">CHECKING</span>
+          </div>
+          <p class="muted-copy">Copilot cannot complete a mission until the Governance &amp; Validation Specialist returns PASS.</p>
+          <div class="posture-grid">
+            <div><b id="governanceRuleCount">0</b><span>Mandatory rules</span></div>
+            <div><b id="governancePendingCount">0</b><span>Pending approvals</span></div>
+            <div><b id="governanceApprovedCount">0</b><span>Approved or consumed</span></div>
+            <div><b id="governanceBlockedCount">0</b><span>Rejected or expired</span></div>
+          </div>
+        </article>
+
+        <section class="content-grid">
+          <article class="panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">POLICY MATRIX</p><h2>Copilot and agent rules</h2></div>
+            </div>
+            <div id="governanceRules"><p class="muted-copy">Loading governance rules...</p></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">OWNER CONTROL</p><h2>Approval queue</h2></div>
+              <button id="refreshGovernance">Refresh</button>
+            </div>
+            <div id="governanceApprovals"><p class="muted-copy">Loading approvals...</p></div>
+          </article>
+        </section>
       </section>
 
       <section id="view-mission" class="app-view active">
@@ -1208,7 +1245,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1c-mcp-skills-1"></script>
+  <script src="/assets/app.js?v=phase1d-governance-2"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

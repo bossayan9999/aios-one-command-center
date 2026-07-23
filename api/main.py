@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
+from agentic.governance import GovernanceEngine, ValidationDecision
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
     ModelGateway,
@@ -102,6 +103,7 @@ SPECIALISTS = [
     {"id": "ccna", "name": "CCNA Specialist", "role": "Authorized network checks", "status": "ready", "mode": "local", "model": "qwen2.5"},
     {"id": "osint", "name": "OSINT Researcher", "role": "Passive public-source research", "status": "ready", "mode": "hybrid", "model": "gemini-pro"},
     {"id": "qa", "name": "Validation Engineer", "role": "Tests and evidence review", "status": "ready", "mode": "local", "model": "deepseek-coder"},
+    {"id": "governance-validator", "name": "Governance & Validation Specialist", "role": "Independent policy, approval, quality, and result validation", "status": "ready", "mode": "local", "model": "router:auto"},
     {"id": "productivity", "name": "Productivity Agent", "role": "Tasks, briefings, calendar, email, and notes", "status": "ready", "mode": "hybrid", "model": "router:auto"},
 ]
 
@@ -232,6 +234,7 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
 
     tasks.extend([
         ("qa", "Cross-agent validation and acceptance testing", "local"),
+        ("governance-validator", "Policy, approval, evidence, and independent result validation", "local"),
         ("copilot", "Final verified Copilot report", "cloud"),
     ])
 
@@ -249,6 +252,7 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
 
 SECURITY_STORE = SecurityStore(DATA_DIR)
 TOOL_REGISTRY = ToolRegistry(DATA_DIR, WEB_DIR.parent)
+GOVERNANCE_ENGINE = GovernanceEngine(DATA_DIR)
 
 
 
@@ -279,9 +283,118 @@ class ToolInvokeRequest(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
 
 
+class GovernanceApprovalRequest(BaseModel):
+    tool_id: str = Field(min_length=2, max_length=120)
+    specialist: str = Field(min_length=2, max_length=80)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    preview: dict[str, Any] = Field(default_factory=dict)
+    reason: str = Field(min_length=3, max_length=1000)
+    risk: Literal["low", "medium", "high", "critical"] = "medium"
+
+
+class GovernanceDecisionRequest(BaseModel):
+    approve: bool
+
+
+class GovernanceValidationRequest(BaseModel):
+    executing_specialist: str = Field(min_length=2, max_length=80)
+    validating_specialist: str = "governance-validator"
+    permission: str = Field(min_length=2, max_length=40)
+    approval_decision: ValidationDecision | None = None
+    tests_passed: bool
+    verification_passed: bool
+
+
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
+
+
+@app.get("/api/governance")
+def governance_center(request: Request):
+    require_owner(request, SECURITY_STORE)
+    approvals = GOVERNANCE_ENGINE.approvals()
+    return {
+        "specialist": next(item for item in SPECIALISTS if item["id"] == "governance-validator"),
+        "rules": GOVERNANCE_ENGINE.rules(),
+        "approvals": approvals,
+        "decisions": [item.value for item in ValidationDecision],
+        "workflow_gate": "validator_pass_required",
+        "summary": {
+            "pending": sum(1 for item in approvals if item.get("status") == "pending"),
+            "approved": sum(1 for item in approvals if item.get("status") == "approved"),
+            "consumed": sum(1 for item in approvals if item.get("status") == "consumed"),
+            "blocked": sum(1 for item in approvals if item.get("status") in {"rejected", "expired"}),
+        },
+    }
+
+
+@app.post("/api/governance/approvals")
+def governance_request_approval(req: GovernanceApprovalRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    record = GOVERNANCE_ENGINE.request_approval(
+        tool_id=req.tool_id,
+        specialist=req.specialist,
+        payload=req.payload,
+        preview=req.preview,
+        reason=req.reason,
+        risk=req.risk,
+    )
+    SECURITY_STORE.audit(
+        "governance.approval_requested",
+        request,
+        approval_id=record["id"],
+        tool_id=req.tool_id,
+        specialist=req.specialist,
+    )
+    return record
+
+
+@app.post("/api/governance/approvals/{approval_id}/decision")
+def governance_decide_approval(
+    approval_id: str,
+    req: GovernanceDecisionRequest,
+    request: Request,
+):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        record = GOVERNANCE_ENGINE.decide(approval_id, req.approve)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Approval not found.") from exc
+    SECURITY_STORE.audit(
+        "governance.approval_decided",
+        request,
+        approval_id=approval_id,
+        status=record["status"],
+    )
+    return record
+
+
+@app.post("/api/governance/validate")
+def governance_validate(req: GovernanceValidationRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    decision = GOVERNANCE_ENGINE.validate_result(
+        executing_specialist=req.executing_specialist,
+        validating_specialist=req.validating_specialist,
+        permission=req.permission,
+        approval_decision=req.approval_decision,
+        tests_passed=req.tests_passed,
+        verification_passed=req.verification_passed,
+    )
+    SECURITY_STORE.audit(
+        "governance.validation",
+        request,
+        executing_specialist=req.executing_specialist,
+        validating_specialist=req.validating_specialist,
+        decision=decision.value,
+    )
+    return {
+        "decision": decision.value,
+        "mission_completion_allowed": decision == ValidationDecision.PASS,
+    }
 
 
 @app.get("/api/tools/registry")

@@ -2798,3 +2798,54 @@ $("#registeredToolList")?.addEventListener("click", async event => {
 $("#refreshToolsSkills")?.addEventListener("click", loadToolsSkills);
 if (location.hash === "#tools-skills") loadToolsSkills();
 window.addEventListener("hashchange", () => { if (location.hash === "#tools-skills") loadToolsSkills(); });
+
+
+async function loadGovernanceCenter() {
+  const rulesHost = document.getElementById("governanceRules");
+  const approvalsHost = document.getElementById("governanceApprovals");
+  if (!rulesHost || !approvalsHost) return;
+
+  try {
+    const response = await fetch("/api/governance", { credentials: "same-origin" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const rules = data.rules || [];
+    const approvals = data.approvals || [];
+    const summary = data.summary || {};
+
+    document.getElementById("governanceRuleCount").textContent = String(rules.length);
+    document.getElementById("governancePendingCount").textContent = String(summary.pending || 0);
+    document.getElementById("governanceApprovedCount").textContent =
+      String((summary.approved || 0) + (summary.consumed || 0));
+    document.getElementById("governanceBlockedCount").textContent = String(summary.blocked || 0);
+    document.getElementById("governanceGateStatus").textContent = "ENFORCED";
+
+    rulesHost.innerHTML = rules.map(rule => `
+      <div class="artifact">
+        <span>${rule.mandatory ? "REQ" : "OPT"}</span>
+        <p><strong>${escapeHtml(rule.title)}</strong><br>${escapeHtml(rule.description)}</p>
+      </div>
+    `).join("");
+
+    approvalsHost.innerHTML = approvals.length
+      ? approvals.slice().reverse().map(item => `
+        <div class="artifact">
+          <span>${escapeHtml(String(item.status || "pending").toUpperCase())}</span>
+          <p>
+            <strong>${escapeHtml(item.tool_id || "unknown tool")}</strong><br>
+            ${escapeHtml(item.specialist || "unknown specialist")} · ${escapeHtml(item.risk || "unknown risk")}<br>
+            ${escapeHtml(item.reason || "No reason provided")}
+          </p>
+        </div>
+      `).join("")
+      : '<p class="muted-copy">No approval requests.</p>';
+  } catch (error) {
+    document.getElementById("governanceGateStatus").textContent = "ERROR";
+    rulesHost.innerHTML = `<p class="muted-copy">Governance API unavailable: ${escapeHtml(String(error.message || error))}</p>`;
+  }
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest('[data-view="governance"]')) loadGovernanceCenter();
+  if (event.target.closest("#refreshGovernance")) loadGovernanceCenter();
+});
