@@ -2759,3 +2759,42 @@ if (location.hash === "#security-admin") loadSecurityAdmin();
 window.addEventListener("hashchange", () => {
   if (location.hash === "#security-admin") loadSecurityAdmin();
 });
+
+
+async function loadToolsSkills() {
+  try {
+    const registry = await api("/api/tools/registry");
+    $("#mcpServerList").innerHTML = registry.servers.length ? registry.servers.map(server => `<article class="mcp-server-item"><div><strong>${escapeHtml(server.name)}</strong><span>${escapeHtml(server.endpoint)}</span><small>${escapeHtml(server.permission)} / ${escapeHtml(server.last_status || "not_tested")}</small></div><div class="mcp-server-actions"><button data-mcp-test="${escapeHtml(server.id)}">Test</button><button data-mcp-toggle="${escapeHtml(server.id)}" data-enabled="${server.enabled}">${server.enabled ? "Disable" : "Enable"}</button><button data-mcp-remove="${escapeHtml(server.id)}">Remove</button></div></article>`).join("") : '<p class="muted-copy">No remote MCP servers registered.</p>';
+    $("#registeredToolList").innerHTML = registry.tools.map(tool => `<article class="registered-tool-item"><div><strong>${escapeHtml(tool.name)}</strong><span>${escapeHtml(tool.description)}</span><small>${escapeHtml(tool.specialist)} / ${escapeHtml(tool.source)}</small></div><div><span class="status-chip">${escapeHtml(tool.permission)}</span>${tool.enabled && tool.permission === "read" ? `<button data-tool-run="${escapeHtml(tool.id)}">Run</button>` : ""}</div></article>`).join("");
+    $("#registeredSkillList").innerHTML = registry.skills.map(skill => `<article class="registered-skill-item"><div><strong>${escapeHtml(skill.name)}</strong><span>${escapeHtml(skill.purpose)}</span><small>${escapeHtml(skill.specialist)} / risk ${escapeHtml(skill.risk)}</small></div><span class="status-chip">${skill.enabled ? "ENABLED" : "DISABLED"}</span></article>`).join("");
+  } catch (error) { showFrontendBoundary(error, "Tools and skills"); }
+}
+
+$("#mcpServerForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  await api("/api/mcp/servers", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id: $("#mcpServerId").value.trim().toLowerCase(), name: $("#mcpServerName").value.trim(), transport: $("#mcpServerEndpoint").value.startsWith("https://") ? "https" : "http", endpoint: $("#mcpServerEndpoint").value.trim(), permission: $("#mcpServerPermission").value, notes: ""})});
+  event.target.reset();
+  await loadToolsSkills();
+});
+
+$("#mcpServerList")?.addEventListener("click", async event => {
+  const testButton = event.target.closest("[data-mcp-test]");
+  const toggleButton = event.target.closest("[data-mcp-toggle]");
+  const removeButton = event.target.closest("[data-mcp-remove]");
+  if (testButton) { const result = await api(`/api/mcp/servers/${testButton.dataset.mcpTest}/test`, {method: "POST"}); alert(`Server status: ${result.status}\n${result.detail || ""}`); await loadToolsSkills(); }
+  if (toggleButton) { await api(`/api/mcp/servers/${toggleButton.dataset.mcpToggle}/toggle`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({enabled: toggleButton.dataset.enabled !== "true"})}); await loadToolsSkills(); }
+  if (removeButton && confirm("Remove this MCP server registration?")) { await api(`/api/mcp/servers/${removeButton.dataset.mcpRemove}`, {method: "DELETE"}); await loadToolsSkills(); }
+});
+
+$("#registeredToolList")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-tool-run]");
+  if (!button) return;
+  const argumentsValue = {};
+  if (button.dataset.toolRun === "network.dns") { const hostname = prompt("Hostname to resolve:", "aios.bossayan.com"); if (!hostname) return; argumentsValue.hostname = hostname; }
+  const result = await api("/api/tools/invoke", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({tool_id: button.dataset.toolRun, arguments: argumentsValue})});
+  alert(JSON.stringify(result, null, 2).slice(0, 5000));
+});
+
+$("#refreshToolsSkills")?.addEventListener("click", loadToolsSkills);
+if (location.hash === "#tools-skills") loadToolsSkills();
+window.addEventListener("hashchange", () => { if (location.hash === "#tools-skills") loadToolsSkills(); });
