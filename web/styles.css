@@ -1122,3 +1122,31 @@ button,
   border-radius:8px;padding:11px;background:var(--bg);color:var(--text)
 }
 .security-login-error{min-height:20px;margin:0;color:#ff9c98}
+
+
+.security-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.security-summary-grid article{display:grid;gap:5px;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--panel)}
+.security-summary-grid span{font-size:10px;color:var(--muted)}
+.security-summary-grid strong{font-size:20px}
+.security-warning{border-color:#ff9c98!important}
+.security-session-list,.security-audit-list{display:grid;gap:8px}
+.security-session-item,.security-audit-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:9px;padding:12px}
+.security-session-item div,.security-audit-item{min-width:0}
+.security-session-item div{display:grid;gap:3px}
+.security-session-item span,.security-session-item small,.security-audit-item span,.security-audit-item small{color:var(--muted)}
+.security-password-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:end}
+.security-password-form label{display:grid;gap:5px}
+.security-password-form input{width:100%;box-sizing:border-box}
+.security-password-form p{grid-column:1/-1}
+@media(max-width:850px){.security-summary-grid{grid-template-columns:1fr 1fr}.security-password-form{grid-template-columns:1fr}}
+@media(max-width:500px){.security-summary-grid{grid-template-columns:1fr}.security-session-item{align-items:flex-start;flex-direction:column}}
+
+
+.mcp-server-form{display:grid;grid-template-columns:1fr 1.2fr 2fr 1fr auto;gap:8px;margin-bottom:12px}
+.mcp-server-list,.registered-tool-list,.registered-skill-list{display:grid;gap:8px}
+.mcp-server-item,.registered-tool-item,.registered-skill-item{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:9px;padding:12px}
+.mcp-server-item>div:first-child,.registered-tool-item>div:first-child,.registered-skill-item>div:first-child{display:grid;gap:3px;min-width:0}
+.mcp-server-item span,.mcp-server-item small,.registered-tool-item span,.registered-tool-item small,.registered-skill-item span,.registered-skill-item small{color:var(--muted)}
+.mcp-server-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:950px){.mcp-server-form{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.mcp-server-form{grid-template-columns:1fr}.mcp-server-item,.registered-tool-item,.registered-skill-item{align-items:flex-start;flex-direction:column}}

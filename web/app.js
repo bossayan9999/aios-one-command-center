@@ -2655,3 +2655,146 @@ Promise.allSettled([
 loadOllamaManager();
 
 loadActiveModelIndicator();
+
+
+function securityDate(timestamp) {
+  if (!timestamp) return "Unknown";
+  return new Date(timestamp * 1000).toLocaleString();
+}
+
+async function loadSecurityAdmin() {
+  try {
+    const [summary, sessions, audit] = await Promise.all([
+      api("/api/security/summary"),
+      api("/api/security/sessions"),
+      api("/api/security/audit?limit=100"),
+    ]);
+
+    $("#securitySummaryCards").innerHTML = `
+      <article><span>Active sessions</span><strong>${summary.active_sessions}</strong></article>
+      <article><span>Failed logins · 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
+      <article><span>Denied requests · 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
+      <article class="${summary.suspicious ? "security-warning" : ""}">
+        <span>Security posture</span>
+        <strong>${summary.suspicious ? "REVIEW" : "NORMAL"}</strong>
+      </article>
+    `;
+
+    $("#securitySessions").innerHTML = sessions.items.length
+      ? sessions.items.map(item => `
+          <article class="security-session-item">
+            <div>
+              <strong>${escapeHtml(item.username || "Owner")}</strong>
+              <span>${item.current ? "Current session" : "Other session"}</span>
+              <small>Created ${securityDate(item.created_at)} · Expires ${securityDate(item.expires_at)}</small>
+            </div>
+            ${item.current
+              ? '<span class="status-chip">CURRENT</span>'
+              : `<button data-revoke-session="${escapeHtml(item.id)}">Revoke</button>`}
+          </article>
+        `).join("")
+      : '<p class="muted-copy">No active sessions.</p>';
+
+    $("#securityAuditEvents").innerHTML = audit.items.length
+      ? audit.items.map(item => `
+          <article class="security-audit-item">
+            <strong>${escapeHtml(item.event || "event")}</strong>
+            <span>${securityDate(item.at)}</span>
+            <small>${escapeHtml(item.ip || "unknown")} · ${escapeHtml(item.path || "")}</small>
+          </article>
+        `).join("")
+      : '<p class="muted-copy">No security events recorded.</p>';
+  } catch (error) {
+    showFrontendBoundary(error, "Security administration");
+  }
+}
+
+$("#refreshSecurityAdmin")?.addEventListener("click", loadSecurityAdmin);
+
+$("#securitySessions")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-revoke-session]");
+  if (!button) return;
+  if (!confirm("Revoke this session?")) return;
+  await api("/api/security/sessions/revoke", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({session_id: button.dataset.revokeSession}),
+  });
+  await loadSecurityAdmin();
+});
+
+$("#revokeOtherSessions")?.addEventListener("click", async () => {
+  if (!confirm("Revoke every session except this one?")) return;
+  await api("/api/security/sessions/revoke-others", {method: "POST"});
+  await loadSecurityAdmin();
+});
+
+$("#passwordRotateForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const currentPassword = $("#currentOwnerPassword").value;
+  const newPassword = $("#newOwnerPassword").value;
+  const confirmation = $("#confirmOwnerPassword").value;
+  if (newPassword !== confirmation) {
+    $("#passwordRotateStatus").textContent = "New passwords do not match.";
+    return;
+  }
+  try {
+    const result = await api("/api/security/password/rotate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+      }),
+    });
+    $("#passwordRotateStatus").textContent =
+      `Password rotated. ${result.sessions_revoked} session(s) revoked. Sign in again.`;
+    setTimeout(() => location.reload(), 1200);
+  } catch (error) {
+    $("#passwordRotateStatus").textContent = error.message;
+  }
+});
+
+if (location.hash === "#security-admin") loadSecurityAdmin();
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#security-admin") loadSecurityAdmin();
+});
+
+
+async function loadToolsSkills() {
+  try {
+    const registry = await api("/api/tools/registry");
+    $("#mcpServerList").innerHTML = registry.servers.length ? registry.servers.map(server => `<article class="mcp-server-item"><div><strong>${escapeHtml(server.name)}</strong><span>${escapeHtml(server.endpoint)}</span><small>${escapeHtml(server.permission)} / ${escapeHtml(server.last_status || "not_tested")}</small></div><div class="mcp-server-actions"><button data-mcp-test="${escapeHtml(server.id)}">Test</button><button data-mcp-toggle="${escapeHtml(server.id)}" data-enabled="${server.enabled}">${server.enabled ? "Disable" : "Enable"}</button><button data-mcp-remove="${escapeHtml(server.id)}">Remove</button></div></article>`).join("") : '<p class="muted-copy">No remote MCP servers registered.</p>';
+    $("#registeredToolList").innerHTML = registry.tools.map(tool => `<article class="registered-tool-item"><div><strong>${escapeHtml(tool.name)}</strong><span>${escapeHtml(tool.description)}</span><small>${escapeHtml(tool.specialist)} / ${escapeHtml(tool.source)}</small></div><div><span class="status-chip">${escapeHtml(tool.permission)}</span>${tool.enabled && tool.permission === "read" ? `<button data-tool-run="${escapeHtml(tool.id)}">Run</button>` : ""}</div></article>`).join("");
+    $("#registeredSkillList").innerHTML = registry.skills.map(skill => `<article class="registered-skill-item"><div><strong>${escapeHtml(skill.name)}</strong><span>${escapeHtml(skill.purpose)}</span><small>${escapeHtml(skill.specialist)} / risk ${escapeHtml(skill.risk)}</small></div><span class="status-chip">${skill.enabled ? "ENABLED" : "DISABLED"}</span></article>`).join("");
+  } catch (error) { showFrontendBoundary(error, "Tools and skills"); }
+}
+
+$("#mcpServerForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  await api("/api/mcp/servers", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id: $("#mcpServerId").value.trim().toLowerCase(), name: $("#mcpServerName").value.trim(), transport: $("#mcpServerEndpoint").value.startsWith("https://") ? "https" : "http", endpoint: $("#mcpServerEndpoint").value.trim(), permission: $("#mcpServerPermission").value, notes: ""})});
+  event.target.reset();
+  await loadToolsSkills();
+});
+
+$("#mcpServerList")?.addEventListener("click", async event => {
+  const testButton = event.target.closest("[data-mcp-test]");
+  const toggleButton = event.target.closest("[data-mcp-toggle]");
+  const removeButton = event.target.closest("[data-mcp-remove]");
+  if (testButton) { const result = await api(`/api/mcp/servers/${testButton.dataset.mcpTest}/test`, {method: "POST"}); alert(`Server status: ${result.status}\n${result.detail || ""}`); await loadToolsSkills(); }
+  if (toggleButton) { await api(`/api/mcp/servers/${toggleButton.dataset.mcpToggle}/toggle`, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({enabled: toggleButton.dataset.enabled !== "true"})}); await loadToolsSkills(); }
+  if (removeButton && confirm("Remove this MCP server registration?")) { await api(`/api/mcp/servers/${removeButton.dataset.mcpRemove}`, {method: "DELETE"}); await loadToolsSkills(); }
+});
+
+$("#registeredToolList")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-tool-run]");
+  if (!button) return;
+  const argumentsValue = {};
+  if (button.dataset.toolRun === "network.dns") { const hostname = prompt("Hostname to resolve:", "aios.bossayan.com"); if (!hostname) return; argumentsValue.hostname = hostname; }
+  const result = await api("/api/tools/invoke", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({tool_id: button.dataset.toolRun, arguments: argumentsValue})});
+  alert(JSON.stringify(result, null, 2).slice(0, 5000));
+});
+
+$("#refreshToolsSkills")?.addEventListener("click", loadToolsSkills);
+if (location.hash === "#tools-skills") loadToolsSkills();
+window.addEventListener("hashchange", () => { if (location.hash === "#tools-skills") loadToolsSkills(); });

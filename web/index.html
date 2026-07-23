@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1a-security-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1c-mcp-skills-1" />
 </head>
 <body>
 
@@ -39,6 +39,7 @@
         <button class="nav-item" data-view="workflow">◇ Workflow Map</button>
         <button class="nav-item" data-view="agents">◎ Specialists</button>
         <button class="nav-item" data-view="knowledge">⌘ Knowledge Graph</button>
+<button data-view="tools-skills"><span>Tools &amp; Skills</span></button>
         <button class="nav-item" data-view="connectors">↗ Connectors</button>
         <button class="nav-item" data-view="ai-settings">✦ AI & Providers</button>
         <button class="nav-item" data-view="system-health">◉ System Health</button>
@@ -645,6 +646,65 @@
         </div>
       </section>
 
+      
+      <section id="view-security-admin" class="view">
+        <div class="page-header">
+          <div>
+            <p class="eyebrow">OWNER SECURITY</p>
+            <h1>Security Administration</h1>
+            <p>Review sessions, audit activity, suspicious access, and rotate the owner password.</p>
+          </div>
+          <button id="refreshSecurityAdmin">Refresh</button>
+        </div>
+
+        <div id="securitySummaryCards" class="security-summary-grid"></div>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">ACTIVE SESSIONS</p>
+              <h2>Signed-in devices</h2>
+            </div>
+            <button id="revokeOtherSessions">Revoke other sessions</button>
+          </div>
+          <div id="securitySessions" class="security-session-list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">PASSWORD ROTATION</p>
+              <h2>Change owner password</h2>
+            </div>
+          </div>
+          <form id="passwordRotateForm" class="security-password-form">
+            <label>Current password<input id="currentOwnerPassword" type="password" required></label>
+            <label>New password<input id="newOwnerPassword" type="password" minlength="12" required></label>
+            <label>Confirm new password<input id="confirmOwnerPassword" type="password" minlength="12" required></label>
+            <button type="submit" class="primary">Rotate password</button>
+            <p id="passwordRotateStatus" class="muted-copy"></p>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">SECURITY AUDIT</p>
+              <h2>Recent events</h2>
+            </div>
+          </div>
+          <div id="securityAuditEvents" class="security-audit-list"></div>
+        </article>
+      </section>
+
+
+      <section id="view-tools-skills" class="view">
+        <div class="page-header"><div><p class="eyebrow">EXTENSIBILITY CONTROL</p><h1>Tools &amp; Skills</h1><p>Register approved endpoints, review skills, and run read-only AIOS tools.</p></div><button id="refreshToolsSkills">Refresh</button></div>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">MCP SERVERS</p><h2>Approved endpoints</h2></div></div><form id="mcpServerForm" class="mcp-server-form"><input id="mcpServerId" placeholder="github-mcp" required><input id="mcpServerName" placeholder="GitHub MCP" required><input id="mcpServerEndpoint" placeholder="https://example.com/mcp" required><select id="mcpServerPermission"><option value="read">READ</option><option value="safe_write">SAFE WRITE</option><option value="approval_required">APPROVAL REQUIRED</option></select><button type="submit" class="primary">Register disabled</button></form><div id="mcpServerList" class="mcp-server-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">REGISTERED TOOLS</p><h2>Execution capabilities</h2></div></div><div id="registeredToolList" class="registered-tool-list"></div></article>
+        <article class="panel"><div class="panel-title"><div><p class="eyebrow">SKILL REGISTRY</p><h2>Specialist workflows</h2></div></div><div id="registeredSkillList" class="registered-skill-list"></div></article>
+      </section>
+
       <section id="view-connectors" class="app-view">
 
         <article class="panel desktop-companion-panel">
@@ -1148,7 +1208,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1a-security-1"></script>
+  <script src="/assets/app.js?v=phase1c-mcp-skills-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

@@ -111,6 +111,83 @@ class SecurityStore:
         self.save_sessions({})
         return count
 
+
+    def list_sessions(self, current_token: str = "") -> list[dict[str, Any]]:
+        sessions = self.sessions()
+        current_key = (
+            hashlib.sha256(current_token.encode()).hexdigest()
+            if current_token else ""
+        )
+        now = time.time()
+        changed = False
+        items: list[dict[str, Any]] = []
+        for session_id, session in list(sessions.items()):
+            expires_at = float(session.get("expires_at", 0) or 0)
+            if expires_at <= now:
+                sessions.pop(session_id, None)
+                changed = True
+                continue
+            items.append({
+                "id": session_id,
+                "username": session.get("username", ""),
+                "role": session.get("role", ""),
+                "created_at": float(session.get("created_at", 0) or 0),
+                "expires_at": expires_at,
+                "current": hmac.compare_digest(session_id, current_key)
+                if current_key else False,
+            })
+        if changed:
+            self.save_sessions(sessions)
+        return sorted(items, key=lambda item: item["created_at"], reverse=True)
+
+    def revoke_session_id(self, session_id: str) -> bool:
+        sessions = self.sessions()
+        removed = sessions.pop(session_id, None) is not None
+        if removed:
+            self.save_sessions(sessions)
+        return removed
+
+    def revoke_other_sessions(self, current_token: str) -> int:
+        current_key = hashlib.sha256(current_token.encode()).hexdigest()
+        sessions = self.sessions()
+        preserved = sessions.get(current_key)
+        count = len(sessions) - (1 if preserved else 0)
+        self.save_sessions({current_key: preserved} if preserved else {})
+        return max(0, count)
+
+    def audit_events(self, limit: int = 200) -> list[dict[str, Any]]:
+        if not self.audit_file.exists():
+            return []
+        items: list[dict[str, Any]] = []
+        for line in self.audit_file.read_text(encoding="utf-8").splitlines():
+            try:
+                value = json.loads(line)
+                if isinstance(value, dict):
+                    items.append(value)
+            except Exception:
+                continue
+        return list(reversed(items[-max(1, min(limit, 1000)):]))
+
+    def security_summary(self) -> dict[str, Any]:
+        events = self.audit_events(500)
+        now = time.time()
+        recent_failed = [
+            item for item in events
+            if item.get("event") == "login.failed"
+            and now - float(item.get("at", 0) or 0) <= 3600
+        ]
+        denied = [
+            item for item in events
+            if item.get("event") == "access.denied"
+            and now - float(item.get("at", 0) or 0) <= 3600
+        ]
+        return {
+            "active_sessions": len(self.list_sessions()),
+            "failed_logins_last_hour": len(recent_failed),
+            "access_denied_last_hour": len(denied),
+            "suspicious": len(recent_failed) >= 3 or len(denied) >= 10,
+        }
+
     def check_rate_limit(self, request: Request) -> None:
         ip = request.client.host if request.client else "unknown"
         now = time.time()

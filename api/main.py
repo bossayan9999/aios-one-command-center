@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -16,7 +18,7 @@ import urllib.request
 import zipfile
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 from uuid import uuid4
 
 import psutil
@@ -34,12 +36,14 @@ from agentic.model_gateway import (
     model_preflight,
 )
 from agentic.pm_router import PMModelRouter
+from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from security.app_security import (
     CSRF_COOKIE,
     SECURE_COOKIES,
     SESSION_COOKIE,
     SESSION_SECONDS,
     SecurityStore,
+    hash_password,
     owner_is_configured,
     require_csrf,
     require_owner,
@@ -244,11 +248,104 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
     ]
 
 SECURITY_STORE = SecurityStore(DATA_DIR)
+TOOL_REGISTRY = ToolRegistry(DATA_DIR, WEB_DIR.parent)
+
+
+
+class PasswordRotateRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
+
+
+class SessionRevokeRequest(BaseModel):
+    session_id: str = Field(min_length=64, max_length=64, pattern=r"^[a-f0-9]+$")
+
+
+class MCPServerRequest(BaseModel):
+    id: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9._-]+$")
+    name: str = Field(min_length=2, max_length=120)
+    transport: str = Field(pattern=r"^(http|https)$")
+    endpoint: str = Field(min_length=8, max_length=500)
+    permission: ToolPermission = ToolPermission.READ
+    notes: str = Field(default="", max_length=500)
+
+
+class MCPServerToggleRequest(BaseModel):
+    enabled: bool
+
+
+class ToolInvokeRequest(BaseModel):
+    tool_id: str = Field(min_length=2, max_length=120)
+    arguments: dict[str, Any] = Field(default_factory=dict)
 
 
 class LoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=80)
     password: str = Field(min_length=1, max_length=256)
+
+
+@app.get("/api/tools/registry")
+def tools_registry(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"tools": TOOL_REGISTRY.tools(), "skills": TOOL_REGISTRY.skills(), "servers": TOOL_REGISTRY.servers(), "policy": {"newly_discovered_tools_enabled": False, "raw_terminal": "blocked"}}
+
+
+@app.get("/api/mcp/manifest")
+def mcp_manifest(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"name": "AIOS ONE Local MCP", "version": "0.1.0", "status": "registry_foundation", "capabilities": {"tools": True, "resources": True, "prompts": True, "remote_protocol_client": False}, "tools": TOOL_REGISTRY.tools(), "prompts": TOOL_REGISTRY.skills()}
+
+
+@app.post("/api/mcp/servers")
+def mcp_add_server(req: MCPServerRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    endpoint = req.endpoint.strip()
+    if not endpoint.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Only HTTP and HTTPS endpoints are allowed.")
+    value = TOOL_REGISTRY.add_server(MCPServerDefinition(req.id, req.name, req.transport, endpoint, False, req.permission, notes=req.notes))
+    SECURITY_STORE.audit("mcp.server_added", request, server_id=req.id)
+    return value
+
+
+@app.post("/api/mcp/servers/{server_id}/toggle")
+def mcp_toggle_server(server_id: str, req: MCPServerToggleRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    if not TOOL_REGISTRY.set_server_enabled(server_id, req.enabled):
+        raise HTTPException(status_code=404, detail="MCP server not found.")
+    return {"updated": True, "enabled": req.enabled}
+
+
+@app.post("/api/mcp/servers/{server_id}/test")
+def mcp_test_server(server_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        return TOOL_REGISTRY.test_server(server_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="MCP server not found.") from exc
+
+
+@app.delete("/api/mcp/servers/{server_id}")
+def mcp_remove_server(server_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    if not TOOL_REGISTRY.remove_server(server_id):
+        raise HTTPException(status_code=404, detail="MCP server not found.")
+    return {"removed": True}
+
+
+@app.post("/api/tools/invoke")
+def invoke_registered_tool(req: ToolInvokeRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        result = TOOL_REGISTRY.invoke(req.tool_id, req.arguments)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Tool not found.") from exc
+    SECURITY_STORE.audit("tool.invoked", request, tool_id=req.tool_id, status=result.get("status"))
+    return result
 
 
 @app.get("/api/auth/status")
@@ -322,6 +419,108 @@ def auth_revoke_all(request: Request, response: Response):
     response.delete_cookie(CSRF_COOKIE, path="/")
     SECURITY_STORE.audit("sessions.revoked_all", request, count=count)
     return {"revoked": count}
+
+
+
+@app.get("/api/security/summary")
+def security_summary(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return SECURITY_STORE.security_summary()
+
+
+@app.get("/api/security/sessions")
+def security_sessions(request: Request):
+    require_owner(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    return {"items": SECURITY_STORE.list_sessions(token)}
+
+
+@app.post("/api/security/sessions/revoke")
+def security_revoke_session(req: SessionRevokeRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    current_id = hashlib.sha256(token.encode()).hexdigest()
+    if hmac.compare_digest(req.session_id, current_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Use logout to revoke the current session.",
+        )
+    removed = SECURITY_STORE.revoke_session_id(req.session_id)
+    SECURITY_STORE.audit(
+        "session.revoked",
+        request,
+        session_id=req.session_id[:12],
+        removed=removed,
+    )
+    return {"revoked": removed}
+
+
+@app.post("/api/security/sessions/revoke-others")
+def security_revoke_other_sessions(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    count = SECURITY_STORE.revoke_other_sessions(token)
+    SECURITY_STORE.audit("sessions.revoked_others", request, count=count)
+    return {"revoked": count}
+
+
+@app.get("/api/security/audit")
+def security_audit(request: Request, limit: int = 200):
+    require_owner(request, SECURITY_STORE)
+    return {"items": SECURITY_STORE.audit_events(limit)}
+
+
+@app.post("/api/security/password/rotate")
+def security_rotate_password(
+    req: PasswordRotateRequest,
+    request: Request,
+    response: Response,
+):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    username = str(require_session(request, SECURITY_STORE).get("username", ""))
+    if not verify_owner(username, req.current_password):
+        SECURITY_STORE.audit("password.rotate_failed", request)
+        raise HTTPException(status_code=401, detail="Current password is incorrect.")
+    if req.current_password == req.new_password:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different.",
+        )
+
+    salt = secrets.token_hex(16)
+    password_hash = hash_password(req.new_password, salt)
+    env_path = WEB_DIR.parent / ".env.security"
+    existing: dict[str, str] = {}
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                key, value = line.split("=", 1)
+                existing[key] = value
+    existing.update({
+        "AIOS_OWNER_USERNAME": username,
+        "AIOS_OWNER_PASSWORD_SALT": salt,
+        "AIOS_OWNER_PASSWORD_HASH": password_hash,
+        "AIOS_SECURE_COOKIES": "1" if SECURE_COOKIES else "0",
+        "AIOS_SESSION_SECONDS": str(SESSION_SECONDS),
+    })
+    env_path.write_text(
+        "\n".join(f"{key}={value}" for key, value in existing.items()) + "\n",
+        encoding="utf-8",
+    )
+
+    import security.app_security as security_module
+    security_module.OWNER_USERNAME = username
+    security_module.OWNER_PASSWORD_SALT = salt
+    security_module.OWNER_PASSWORD_HASH = password_hash
+
+    revoked = SECURITY_STORE.revoke_all()
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("password.rotated", request, sessions_revoked=revoked)
+    return {"rotated": True, "sessions_revoked": revoked}
 
 
 @app.get("/api/auth/audit")
@@ -3466,5 +3665,3 @@ def health():
         "service": "aios-one-command-center",
         "agent_backend": AGENT_BACKEND_AVAILABLE,
     }
-
-
