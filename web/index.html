@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#08100f" />
+  <title>AIOS ONE — Hybrid Agentic Command Center</title>
+  <link rel="stylesheet" href="/assets/styles.css?v=development-quality-gate-1" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">A1</div>
+        <div><strong>AIOS ONE</strong><span>Agentic Command</span></div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-view="mission">⌁ Mission Control</button>
+        <button class="nav-item" data-view="copilot">✦ Copilot Chat</button>
+        <button class="nav-item" data-view="workflow">◇ Workflow Map</button>
+        <button class="nav-item" data-view="agents">◎ Specialists</button>
+        <button class="nav-item" data-view="knowledge">⌘ Knowledge Graph</button>
+        <button class="nav-item" data-view="connectors">↗ Connectors</button>
+        <button class="nav-item" data-view="ai-settings">✦ AI & Providers</button>
+        <button class="nav-item" data-view="system-health">◉ System Health</button>
+        <button class="nav-item" data-view="roadmap">◆ Roadmap & Progress</button>
+        <button class="nav-item" data-view="approvals">✓ Approval Center</button>
+        <button class="nav-item" data-view="mobile">▣ Mobile Control</button>
+        <button class="nav-item" data-view="budget">₱ Budget & Usage</button>
+      </nav>
+      <div class="side-status">
+        <div><span class="pulse"></span> Cloud gateway online</div>
+        <div><span class="dot muted"></span> Local companion offline</div>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">HYBRID OPERATIONS NETWORK</p>
+          <h1 id="pageTitle">Mission Control</h1>
+        </div>
+        <div class="top-actions">
+          <span class="mode-pill">HYBRID MODE</span>
+          <button id="newMissionBtn" class="primary">+ New mission</button>
+        </div>
+      </header>
+
+
+      <section id="view-copilot" class="app-view">
+
+          <article id="copilotReminderCenter" class="panel copilot-reminder-center">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">COPILOT REMINDERS</p>
+                <h2>Needs your attention</h2>
+              </div>
+              <span id="copilotReminderCount" class="status-chip">0</span>
+            </div>
+            <div id="copilotReminderList"></div>
+          </article>
+
+        <div class="copilot-chat-layout">
+          <article class="panel copilot-chat-panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">LIVE OPENAI RESPONSES API</p>
+                <h2>Copilot conversation</h2>
+              </div>
+              <div class="copilot-provider">
+                <span id="copilotProviderDot"></span>
+                <strong id="copilotProviderLabel">Checking provider…</strong>
+              </div>
+            </div>
+
+            <div id="copilotMessages" class="copilot-messages">
+              <div class="copilot-empty">
+                <div class="orb">C</div>
+                <h3>Message your AIOS Copilot</h3>
+                <p>Ask questions, plan missions, review screenshots by URL, and coordinate the specialist team.</p>
+              </div>
+            </div>
+
+            
+            <form id="copilotChatForm" class="copilot-composer">
+              <textarea id="copilotMessageInput" rows="3" placeholder="Message Copilot…" required></textarea>
+              <div class="copilot-composer-options">
+                <input id="copilotImageUrl" type="url" placeholder="Optional public image URL for analysis">
+                <select id="copilotProvider">
+                  <option value="">Automatic provider</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="anthropic">Anthropic direct</option>
+                  <option value="openai">OpenAI direct</option>
+                </select>
+                <select id="copilotModel">
+                  <option value="claude-haiku-4-5-20251001">Simple · Claude Haiku policy</option>
+                  <option value="claude-sonnet-5" selected>Standard · Claude Sonnet policy</option>
+                  <option value="claude-opus-4-8">Complex · Claude Opus policy</option>
+                  <option value="gpt-5-mini">Standard · GPT-5 mini</option>
+                  <option value="gpt-5-nano">GPT-5 nano</option>
+                  <option value="gpt-5.4-mini">GPT-5.4 mini</option>
+                  <option value="gpt-5.4">GPT-5.4</option>
+                </select>
+                <button id="sendCopilotMessage" class="primary" type="submit">Send</button>
+              </div>
+            </form>
+          </article>
+
+          <aside class="panel copilot-chat-side">
+            <div class="panel-title"><div><p class="eyebrow">SESSION</p><h2>Controls</h2></div></div>
+            <button id="newCopilotConversation">New conversation</button>
+            <button id="createMissionFromChat" class="primary">Create mission from message</button>
+            <div class="brain-action-status" id="copilotChatStatus">Ready.</div>
+            
+            <div class="pm-router-card">
+              <h3>PM Model Router</h3>
+              <textarea id="pmRouteTask" rows="4" placeholder="Describe the task"></textarea>
+              <input id="pmRouteTokens" type="number" min="1" value="1500" aria-label="Estimated context tokens">
+              <input id="pmRouteFailures" type="number" min="0" value="0" aria-label="Standard failures">
+              <label><input id="pmRouteReuseCache" type="checkbox"> Reuse prior prompt or RAG context</label>
+              <button id="classifyPmTask" class="primary" type="button">Classify task</button>
+              <pre id="pmRouteOutput">No task classified yet.</pre>
+            </div>
+<div class="copilot-safety">
+              <h3>Remote-control safety</h3>
+              <p>Copilot may prepare actions, but host, network, payment, deployment, and external-write commands still require restricted backend tools and approval.</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-mission" class="app-view active">
+        <section class="hero-grid">
+          <article class="copilot-card panel">
+            <div class="copilot-head">
+              <div class="orb">C</div>
+              <div><p class="eyebrow">COMMAND AUTHORITY</p><h2>Copilot Manager</h2></div>
+              <span class="online">ONLINE</span>
+            </div>
+            <p class="muted-copy">Plans missions, routes work across local and cloud models, assigns specialists, enforces approvals, and validates evidence before completion.</p>
+            <div class="command-row">
+              <input id="quickObjective" placeholder="Give Copilot a mission…" />
+              <button id="quickLaunch" class="primary">Launch</button>
+            </div>
+            <div class="mission-suggestions">
+              <button class="suggestion-chip" data-mission="Review the AIOS ONE web app, find broken features, and create a prioritized repair plan.">Web app health check</button>
+              <button class="suggestion-chip" data-mission="Design the secure local companion for Ollama, Obsidian, Graphify, Docker, and terminal access.">Build local companion</button>
+              <button class="suggestion-chip" data-mission="Create the production Supabase schema for accounts, organizations, tenant isolation, missions, workflows, and audit logs.">Production database</button>
+              <button class="suggestion-chip" data-mission="Create a secure MCP connector strategy for GitHub, Obsidian, Slack, Google Drive, and custom tools.">MCP connector plan</button>
+            </div>
+          </article>
+
+          <article class="panel system-card">
+            <div class="panel-title"><span>System posture</span><span class="live">LIVE</span></div>
+            <div class="posture-grid">
+              <div><b id="agentCount">8</b><span>Agents ready</span></div>
+              <div><b id="missionCount">0</b><span>Active missions</span></div>
+              <div><b id="approvalCount">0</b><span>Approvals</span></div>
+              <div><b>3</b><span>Models routed</span></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel workflow-panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">OSINT-STYLE EXECUTION</p><h2>Live workflow</h2></div>
+              <span id="workflowStatus" class="status-badge">STANDBY</span>
+            </div>
+            <div id="workflow" class="workflow empty">
+              <div class="empty-state">
+                <div class="radar"></div>
+                <h3>No active mission</h3>
+                <p>Create a mission to see Copilot route and validate the workflow.</p>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel right-panel">
+            <div class="panel-title"><div><p class="eyebrow">SPECIALIST NETWORK</p><h2>Agent team</h2></div></div>
+            <div id="specialistList" class="specialist-list"></div>
+          </article>
+        </section>
+
+
+        <section class="mission-history-section">
+          <article class="panel mission-history-panel">
+            <div class="panel-title mission-history-title">
+              <div>
+                <p class="eyebrow">MISSION RECORDS</p>
+                <h2>Mission History</h2>
+                <p class="muted-copy">
+                  Open saved missions, resume incomplete work, re-export validated results,
+                  or archive old records.
+                </p>
+              </div>
+              <div class="mission-history-summary">
+                <span id="missionHistoryCount" class="status-chip">0 missions</span>
+                <button id="refreshMissionHistory">Refresh</button>
+              </div>
+            </div>
+
+            <div class="mission-history-controls">
+              <input
+                id="missionHistorySearch"
+                type="search"
+                placeholder="Search title, objective, ID, status…"
+              >
+              <select id="missionHistoryStatus">
+                <option value="">All statuses</option>
+                <option value="planning">Planning</option>
+                <option value="running">Running</option>
+                <option value="waiting_approval">Waiting approval</option>
+                <option value="complete">Complete</option>
+              </select>
+              <label class="checkbox-label">
+                <input id="missionHistoryArchived" type="checkbox">
+                Include archived
+              </label>
+              <button id="searchMissionHistory" class="primary">Search</button>
+            </div>
+
+            <div id="missionHistoryList" class="mission-history-list">
+              <p class="muted-copy">Loading mission history…</p>
+            </div>
+          </article>
+        </section>
+
+
+        <section class="bottom-grid">
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">INPUT / OUTPUT</p><h2>Mission artifacts</h2></div></div>
+            <div id="artifactList" class="artifact-list">
+              <div class="artifact"><span>IN</span><p>Text, files, URLs, repositories, notes and logs</p></div>
+              <div class="artifact"><span>OUT</span><p>Reports, code, citations, tests and deployment evidence</p></div>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">INTEGRATION FABRIC</p><h2>Connected systems</h2></div></div>
+            <div id="connectorList" class="connector-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section id="view-workflow" class="app-view">
+        <article class="panel">
+          <div class="panel-title">
+            <div><p class="eyebrow">MISSION EXECUTION GRAPH</p><h2>Workflow Map</h2></div>
+            <div class="workflow-actions">
+              <button id="runNextBrain" disabled>Run next agent</button>
+              <button id="runFullTeam" class="primary" disabled>Run full team</button>
+              <button id="approveBrainStep" disabled>Approve waiting step</button>
+              <button id="workflowNewMission" class="primary">Create workflow</button>
+            </div>
+          </div>
+          <div id="workflowFull" class="workflow active"></div>
+        </article>
+        <article class="panel brain-output-panel">
+          <div class="panel-title"><div><p class="eyebrow">MULTI-BRAIN OUTPUT</p><h2>Specialist Results</h2></div></div>
+          <div id="brainActionStatus" class="brain-action-status">Create or reload a mission to activate the brain controls.</div>
+          <div id="brainActionStatus" class="brain-action-status">Create a mission to activate the team.</div>
+          <div id="brainResults" class="brain-results">
+            <div class="empty-approval"><h3>No agent result yet</h3><p>Run the next agent or execute the full team.</p></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="view-agents" class="app-view">
+        <article class="panel">
+          <div class="panel-title"><div><p class="eyebrow">AGENT OPERATIONS</p><h2>Specialist Directory</h2></div></div>
+          <div id="specialistGrid" class="specialist-grid"></div>
+        </article>
+      </section>
+
+      <section id="view-knowledge" class="app-view">
+        <div class="knowledge-layout">
+          <article class="panel graph-panel">
+            <div class="panel-title"><div><p class="eyebrow">PROJECT INTELLIGENCE</p><h2>Knowledge Graph</h2></div></div>
+            <div class="graph-canvas">
+              <div class="graph-node main-node">AIOS ONE</div>
+              <div class="graph-node node-a">GitHub</div>
+              <div class="graph-node node-b">Obsidian</div>
+              <div class="graph-node node-c">Graphify</div>
+              <div class="graph-node node-d">Agents</div>
+              <div class="graph-node node-e">Missions</div>
+              <svg viewBox="0 0 700 380" preserveAspectRatio="none">
+                <line x1="350" y1="190" x2="130" y2="75"/>
+                <line x1="350" y1="190" x2="570" y2="75"/>
+                <line x1="350" y1="190" x2="120" y2="305"/>
+                <line x1="350" y1="190" x2="580" y2="305"/>
+                <line x1="350" y1="190" x2="350" y2="330"/>
+              </svg>
+            </div>
+          </article>
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">INDEX STATUS</p><h2>Knowledge Sources</h2></div></div>
+            <div class="artifact-list">
+              <div class="artifact"><span>GH</span><p>GitHub repository mapping</p></div>
+              <div class="artifact"><span>OB</span><p>Obsidian vault requires local companion</p></div>
+              <div class="artifact"><span>GR</span><p>Graphify indexing requires local companion</p></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+
+
+
+      <section id="view-ai-settings" class="app-view">
+        <div class="ai-settings-shell">
+          <header class="ai-settings-header panel">
+            <div>
+              <p class="eyebrow">AI CONFIGURATION</p>
+              <h2>Models, providers, and budget controls</h2>
+              <p class="muted-copy">
+                Search, connect, select, and monitor all AI services from one place.
+              </p>
+            </div>
+            <div class="ai-settings-header-actions">
+              <button id="refreshUnifiedAiSettings">Refresh status</button>
+              <button id="openAiBudgetSettings">Open budget monitor</button>
+            </div>
+          </header>
+
+          <div class="ai-settings-grid">
+            <article class="panel ai-overview-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">CURRENT CONFIGURATION</p>
+                  <h2>Active provider and model</h2>
+                </div>
+              </div>
+
+              <div id="unifiedSelectedModel" class="selected-provider-model">
+                Loading current selection…
+              </div>
+
+              <div id="unifiedProviderStatus" class="provider-status-summary"></div>
+
+              <div class="ai-policy-summary">
+                <h3>Recommended policy</h3>
+                <ul>
+                  <li>Use local or low-cost models for routine tasks.</li>
+                  <li>Require approval before premium or high-token calls.</li>
+                  <li>Fallback order: local → OpenRouter → Anthropic → OpenAI → deterministic.</li>
+                  <li>Keep all provider keys server-side.</li>
+                </ul>
+              </div>
+            </article>
+
+            <article class="panel ai-provider-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">PROVIDER CONNECTIONS</p>
+                  <h2>Connect AI services</h2>
+                </div>
+              </div>
+              <div id="unifiedProviderCards" class="secure-provider-cards"></div>
+            </article>
+
+            <article class="panel ai-search-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">MODEL SEARCH</p>
+                  <h2>Find and select a model</h2>
+                </div>
+                <span id="unifiedModelCatalogSource" class="status-chip">Loading…</span>
+              </div>
+
+              <div class="model-search-controls">
+                <input
+                  id="unifiedModelSearchInput"
+                  type="search"
+                  placeholder="Search Claude, GPT, Gemini, Llama, DeepSeek…"
+                >
+                <select id="unifiedModelProviderFilter">
+                  <option value="">All providers</option>
+                  <option value="ollama">Ollama Local</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="google">Google</option>
+                  <option value="meta-llama">Meta Llama</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="qwen">Qwen</option>
+                  <option value="mistralai">Mistral</option>
+                </select>
+                <label class="checkbox-label">
+                  <input id="unifiedFreeModelsOnly" type="checkbox">
+                  Free only
+                </label>
+                <button id="unifiedSearchModels" class="primary">Search</button>
+              </div>
+
+              <div id="unifiedModelCatalogResults" class="model-catalog-results"></div>
+            </article>
+
+
+            <article class="panel ai-ollama-manager">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">LOCAL MODEL MANAGER</p>
+                  <h2>Install and manage Ollama models</h2>
+                </div>
+                <span id="ollamaManagerStatus" class="status-chip">Checking…</span>
+              </div>
+
+              <div class="ollama-install-row">
+                <input
+                  id="ollamaModelNameInput"
+                  type="text"
+                  placeholder="Example: llama3.2:3b or qwen2.5-coder:7b"
+                  autocomplete="off"
+                  spellcheck="false"
+                >
+                <button id="installOllamaModel" class="primary">Download model</button>
+                <a href="https://ollama.com/library" target="_blank" rel="noreferrer">
+                  Browse Ollama library
+                </a>
+              </div>
+
+              <div id="ollamaDownloadProgress" class="ollama-download-progress hidden">
+                <div class="ollama-progress-label">
+                  <strong id="ollamaProgressModel">Model</strong>
+                  <span id="ollamaProgressText">Starting…</span>
+                </div>
+                <progress id="ollamaProgressBar" max="100" value="0"></progress>
+              </div>
+
+              <div id="installedOllamaModels" class="installed-ollama-models"></div>
+
+              <p class="muted-copy">
+                Downloads run on the Windows desktop through localhost. Large models may
+                require several gigabytes of storage and more RAM.
+              </p>
+            </article>
+
+
+            <article class="panel ai-compatibility-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">MODEL FLOW GUARD</p>
+                  <h2>Compatibility and workflow protection</h2>
+                </div>
+                <span id="modelFlowGuardStatus" class="status-chip">Checking…</span>
+              </div>
+
+              <div id="modelFlowGuardSummary" class="model-flow-summary"></div>
+
+              <div class="model-flow-requirements">
+                <label class="checkbox-label">
+                  <input id="modelNeedsJson" type="checkbox" checked>
+                  Structured output
+                </label>
+                <label class="checkbox-label">
+                  <input id="modelNeedsTools" type="checkbox">
+                  Tool calling
+                </label>
+                <label class="checkbox-label">
+                  <input id="modelNeedsVision" type="checkbox">
+                  Vision
+                </label>
+                <button id="runModelPreflight" class="primary">Run preflight</button>
+              </div>
+
+              <div id="modelPreflightResult" class="model-preflight-result"></div>
+
+              <p class="muted-copy">
+                Mission state, validation, approvals, and Obsidian routing stay unchanged
+                when the selected model changes. Invalid outputs cannot complete a step.
+              </p>
+            </article>
+
+
+            <article class="panel ai-rules-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">ROUTING RULES</p>
+                  <h2>How Copilot chooses models</h2>
+                </div>
+              </div>
+              <div class="ai-routing-rules">
+                <div>
+                  <strong>Simple</strong>
+                  <span>Formatting, routing, short lookups</span>
+                  <code>Low-cost / local</code>
+                </div>
+                <div>
+                  <strong>Standard</strong>
+                  <span>Most coding, review, and research</span>
+                  <code>Balanced model</code>
+                </div>
+                <div>
+                  <strong>Complex</strong>
+                  <span>Architecture, hard debugging, ambiguous specs</span>
+                  <code>Approval required</code>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="view-system-health" class="app-view">
+        <div class="stabilization-shell">
+          <header class="panel stabilization-header">
+            <div>
+              <p class="eyebrow">PHASE 0 STABILIZATION</p>
+              <h2>System diagnostics and recovery</h2>
+              <p class="muted-copy">
+                Monitor AIOS, protect execution, review failures, create backups,
+                and export diagnostics from one workspace.
+              </p>
+            </div>
+            <div class="stabilization-actions">
+              <button id="refreshSystemHealth">Refresh</button>
+              <a id="downloadDiagnostics" class="button-link" href="/api/system/diagnostic-export">
+                Export diagnostics
+              </a>
+            </div>
+          </header>
+
+          <div id="frontendErrorBoundary" class="frontend-error-boundary hidden"></div>
+
+          <div class="health-grid">
+            <article class="panel">
+              <p class="eyebrow">ACTIVE RUNTIME</p>
+              <div id="healthRuntimeCard" class="health-card-body">Loading…</div>
+            </article>
+
+            <article class="panel">
+              <p class="eyebrow">RESOURCES</p>
+              <div id="healthResourceCard" class="health-card-body">Loading…</div>
+            </article>
+
+            <article class="panel">
+              <p class="eyebrow">NETWORK & PROVIDERS</p>
+              <div id="healthNetworkCard" class="health-card-body">Loading…</div>
+            </article>
+
+            <article class="panel emergency-panel">
+              <p class="eyebrow">EMERGENCY CONTROL</p>
+              <div id="healthEmergencyCard" class="health-card-body">Loading…</div>
+            </article>
+
+            <article class="panel backup-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">BACKUP & RESTORE</p>
+                  <h2>Local recovery</h2>
+                </div>
+              </div>
+              <div id="healthBackupCard" class="health-card-body">Loading…</div>
+              <div class="stabilization-actions">
+                <button id="createSystemBackup" class="primary">Create backup</button>
+                <button id="restoreLatestBackup">Restore latest</button>
+              </div>
+            </article>
+
+            <article class="panel failures-panel">
+              <div class="panel-title">
+                <div>
+                  <p class="eyebrow">FAILED REQUESTS</p>
+                  <h2>Recent backend errors</h2>
+                </div>
+                <span id="failedRequestCount" class="status-chip">0</span>
+              </div>
+              <div id="failedRequestList" class="failed-request-list"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+
+      <section id="view-roadmap" class="app-view">
+        <div class="roadmap-shell">
+          <header class="panel roadmap-header">
+            <div>
+              <p class="eyebrow">AIOS PRODUCT ROADMAP</p>
+              <h2>Roadmap & Progress</h2>
+              <p class="muted-copy">
+                See where AIOS is now, what is complete, what is blocked, and what should
+                be built next.
+              </p>
+            </div>
+            <div class="roadmap-header-actions">
+              <span id="roadmapCurrentPhase" class="status-chip">Loading…</span>
+              <button id="refreshRoadmap">Refresh</button>
+            </div>
+          </header>
+
+          <div id="roadmapSummary" class="roadmap-summary"></div>
+
+          
+          <article class="panel quality-gate-panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">DEVELOPMENT QUALITY GATE</p>
+                <h2>Release readiness</h2>
+              </div>
+              <div class="quality-gate-actions">
+                <span id="qualityGateStatus" class="status-chip">NOT RUN</span>
+                <button id="refreshQualityGate">Refresh</button>
+              </div>
+            </div>
+            <div id="qualityGateSummary" class="quality-gate-summary"></div>
+            <div id="qualityGateChecks" class="quality-gate-checks"></div>
+            <p class="muted-copy">
+              Run <code>python scripts/run_quality_gate.py</code> locally. GitHub Actions
+              runs Ruff, Mypy, Pytest, and Playwright automatically for pushes and pull requests.
+            </p>
+          </article>
+
+
+          <article class="panel">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">NEXT PRIORITIES</p>
+                <h2>Recommended next work</h2>
+              </div>
+            </div>
+            <div id="roadmapNextActions" class="roadmap-next-actions"></div>
+          </article>
+
+          <div id="roadmapPhases" class="roadmap-phases"></div>
+        </div>
+      </section>
+
+      <section id="view-connectors" class="app-view">
+
+        <article class="panel desktop-companion-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">WINDOWS DESKTOP COMPANION</p>
+              <h2>Safe terminal and update tools</h2>
+              <p class="muted-copy">
+                Copilot can request structured tools. Medium-risk actions require approval
+                before anything runs.
+              </p>
+            </div>
+            <span id="desktopCompanionStatus" class="status-chip">Checking…</span>
+          </div>
+
+          <div id="desktopCompanionSummary" class="desktop-companion-summary"></div>
+
+          <div class="desktop-tool-grid">
+            <button data-desktop-tool="system.location">
+              <strong>Working directory</strong>
+              <span>Read only</span>
+            </button>
+            <button data-desktop-tool="aios.health">
+              <strong>AIOS health check</strong>
+              <span>Read only</span>
+            </button>
+            <button data-desktop-tool="ollama.list">
+              <strong>List Ollama models</strong>
+              <span>Read only</span>
+            </button>
+            <button data-desktop-tool="file.exists">
+              <strong>Check file or folder</strong>
+              <span>Read only</span>
+            </button>
+            <button data-desktop-tool="git.status">
+              <strong>Git status</strong>
+              <span>Read only</span>
+            </button>
+            <button data-desktop-tool="backup.create">
+              <strong>Create AIOS backup</strong>
+              <span>Approval required</span>
+            </button>
+            <button data-desktop-tool="tests.run">
+              <strong>Run regression tests</strong>
+              <span>Approval required</span>
+            </button>
+            <button data-desktop-tool="update.stage">
+              <strong>Stage update ZIP</strong>
+              <span>Approval required</span>
+            </button>
+          </div>
+
+          <div class="desktop-tool-inputs">
+            <label>Path or repository
+              <input id="desktopCompanionPath" type="text"
+                value="C:\Users\Christian\Downloads\aios-one-command-center">
+            </label>
+            <label>Update ZIP
+              <input id="desktopCompanionZip" type="text"
+                placeholder="C:\Users\Christian\Downloads\aios-one-update.zip">
+            </label>
+            <label>Reason
+              <input id="desktopCompanionReason" type="text"
+                placeholder="Why Copilot needs this operation">
+            </label>
+          </div>
+
+          <div class="connector-actions"><button id="recoverStaleDesktopRequests">Recover stale requests</button></div><div id="desktopCompanionRequests" class="desktop-companion-requests"></div>
+
+          <p class="muted-copy">
+            Raw PowerShell text, encoded commands, arbitrary deletion, firewall changes,
+            credential access, and unrestricted administrator execution are disabled.
+          </p>
+        </article>
+
+
+        <article class="panel obsidian-connector-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">OBSIDIAN CONNECTOR</p>
+              <h2>AIOS Knowledge vault</h2>
+            </div>
+            <span id="obsidianConnectionStatus" class="status-chip">Checking…</span>
+          </div>
+
+          <div class="obsidian-settings-grid">
+            <label>Vault path
+              <input
+                id="obsidianVaultPath"
+                type="text"
+                value="C:\Users\Christian\OneDrive\Documents\bossayanOS\AIOS Knowledge"
+              >
+            </label>
+
+            <label>Permission mode
+              <select id="obsidianPermissionMode">
+                <option value="read-only">Read only</option>
+                <option value="read-create-append" selected>Read, create, and append</option>
+              </select>
+            </label>
+
+            <label class="checkbox-label">
+              <input id="obsidianBackupBeforeWrite" type="checkbox" checked>
+              Backup before changes
+            </label>
+
+            <label class="checkbox-label">
+              <input id="obsidianAllowOverwrite" type="checkbox">
+              Allow confirmed overwrite
+            </label>
+          </div>
+
+          <div class="connector-actions">
+            <button id="saveObsidianSettings" class="primary">Save and test connection</button>
+            <a
+              id="openObsidianVault"
+              class="button-link"
+              href="obsidian://open?vault=AIOS%20Knowledge"
+            >
+              Open vault in Obsidian
+            </a>
+          </div>
+
+          <div class="obsidian-workspace">
+            <div class="obsidian-search-row">
+              <input id="obsidianSearchInput" type="search" placeholder="Search vault notes…">
+              <button id="searchObsidianNotes">Search</button>
+            </div>
+
+            <div id="obsidianSearchResults" class="obsidian-search-results"></div>
+
+            <div class="obsidian-editor-grid">
+              <label>Note path
+                <input id="obsidianNotePath" type="text" placeholder="Inbox/AIOS Connection Test">
+              </label>
+              <label>Note content
+                <textarea id="obsidianNoteContent" rows="12" placeholder="Markdown content"></textarea>
+              </label>
+              <div class="connector-actions">
+                <button id="readObsidianNote">Read note</button>
+                <button id="createObsidianNote" class="primary">Create note</button>
+                <button id="appendObsidianNote">Append</button>
+                <button id="openSelectedObsidianNote">Open in Obsidian</button>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="obsidian-auto-export">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">AUTOMATIC EXPORT</p>
+                <h2>Validated AIOS outputs</h2>
+              </div>
+              <span id="obsidianAutoExportStatus" class="status-chip">Loading…</span>
+            </div>
+
+            <div class="obsidian-export-options">
+              <label class="checkbox-label">
+                <input id="obsidianAutoExportEnabled" type="checkbox" checked>
+                Enable automatic export
+              </label>
+              <label class="checkbox-label">
+                <input id="obsidianExportMissions" type="checkbox" checked>
+                Missions
+              </label>
+              <label class="checkbox-label">
+                <input id="obsidianExportResearch" type="checkbox" checked>
+                Research
+              </label>
+              <label class="checkbox-label">
+                <input id="obsidianExportAgentReports" type="checkbox" checked>
+                Agent Reports
+              </label>
+              <label class="checkbox-label">
+                <input id="obsidianExportDecisions" type="checkbox" checked>
+                Decisions
+              </label>
+              <label class="checkbox-label">
+                <input id="obsidianOnlyValidated" type="checkbox" checked>
+                Only validated missions
+              </label>
+            </div>
+
+            <div class="connector-actions">
+              <button id="saveObsidianExportSettings" class="primary">
+                Save export settings
+              </button>
+              <button id="exportCurrentMissionToObsidian">
+                Export current mission now
+              </button>
+            </div>
+
+            <div class="obsidian-folder-routing">
+              <div><strong>Missions</strong><span>Validated mission summary and evidence</span></div>
+              <div><strong>Research</strong><span>OSINT and research findings</span></div>
+              <div><strong>Agent Reports</strong><span>One note per specialist result</span></div>
+              <div><strong>Decisions</strong><span>Validation and decision record</span></div>
+            </div>
+
+            <div id="obsidianRecentExports" class="obsidian-recent-exports"></div>
+          </div>
+
+
+          <p class="muted-copy">
+            Delete is disabled. Writes are restricted to the selected vault, and existing
+            notes are backed up before changes.
+          </p>
+        </article>
+
+        <article class="panel">
+          <div class="panel-title connector-title">
+            <div><p class="eyebrow">MODEL, TOOL AND MCP HUB</p><h2>Connectors</h2></div>
+            <div class="connector-controls">
+              <input id="connectorSearch" type="search" placeholder="Search connectors…" />
+              <select id="connectorFilter">
+                <option value="all">All types</option>
+                <option value="cloud">Cloud</option>
+                <option value="local">Local</option>
+                <option value="mcp">MCP</option>
+              </select>
+              <button id="addConnectorBtn" class="primary">+ Add connector</button>
+            </div>
+          </div>
+          <div class="connector-library">
+            <button class="library-link" data-url="https://github.com/modelcontextprotocol/servers">Browse MCP servers</button>
+            <button class="library-link" data-url="https://modelcontextprotocol.io">MCP documentation</button>
+            <button class="library-link" data-url="https://github.com">GitHub</button>
+            <button class="library-link" data-url="https://obsidian.md">Obsidian</button>
+          </div>
+          <div id="connectorGrid" class="connector-grid"></div>
+        </article>
+      </section>
+
+
+      <section id="view-mobile" class="app-view">
+        <div class="mobile-control-grid">
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">DESKTOP PAIRING</p><h2>Pair a mobile device</h2></div></div>
+            <p class="muted-copy">Generate a one-time code on this desktop. Enter it on your phone while connected to the same AIOS ONE address.</p>
+            <button id="generatePairingCode" class="primary">Generate pairing code</button>
+            <div id="pairingCodeBox" class="pairing-code-box">No active code</div>
+            <div id="pairedDevices" class="paired-devices"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">PHONE SETUP</p><h2>Connect this device</h2></div></div>
+            <label>Device name<input id="mobileDeviceName" placeholder="Christian's phone" /></label>
+            <label>Pairing code<input id="mobilePairingCode" inputmode="numeric" maxlength="6" placeholder="000000" /></label>
+            <button id="pairThisDevice" class="primary mobile-action">Pair this device</button>
+            <div id="mobilePairStatus" class="brain-action-status">Not paired</div>
+          </article>
+
+          <article class="panel mobile-remote-panel">
+            <div class="panel-title"><div><p class="eyebrow">REMOTE COMMANDS</p><h2>Mobile Mission Control</h2></div></div>
+            <div class="remote-command-grid">
+              <button data-mobile-command="system_health">System health</button>
+              <button data-mobile-command="run_next_brain">Run next brain</button>
+              <button data-mobile-command="approve_waiting">Approve waiting</button>
+              <button data-mobile-command="pause_mission">Pause mission</button>
+              <button data-mobile-command="resume_mission">Resume mission</button>
+              <button data-mobile-command="stop_mission" class="danger-button">Stop mission</button>
+            </div>
+            <div id="remoteCommandStatus" class="brain-action-status">Pair this device before sending commands.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">ACCESS METHODS</p><h2>Phone and other platforms</h2></div></div>
+            <div class="artifact-list">
+              <div class="artifact"><span>LAN</span><p>Use http://YOUR-PC-IP:8000 on the same trusted Wi-Fi.</p></div>
+              <div class="artifact"><span>PWA</span><p>Install from the browser menu for an app-like mobile experience.</p></div>
+              <div class="artifact"><span>HTTPS</span><p>For outside access, use Cloudflare Tunnel or another authenticated HTTPS reverse proxy.</p></div>
+              <div class="artifact"><span>MCP</span><p>MCP stdio tools run on the desktop or server companion; the phone sends approved commands to that runtime.</p></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+
+      <section id="view-budget" class="app-view">
+        <div class="budget-summary-grid">
+          <article class="metric-card"><span>MONTHLY LIMIT</span><strong id="budgetLimit">$0</strong><small>Hard planning cap</small></article>
+          <article class="metric-card"><span>PAID THIS MONTH</span><strong id="budgetPaid">$0</strong><small id="budgetPercent">0% used</small></article>
+          <article class="metric-card"><span>PLANNED THIS MONTH</span><strong id="budgetPlanned">$0</strong><small>Upcoming and recorded bills</small></article>
+          <article class="metric-card"><span>REMAINING</span><strong id="budgetRemaining">$0</strong><small>Before monthly cap</small></article>
+        </div>
+
+        <div class="budget-layout">
+          <article class="panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">EXPENSE LEDGER</p><h2>Payments and renewals</h2></div>
+              <button id="openExpenseForm" class="primary">+ Add expense</button>
+            </div>
+            <div id="budgetAlerts" class="budget-alerts"></div>
+            <div id="expenseList" class="expense-list"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">USAGE METERING</p><h2>Services and AI usage</h2></div></div>
+            <div class="usage-meter-list">
+              <label>AI cost (USD)<input id="usageAiCost" type="number" min="0" step="0.01"></label>
+              <label>Input tokens<input id="usageInputTokens" type="number" min="0" step="1"></label>
+              <label>Output tokens<input id="usageOutputTokens" type="number" min="0" step="1"></label>
+              <label>Worker requests<input id="usageWorkerRequests" type="number" min="0" step="1"></label>
+              <label>Storage (GB)<input id="usageStorage" type="number" min="0" step="0.1"></label>
+              <label>Emails sent<input id="usageEmailCount" type="number" min="0" step="1"></label>
+              <button id="saveUsage" class="primary">Save usage</button>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">NOTIFICATIONS</p><h2>Payment alerts</h2></div></div>
+            <label>Monthly budget limit (USD)<input id="monthlyBudgetLimit" type="number" min="1" step="1"></label>
+            <label>Notification email<input id="budgetNotificationEmail" type="email" placeholder="you@example.com"></label>
+            <label class="checkbox-label"><input id="browserBudgetNotifications" type="checkbox"> Browser notifications</label>
+            <label class="checkbox-label"><input id="emailBudgetNotifications" type="checkbox"> Email payment and due-date notifications</label>
+            <button id="saveBudgetSettings" class="primary">Save notification settings</button>
+            <button id="requestBudgetNotifications">Enable browser notifications</button>
+            <button id="scanBudgetReminders">Check reminders now</button>
+            <p class="muted-copy">Email delivery requires RESEND_API_KEY on the server. Automatic due-date scanning requires the server to stay online and a scheduled call to /api/budget/scan-reminders.</p>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">PAYMENT HISTORY</p><h2>Recorded payments</h2></div></div>
+            <div id="paymentHistory" class="payment-history"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-approvals" class="app-view">
+        <article class="panel">
+          <div class="panel-title"><div><p class="eyebrow">HUMAN CONTROL GATE</p><h2>Approval Center</h2></div></div>
+          <div id="approvalList" class="approval-list">
+            <div class="empty-approval">
+              <span>✓</span>
+              <h3>No pending approvals</h3>
+              <p>Sensitive commands, deployments, file writes, and network actions will appear here.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="connectorDialog">
+    <form id="connectorForm">
+      <div class="dialog-head">
+        <div><p class="eyebrow">CONNECTOR REGISTRY</p><h2>Add connector</h2></div>
+        <button type="button" id="closeConnectorDialog">×</button>
+      </div>
+      <label>Name<input name="name" required minlength="2" placeholder="My MCP Server" /></label>
+      <div class="form-grid">
+        <label>Type
+          <select name="kind">
+            <option value="mcp">MCP server</option>
+            <option value="cloud">Cloud API</option>
+            <option value="local">Local service</option>
+          </select>
+        </label>
+        <label>Transport
+          <select name="transport">
+            <option value="stdio">stdio</option>
+            <option value="sse">SSE</option>
+            <option value="streamable-http">Streamable HTTP</option>
+            <option value="api">REST/API</option>
+          </select>
+        </label>
+      </div>
+      <label>Server command or URL<input name="endpoint" required placeholder="npx -y @modelcontextprotocol/server-github or https://…" /></label>
+      <label>Documentation link<input name="docs_url" type="url" placeholder="https://…" /></label>
+      <label>Purpose<textarea name="description" placeholder="What this connector allows specialist agents to do."></textarea></label>
+      <label class="checkbox-label"><input name="requires_approval" type="checkbox" checked /> Require approval for write actions</label>
+      <div class="dialog-actions">
+        <button type="button" id="cancelConnectorDialog">Cancel</button>
+        <button class="primary" type="submit">Add connector</button>
+      </div>
+    </form>
+  </dialog>
+
+
+
+  <dialog id="providerKeyDialog">
+    <form id="providerKeyForm">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">SECURE SERVER SETUP</p>
+          <h2 id="providerKeyDialogTitle">Connect AI provider</h2>
+        </div>
+        <button type="button" id="closeProviderKeyDialog">×</button>
+      </div>
+
+      <input id="providerKeyProvider" name="provider" type="hidden">
+      <input id="providerKeySelectedModel" name="selected_model" type="hidden">
+
+      <label>Selected model
+        <input id="providerKeyModelDisplay" type="text" readonly>
+      </label>
+
+      <div class="provider-dialog-links">
+        <a id="providerOfficialKeyLink" href="#" target="_blank" rel="noreferrer">Open official API key page</a>
+        <a id="providerOfficialModelsLink" href="#" target="_blank" rel="noreferrer">View provider models</a>
+      </div>
+
+      <label>API key
+        <input
+          id="providerApiKeyInput"
+          name="api_key"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Paste the provider API key"
+          required
+        >
+      </label>
+
+      <label class="checkbox-label">
+        <input id="showProviderApiKey" type="checkbox">
+        Show key while entering
+      </label>
+
+      <p class="security-warning">
+        Submit only through your protected AIOS domain. The key is sent once to the
+        backend and saved in Windows Credential Manager. It is never returned by the API.
+      </p>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancelProviderKeyDialog">Cancel</button>
+        <button class="primary" type="submit">Save securely</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="expenseDialog">
+    <form id="expenseForm">
+      <div class="dialog-head">
+        <div><p class="eyebrow">COST CONTROL</p><h2>Add expense or renewal</h2></div>
+        <button type="button" id="closeExpenseDialog">×</button>
+      </div>
+      <div class="form-grid">
+        <label>Vendor<input name="vendor" required placeholder="OpenAI"></label>
+        <label>Category<input name="category" required placeholder="AI usage"></label>
+      </div>
+      <label>Description<input name="description" required placeholder="Monthly API budget"></label>
+      <div class="form-grid">
+        <label>Amount<input name="amount" type="number" min="0.01" step="0.01" required></label>
+        <label>Currency<select name="currency"><option>USD</option><option>PHP</option></select></label>
+      </div>
+      <div class="form-grid">
+        <label>Due date<input name="due_date" type="date" required></label>
+        <label>Recurrence<select name="recurrence"><option value="monthly">Monthly</option><option value="annual">Annual</option><option value="one-time">One time</option></select></label>
+      </div>
+      <label class="checkbox-label"><input name="recurring" type="checkbox"> Recurring payment</label>
+      <label>Payment page<input name="payment_url" type="url" placeholder="https://..."></label>
+      <label>Notes<textarea name="notes" placeholder="Invoice, account, or renewal details"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="cancelExpenseDialog">Cancel</button>
+        <button class="primary" type="submit">Save expense</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="missionDialog">
+    <form id="missionForm">
+      <div class="dialog-head"><div><p class="eyebrow">COPILOT INTAKE</p><h2>Create mission</h2></div><button type="button" id="closeDialog">×</button></div>
+      <label>Mission title<input name="title" required minlength="3" placeholder="Build hybrid agent workspace" /></label>
+      <label>Objective<textarea name="objective" required minlength="3" placeholder="Describe the result Copilot must deliver and validate."></textarea></label>
+      <div class="form-grid">
+        <label>Privacy<select name="privacy"><option value="hybrid">Hybrid</option><option value="local">Local only</option><option value="cloud">Cloud</option></select></label>
+        <label>Output<select name="output_type"><option value="code">Code</option><option value="report">Report</option><option value="investigation">Investigation</option><option value="deployment">Deployment</option></select></label>
+      </div>
+      <div class="dialog-actions"><button type="button" id="cancelDialog">Cancel</button><button class="primary" type="submit">Start mission</button></div>
+    </form>
+  </dialog>
+
+
+  <nav class="mobile-bottom-nav" aria-label="AIOS mobile navigation">
+    <button class="mobile-nav-item active" data-view="mission">
+      <span>⌁</span><small>Mission</small>
+    </button>
+    <button class="mobile-nav-item" data-view="workflow">
+      <span>◇</span><small>Workflow</small>
+    </button>
+    <button class="mobile-nav-item" data-view="agents">
+      <span>◎</span><small>Agents</small>
+    </button>
+    <button class="mobile-nav-item" data-view="connectors">
+      <span>↗</span><small>Connect</small>
+    </button>
+    <button class="mobile-nav-item" data-view="mobile">
+      <span>▣</span><small>Mobile</small>
+    </button>
+    <button class="mobile-nav-item" id="mobileMoreBtn" type="button">
+      <span>•••</span><small>More</small>
+    </button>
+  </nav>
+
+  <div class="mobile-more-menu" id="mobileMoreMenu">
+    <button type="button" data-view="copilot">✦ Copilot Chat</button>
+    <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>
+    <button type="button" data-view="approvals">✓ Approval Center</button>
+    <button type="button" data-view="budget">₱ Budget & Usage</button>
+  </div>
+
+  <script src="/assets/app.js?v=development-quality-gate-1"></script>
+
+  <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
+
+</body>
+</html>

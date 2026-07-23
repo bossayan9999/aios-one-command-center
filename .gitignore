@@ -1,0 +1,36 @@
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.env
+.env.*
+!.env.example
+data/*.json
+data/*.jsonl
+data/desktop_companion/
+data/stabilization/
+backups/
+staging/
+diagnostics/
+playwright-report/
+test-results/
+quality-gate-results.json
+
+# Local databases and backups
+*.db
+*.db-shm
+*.db-wal
+*.bak
+data/obsidian_backups/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

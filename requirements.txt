@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.8
+openai>=1.109
+anthropic>=0.40
+keyring>=25.0
+
+psutil>=6.0
