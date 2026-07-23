@@ -1,49 +1,57 @@
-import io
-import json
-import os
-import platform
-import re
-import secrets
-import shutil
-import socket
 import subprocess
 import sys
-import tempfile
-import threading
-import time
-import traceback
-import urllib.request
+import shutil
+from fastapi.responses import StreamingResponse, JSONResponse
 import zipfile
-from datetime import UTC, date, datetime
+import traceback
+import tempfile
+import socket
+import platform
+import io
+import os
+import json
+import secrets
+import time
+import urllib.request
+import threading
+import psutil
+import time
+import re
+from datetime import datetime, timezone, date, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 from uuid import uuid4
 
-import psutil
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from agentic import CopilotOrchestrator
-from agentic import list_specialists as list_brain_specialists
-from agentic.model_gateway import (
-    MODEL_CAPABILITIES,
-    ModelGateway,
-    model_preflight,
-)
+from agentic import CopilotOrchestrator, list_specialists as list_brain_specialists
+from agentic.model_gateway import ModelGateway, MODEL_CAPABILITIES, model_preflight, validate_normalized_result
 from agentic.pm_router import PMModelRouter
+from security.app_security import (
+    CSRF_COOKIE,
+    SECURE_COOKIES,
+    SESSION_COOKIE,
+    SESSION_SECONDS,
+    SecurityStore,
+    owner_is_configured,
+    require_csrf,
+    require_owner,
+    require_session,
+    verify_owner,
+)
+
 from security.provider_credentials import (
-    delete_provider_key,
-    provider_key_source,
-    save_provider_key,
+    save_provider_key, delete_provider_key, provider_key_source, get_provider_key
 )
 
 try:
-    import agent.osint.recon  # noqa: F401
+    from agent.brain import run_turn, execute_approved_action
     from agent.approval import approval_queue
-    from agent.brain import execute_approved_action, run_turn
+    import agent.osint.recon  # noqa: F401
     AGENT_BACKEND_AVAILABLE = True
 except Exception:
     AGENT_BACKEND_AVAILABLE = False
@@ -63,7 +71,8 @@ app.add_middleware(
         if origin.strip()
     ],
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Content-Type", "X-API-Key"],
+    allow_headers=["Content-Type", "X-API-Key", "X-CSRF-Token"],
+    allow_credentials=True,
 )
 
 WEB_DIR = Path(__file__).resolve().parents[1] / "web"
@@ -184,7 +193,7 @@ class ApprovalDecision(BaseModel):
 
 
 def utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
@@ -229,6 +238,153 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
         }
         for index, (agent, label, task_location) in enumerate(tasks, start=1)
     ]
+
+SECURITY_STORE = SecurityStore(DATA_DIR)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=1, max_length=256)
+
+
+@app.get("/api/auth/status")
+def auth_status(request: Request):
+    token = request.cookies.get(SESSION_COOKIE, "")
+    session = SECURITY_STORE.get_session(token)
+    return {
+        "configured": owner_is_configured(),
+        "authenticated": bool(session),
+        "user": (
+            {"username": session.get("username"), "role": session.get("role")}
+            if session else None
+        ),
+        "csrf_token": session.get("csrf") if session else "",
+    }
+
+
+@app.post("/api/auth/login")
+def auth_login(req: LoginRequest, request: Request, response: Response):
+    SECURITY_STORE.check_rate_limit(request)
+    if not verify_owner(req.username, req.password):
+        SECURITY_STORE.record_failed_login(request)
+        SECURITY_STORE.audit("login.failed", request, username=req.username)
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+
+    token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        httponly=True,
+        secure=SECURE_COOKIES,
+        samesite="strict",
+        max_age=SESSION_SECONDS,
+        path="/",
+    )
+    response.set_cookie(
+        CSRF_COOKIE,
+        csrf,
+        httponly=False,
+        secure=SECURE_COOKIES,
+        samesite="strict",
+        max_age=SESSION_SECONDS,
+        path="/",
+    )
+    SECURITY_STORE.audit("login.success", request, username=req.username)
+    return {
+        "authenticated": True,
+        "user": {"username": req.username, "role": "owner"},
+        "csrf_token": csrf,
+        "expires_at": expires_at,
+    }
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response):
+    require_csrf(request, SECURITY_STORE)
+    token = request.cookies.get(SESSION_COOKIE, "")
+    SECURITY_STORE.revoke_session(token)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("logout", request)
+    return {"authenticated": False}
+
+
+@app.post("/api/auth/revoke-all")
+def auth_revoke_all(request: Request, response: Response):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    count = SECURITY_STORE.revoke_all()
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    SECURITY_STORE.audit("sessions.revoked_all", request, count=count)
+    return {"revoked": count}
+
+
+@app.get("/api/auth/audit")
+def auth_audit(request: Request, limit: int = 100):
+    require_owner(request, SECURITY_STORE)
+    if not SECURITY_STORE.audit_file.exists():
+        return {"items": []}
+    lines = SECURITY_STORE.audit_file.read_text(encoding="utf-8").splitlines()
+    items = []
+    for line in lines[-max(1, min(limit, 500)):]:
+        try:
+            items.append(json.loads(line))
+        except Exception:
+            continue
+    return {"items": list(reversed(items))}
+
+
+SECURITY_PUBLIC_PATHS = {
+    "/",
+    "/health",
+    "/api/auth/status",
+    "/api/auth/login",
+}
+SECURITY_PUBLIC_PREFIXES = ("/assets/",)
+
+
+@app.middleware("http")
+async def security_boundary(request: Request, call_next):
+    if os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1":
+        return await call_next(request)
+
+    path = request.url.path
+    if path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES):
+        return await call_next(request)
+
+    # API reads need authentication. API writes also need CSRF.
+    if path.startswith("/api/") or path == "/chat":
+        try:
+            session = require_session(request, SECURITY_STORE)
+            if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+                require_csrf(request, SECURITY_STORE)
+            if path.startswith("/api/desktop-companion"):
+                require_owner(request, SECURITY_STORE)
+        except HTTPException as exc:
+            SECURITY_STORE.audit(
+                "access.denied",
+                request,
+                status=exc.status_code,
+                detail=exc.detail,
+            )
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+            )
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; img-src 'self' data: https:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+        "connect-src 'self'; frame-ancestors 'none'"
+    )
+    return response
+
 
 @app.get("/")
 def index():
@@ -1414,7 +1570,7 @@ def ollama_web_pull(req: OllamaPullRequest):
         try:
             _ollama_request("/api/tags", timeout=3)
         except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"Ollama is not running: {exc}") from exc
+            raise HTTPException(status_code=503, detail=f"Ollama is not running: {exc}")
 
     job_id = f"pull-{int(time.time() * 1000)}"
     with OLLAMA_JOBS_LOCK:
@@ -1460,7 +1616,7 @@ def ollama_web_delete(req: OllamaDeleteRequest):
             timeout=60,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Could not remove model: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Could not remove model: {exc}")
     return {"deleted": True, "model": model}
 
 
@@ -1479,7 +1635,7 @@ def ollama_web_test(req: OllamaTestRequest):
             timeout=180,
         )
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Ollama test failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"Ollama test failed: {exc}")
 
     return {
         "model": model,
@@ -1540,7 +1696,7 @@ STABILIZATION_ALLOWED_DURING_STOP = {
 }
 
 def _utc_now_iso():
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 def _read_emergency_stop():
     return _read_json(EMERGENCY_STOP_FILE, {
@@ -1639,7 +1795,7 @@ def _process_status():
         "cpu_percent": process.cpu_percent(interval=0.05),
         "threads": process.num_threads(),
         "started_at": datetime.fromtimestamp(
-            process.create_time(), tz=UTC
+            process.create_time(), tz=timezone.utc
         ).isoformat(),
     }
 
@@ -1774,7 +1930,7 @@ def list_system_backups():
             "filename": file.name,
             "size_bytes": file.stat().st_size,
             "modified_at": datetime.fromtimestamp(
-                file.stat().st_mtime, tz=UTC
+                file.stat().st_mtime, tz=timezone.utc
             ).isoformat(),
         })
     return {"items": items}
@@ -1961,7 +2117,7 @@ def search_obsidian_notes(query: str = "", limit: int = 50):
             "relative_path": relative,
             "title": file.stem,
             "modified_at": datetime.fromtimestamp(
-                file.stat().st_mtime, tz=UTC
+                file.stat().st_mtime, tz=timezone.utc
             ).isoformat(),
             "snippet": text[:280],
         })
@@ -2912,7 +3068,7 @@ def desktop_companion_approve(request_id: str, req: DesktopApprovalRequest):
 def desktop_companion_recover_stale():
     queue = _desktop_queue()
     recovered = []
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     for record in queue:
         if record.get("status") != "running":

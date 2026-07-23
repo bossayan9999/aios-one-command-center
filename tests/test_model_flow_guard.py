@@ -1,10 +1,9 @@
 from agentic.model_gateway import (
     ModelReply,
-    model_preflight,
     normalize_model_result,
     validate_normalized_result,
+    model_preflight,
 )
-
 
 def test_normalized_result_is_provider_independent():
     for provider, model in [

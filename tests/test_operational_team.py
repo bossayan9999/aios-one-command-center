@@ -33,7 +33,4 @@ def test_full_team_completes_without_api_key():
         assert mission["status"] == "complete"
         assert mission["progress"] == 100
         assert len(mission["brain_results"]) == 3
-        assert all(
-    item["provider"] in {"deterministic", "ollama"}
-    for item in mission["brain_results"]
-)
+        assert all(item["provider"] in {"deterministic", "ollama"} for item in mission["brain_results"])

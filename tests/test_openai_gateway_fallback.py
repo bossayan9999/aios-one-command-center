@@ -1,6 +1,5 @@
 from agentic.model_gateway import ModelGateway
 
-
 def test_gateway_fallback_without_live_provider(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)

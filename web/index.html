@@ -5,9 +5,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=development-quality-gate-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1a-security-1" />
 </head>
 <body>
+
+  <section id="securityLogin" class="security-login hidden">
+    <form id="securityLoginForm" class="security-login-card">
+      <p class="eyebrow">AIOS SECURITY</p>
+      <h1>Owner sign in</h1>
+      <p class="muted-copy">Cloudflare Access protects the perimeter. This login protects AIOS itself.</p>
+      <label>
+        Username
+        <input id="securityUsername" autocomplete="username" value="owner" required>
+      </label>
+      <label>
+        Password
+        <input id="securityPassword" type="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" class="primary">Sign in</button>
+      <p id="securityLoginError" class="security-login-error"></p>
+    </form>
+  </section>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
@@ -1129,7 +1148,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=development-quality-gate-1"></script>
+  <script src="/assets/app.js?v=phase1a-security-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

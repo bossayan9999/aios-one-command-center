@@ -17,8 +17,18 @@ const viewTitles = {
   mobile: "Mobile Control",
 };
 
+let aiosCsrfToken = "";
+
 async function api(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = {...(options.headers || {})};
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && aiosCsrfToken) {
+    headers["X-CSRF-Token"] = aiosCsrfToken;
+  }
   const response = await fetch(path, {
+    credentials: "same-origin",
+    ...options,
+    headers,
     headers: {"Content-Type": "application/json", ...(options.headers || {})},
     ...options,
   });
@@ -2357,6 +2367,69 @@ async function loadQualityGate() {
 
 $("#refreshQualityGate")?.addEventListener("click", loadQualityGate);
 loadQualityGate();
+
+
+
+async function loadSecuritySession() {
+  try {
+    const response = await fetch("/api/auth/status", {credentials: "same-origin"});
+    const status = await response.json();
+    if (!status.configured) {
+      $("#securityLogin").classList.remove("hidden");
+      $("#securityLoginError").textContent =
+        "Owner login is not configured. Run scripts\\configure_owner.py first.";
+      return false;
+    }
+    if (!status.authenticated) {
+      $("#securityLogin").classList.remove("hidden");
+      return false;
+    }
+    aiosCsrfToken = status.csrf_token || "";
+    $("#securityLogin").classList.add("hidden");
+    $("#securityLogout")?.classList.remove("hidden");
+    return true;
+  } catch (error) {
+    $("#securityLogin").classList.remove("hidden");
+    $("#securityLoginError").textContent = "Security status is unavailable.";
+    return false;
+  }
+}
+
+$("#securityLoginForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  $("#securityLoginError").textContent = "";
+  try {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        username: $("#securityUsername").value,
+        password: $("#securityPassword").value,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "Login failed");
+    aiosCsrfToken = payload.csrf_token || "";
+    $("#securityPassword").value = "";
+    $("#securityLogin").classList.add("hidden");
+    $("#securityLogout")?.classList.remove("hidden");
+    location.reload();
+  } catch (error) {
+    $("#securityLoginError").textContent = error.message;
+  }
+});
+
+$("#securityLogout")?.addEventListener("click", async () => {
+  try {
+    await api("/api/auth/logout", {method: "POST"});
+  } finally {
+    aiosCsrfToken = "";
+    location.reload();
+  }
+});
+
+loadSecuritySession();
 
 window.addEventListener("hashchange", () => {
   const view = window.location.hash.replace("#", "");

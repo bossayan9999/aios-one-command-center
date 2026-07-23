@@ -1,10 +1,8 @@
-﻿
+
 from __future__ import annotations
 
 import json
 import sqlite3
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -15,15 +13,10 @@ class AgentStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()
 
-    @contextmanager
-    def connect(self) -> Iterator[sqlite3.Connection]:
+    def connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path)
         connection.row_factory = sqlite3.Row
-        try:
-            with connection:
-                yield connection
-        finally:
-            connection.close()
+        return connection
 
     def _init_schema(self) -> None:
         with self.connect() as db:
@@ -162,4 +155,3 @@ class AgentStore:
                 ).fetchall()
             ]
         return {"tasks": tasks, "runs": runs}
-

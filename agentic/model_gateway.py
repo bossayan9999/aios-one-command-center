@@ -24,7 +24,8 @@ class ModelReply:
     error: str = ""
 
 
-MODEL_CAPABILITIES: dict[str, dict[str, Any]] = {
+
+MODEL_CAPABILITIES = {
     "ollama": {
         "text": True,
         "json": "prompted",
@@ -293,6 +294,7 @@ class ModelGateway:
             return "complex"
         return "standard"
 
+
     def _ollama_models(self) -> list[dict[str, Any]]:
         try:
             request = urllib.request.Request(
@@ -445,10 +447,8 @@ class ModelGateway:
             messages=[{"role": "user", "content": content}],
         )
         text = "".join(
-            block_text
-            for block in message.content
+            block.text for block in message.content
             if getattr(block, "type", None) == "text"
-            and isinstance(block_text := getattr(block, "text", None), str)
         )
         input_tokens = int(getattr(message.usage, "input_tokens", 0) or 0)
         output_tokens = int(getattr(message.usage, "output_tokens", 0) or 0)
