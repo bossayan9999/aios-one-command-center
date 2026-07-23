@@ -1,8 +1,7 @@
-
 from __future__ import annotations
 
 import os
-from typing import Optional
+from contextlib import suppress
 
 SERVICE_NAME = "AIOS_ONE_PROVIDER_KEYS"
 
@@ -42,10 +41,8 @@ def delete_provider_key(provider: str) -> None:
     provider = provider.lower().strip()
     if provider not in ENV_NAMES:
         raise ValueError("Unsupported provider")
-    try:
+    with suppress(Exception):
         _keyring().delete_password(SERVICE_NAME, provider)
-    except Exception:
-        pass
 
 def provider_key_source(provider: str) -> str:
     provider = provider.lower().strip()

@@ -1,5 +1,6 @@
 from api.main import _render_workflow_agent_report_note
 
+
 def test_workflow_agent_fallback_report():
     mission = {
         "id": "m1",
