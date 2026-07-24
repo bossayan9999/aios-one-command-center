@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AIOS ONE — Policy Rules</title>
+<link rel="stylesheet" href="/assets/styles.css?v=phase1d-governance-final">
+<style>.policy-page{max-width:1100px;margin:auto;padding:32px 20px}.policy-toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.policy-toolbar input{flex:1;min-width:240px}.policy-list{display:grid;gap:12px}.policy-card{padding:16px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.03)}</style>
+</head>
+<body><main class="policy-page">
+<p class="eyebrow">AIOS GOVERNANCE</p><h1>Copilot and Agent Policy Rules</h1>
+<p class="muted-copy">Mandatory execution, approval, validation, audit, and safety rules.</p>
+<section class="panel"><div class="policy-toolbar"><input id="policySearch" type="search" placeholder="Search rules..."><button onclick="window.print()">Print</button><button onclick="window.close()">Close tab</button></div>
+<p id="policyStatus" class="muted-copy">Loading rules...</p><div id="policyRuleList" class="policy-list"></div></section>
+</main>
+<script>
+const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+let allRules=[];
+function renderRules(){const q=document.getElementById('policySearch').value.trim().toLowerCase();const items=allRules.filter(r=>`${r.title} ${r.description} ${r.id}`.toLowerCase().includes(q));document.getElementById('policyStatus').textContent=`${items.length} of ${allRules.length} rules`;document.getElementById('policyRuleList').innerHTML=items.map((r,i)=>`<article class="policy-card"><h3>${i+1}. ${esc(r.title)}</h3><p>${esc(r.description)}</p></article>`).join('')||'<p>No matching rules.</p>'}
+async function loadRules(){try{const r=await fetch('/api/governance',{credentials:'same-origin'});if(!r.ok)throw new Error(`HTTP ${r.status}`);allRules=(await r.json()).rules||[];renderRules()}catch(e){document.getElementById('policyStatus').textContent=`Unable to load rules: ${e.message||e}`}}
+document.getElementById('policySearch').addEventListener('input',renderRules);loadRules();
+</script></body></html>

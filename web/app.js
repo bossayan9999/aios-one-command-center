@@ -21,32 +21,41 @@ let aiosCsrfToken = "";
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const headers = {...(options.headers || {})};
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
   if (!["GET", "HEAD", "OPTIONS"].includes(method) && aiosCsrfToken) {
     headers["X-CSRF-Token"] = aiosCsrfToken;
   }
+
   const response = await fetch(path, {
+    ...options,
     credentials: "same-origin",
-    ...options,
     headers,
-    headers: {"Content-Type": "application/json", ...(options.headers || {})},
-    ...options,
+    redirect: "follow",
   });
 
   const contentType = response.headers.get("content-type") || "";
-  let payload;
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
 
-  if (contentType.includes("application/json")) {
-    payload = await response.json();
-  } else {
-    payload = await response.text();
+  if (!isJson && typeof payload === "string" && payload.trim().startsWith("<")) {
+    const error = new Error(
+      "Cloudflare Access session expired or intercepted this request. Re-authenticate to Cloudflare Access, then try again."
+    );
+    error.code = "cloudflare_access_html";
+    error.status = response.status;
+    throw error;
   }
 
   if (!response.ok) {
     const message = typeof payload === "object"
       ? (payload.detail || payload.message || "Request failed")
       : (payload || `Request failed with status ${response.status}`);
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -308,7 +317,7 @@ $("#missionForm").addEventListener("submit", async (event) => {
   const submit = event.submitter;
 
   submit.disabled = true;
-  submit.textContent = "Planning…";
+  submit.textContent = "Planningâ€¦";
 
   try {
     const formData = new FormData(missionForm);
@@ -435,7 +444,7 @@ function renderBudget(payload) {
   document.querySelectorAll("[data-pay-expense]").forEach(button => {
     button.addEventListener("click", async () => {
       button.disabled = true;
-      button.textContent = "Recording…";
+      button.textContent = "Recordingâ€¦";
       try {
         const result = await api(`/api/budget/expenses/${button.dataset.payExpense}/paid`, { method: "POST" });
         showBrowserBudgetNotification(result.notification.message);
@@ -603,7 +612,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   renderCopilotMessages([...(existing.messages || []), pending]);
 
   send.disabled = true;
-  send.textContent = "Thinking…";
+  send.textContent = "Thinkingâ€¦";
   $("#copilotChatStatus").textContent = "Copilot is using the live model gateway.";
 
   try {
@@ -717,7 +726,7 @@ async function loadModelCatalog() {
     free_only: String($("#freeModelsOnly").checked),
     limit: "120",
   });
-  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching models…</p>`;
+  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching modelsâ€¦</p>`;
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#modelCatalogSource").textContent = `${payload.count} models · ${payload.source}`;
   $("#modelCatalogResults").innerHTML = payload.models.length
@@ -935,7 +944,7 @@ $("#providerKeyForm")?.addEventListener("submit", async event => {
 
   const submit = event.currentTarget.querySelector('button[type="submit"]');
   submit.disabled = true;
-  submit.textContent = "Saving…";
+  submit.textContent = "Savingâ€¦";
 
   try {
     await api("/api/settings/providers/key", {
@@ -1050,7 +1059,7 @@ async function loadUnifiedModelCatalog() {
   });
 
   $("#unifiedModelCatalogResults").innerHTML =
-    `<p class="muted-copy">Searching models…</p>`;
+    `<p class="muted-copy">Searching modelsâ€¦</p>`;
 
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#unifiedModelCatalogSource").textContent =
@@ -1192,7 +1201,7 @@ async function loadOllamaManager() {
     button.addEventListener("click", async () => {
       const model = button.dataset.testOllama;
       button.disabled = true;
-      button.textContent = "Testing…";
+      button.textContent = "Testingâ€¦";
       try {
         const result = await api("/api/ollama/test", {
           method: "POST",
@@ -1263,7 +1272,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
   const button = $("#installOllamaModel");
   button.disabled = true;
-  button.textContent = "Starting…";
+  button.textContent = "Startingâ€¦";
 
   try {
     const job = await api("/api/ollama/pull", {
@@ -1273,7 +1282,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
     $("#ollamaDownloadProgress").classList.remove("hidden");
     $("#ollamaProgressModel").textContent = model;
-    $("#ollamaProgressText").textContent = "Starting download…";
+    $("#ollamaProgressText").textContent = "Starting downloadâ€¦";
     $("#ollamaProgressBar").value = 0;
     pollOllamaPull(job.job_id);
   } catch (error) {
@@ -1315,7 +1324,7 @@ async function loadActiveModelIndicator() {
       $("#testActiveModel")?.addEventListener("click", async event => {
         const button = event.currentTarget;
         button.disabled = true;
-        button.textContent = "Testing…";
+        button.textContent = "Testingâ€¦";
         try {
           if (active.effective_provider === "ollama") {
             const result = await api("/api/ollama/test", {
@@ -1738,7 +1747,7 @@ async function loadMissionHistory() {
     limit: "300",
   });
 
-  target.innerHTML = '<p class="muted-copy">Loading mission history…</p>';
+  target.innerHTML = '<p class="muted-copy">Loading mission historyâ€¦</p>';
 
   try {
     const payload = await api(`/api/missions?${params.toString()}`);
@@ -1806,7 +1815,7 @@ async function loadMissionHistory() {
     document.querySelectorAll("[data-reexport-history]").forEach(button => {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        button.textContent = "Exporting…";
+        button.textContent = "Exportingâ€¦";
         try {
           const result = await api(
             `/api/connectors/obsidian/reexport-mission/${button.dataset.reexportHistory}`,
@@ -1883,7 +1892,7 @@ function showAiosToast({ title, message, type = "success", actions = [] }) {
       <p>${escapeHtml(message)}</p>
     </div>
     <div class="aios-toast-actions"></div>
-    <button class="aios-toast-close" type="button" aria-label="Close">×</button>
+    <button class="aios-toast-close" type="button" aria-label="Close">Ã—</button>
   `;
 
   const actionsTarget = toast.querySelector(".aios-toast-actions");
@@ -2399,24 +2408,25 @@ $("#securityLoginForm")?.addEventListener("submit", async event => {
   event.preventDefault();
   $("#securityLoginError").textContent = "";
   try {
-    const response = await fetch("/api/auth/login", {
+    const payload = await api("/api/auth/login", {
       method: "POST",
-      credentials: "same-origin",
-      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         username: $("#securityUsername").value,
         password: $("#securityPassword").value,
       }),
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Login failed");
     aiosCsrfToken = payload.csrf_token || "";
     $("#securityPassword").value = "";
     $("#securityLogin").classList.add("hidden");
     $("#securityLogout")?.classList.remove("hidden");
     location.reload();
   } catch (error) {
-    $("#securityLoginError").textContent = error.message;
+    if (error.code === "cloudflare_access_html") {
+      $("#securityLoginError").innerHTML =
+        'Cloudflare Access session expired. <a href="/cdn-cgi/access/logout">Sign in to Cloudflare again</a>, then retry.';
+    } else {
+      $("#securityLoginError").textContent = error.message || "Login failed";
+    }
   }
 });
 
@@ -2606,7 +2616,7 @@ document.querySelectorAll("[data-mobile-command]").forEach(button => {
 
     const command = button.dataset.mobileCommand;
     button.disabled = true;
-    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}…`;
+    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}â€¦`;
 
     try {
       const result = await api("/api/mobile/command", {
@@ -2798,3 +2808,54 @@ $("#registeredToolList")?.addEventListener("click", async event => {
 $("#refreshToolsSkills")?.addEventListener("click", loadToolsSkills);
 if (location.hash === "#tools-skills") loadToolsSkills();
 window.addEventListener("hashchange", () => { if (location.hash === "#tools-skills") loadToolsSkills(); });
+
+
+async function loadGovernanceCenter() {
+  const rulesHost = document.getElementById("governanceRules");
+  const approvalsHost = document.getElementById("governanceApprovals");
+  if (!rulesHost || !approvalsHost) return;
+
+  try {
+    const response = await fetch("/api/governance", { credentials: "same-origin" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    const rules = data.rules || [];
+    const approvals = data.approvals || [];
+    const summary = data.summary || {};
+
+    document.getElementById("governanceRuleCount").textContent = String(rules.length);
+    document.getElementById("governancePendingCount").textContent = String(summary.pending || 0);
+    document.getElementById("governanceApprovedCount").textContent =
+      String((summary.approved || 0) + (summary.consumed || 0));
+    document.getElementById("governanceBlockedCount").textContent = String(summary.blocked || 0);
+    document.getElementById("governanceGateStatus").textContent = "ENFORCED";
+
+    const ruleSummary = document.getElementById("governanceRuleSummary"); if (ruleSummary) ruleSummary.textContent = `${rules.length} RULES`;
+
+    approvalsHost.innerHTML = approvals.length
+      ? approvals.slice().reverse().map(item => `
+        <div class="artifact">
+          <span>${escapeHtml(String(item.status || "pending").toUpperCase())}</span>
+          <p>
+            <strong>${escapeHtml(item.tool_id || "unknown tool")}</strong><br>
+            ${escapeHtml(item.specialist || "unknown specialist")} · ${escapeHtml(item.risk || "unknown risk")}<br>
+            ${escapeHtml(item.reason || "No reason provided")}
+          </p>
+        </div>
+      `).join("")
+      : '<p class="muted-copy">No approval requests.</p>';
+  } catch (error) {
+    document.getElementById("governanceGateStatus").textContent = "ERROR";
+    rulesHost.innerHTML = `<p class="muted-copy">Governance API unavailable: ${escapeHtml(String(error.message || error))}</p>`;
+  }
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest('[data-view="governance"]')) loadGovernanceCenter();
+  if (event.target.closest("#refreshGovernance")) loadGovernanceCenter();
+});
+
+
+document.addEventListener("click", event => { if (event.target.closest("#openGovernanceRules")) { window.open("/assets/policy-rules.html?build=phase1d-governance-final", "_blank", "noopener,noreferrer"); } });
+
+
