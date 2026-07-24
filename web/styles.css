@@ -1291,3 +1291,12 @@ button,
 #brainVaultPhaseSummary { min-height: 220px; resize: vertical; }
 #brainVaultPhaseForm button { grid-column: 1 / -1; width: 100%; }
 @media (max-width: 700px) { #brainVaultPhaseForm { grid-template-columns: 1fr; } #view-brain-vault .content-grid { grid-template-columns: 1fr; } }
+
+
+#view-brain-vault .posture-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+#brainVaultAutosave {
+  overflow-wrap: anywhere;
+}
