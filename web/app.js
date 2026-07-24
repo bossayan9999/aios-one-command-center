@@ -3285,3 +3285,50 @@ $("#syncBrainVaultNow")?.addEventListener("click", async () => {
   }
 });
 
+
+
+function renderBrainMemoryPreview(payload) {
+  const host = $("#brainMemoryPreview");
+  const citations = payload.citations || [];
+  if (!citations.length) {
+    host.innerHTML = '<p class="muted-copy">No relevant Brain Vault notes found.</p>';
+    return;
+  }
+  host.innerHTML = `
+    <div class="brain-memory-context">
+      <p class="eyebrow">RETRIEVED MEMORY</p>
+      <p>${escapeHtml(payload.context || "")}</p>
+    </div>
+    <div class="brain-memory-citations">
+      ${citations.map((item, index) => `
+        <article class="brain-memory-citation">
+          <div class="brain-memory-citation-head">
+            <strong>[${index + 1}] ${escapeHtml(item.title || item.path)}</strong>
+            <span>Score ${escapeHtml(String(item.score ?? 0))}</span>
+          </div>
+          <code>${escapeHtml(item.path || "")}</code>
+          <p>${escapeHtml(item.preview || "")}</p>
+        </article>`).join("")}
+    </div>`;
+}
+
+$("#brainMemoryPreviewForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const host = $("#brainMemoryPreview");
+  host.innerHTML = '<p class="muted-copy">Searching Brain Vault...</p>';
+  try {
+    const payload = await api("/api/brain-vault/memory-preview", {
+      method: "POST",
+      body: JSON.stringify({
+        query: $("#brainMemoryQuery").value.trim(),
+        specialist: $("#brainMemorySpecialist").value,
+        limit: 5,
+      }),
+    });
+    renderBrainMemoryPreview(payload);
+  } catch (error) {
+    host.innerHTML =
+      `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+});
+

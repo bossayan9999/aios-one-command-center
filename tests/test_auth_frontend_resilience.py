@@ -8,8 +8,9 @@ def test_frontend_handles_cloudflare_html_without_json_crash() -> None:
     assert "cloudflare_access_html" in app
     assert "Cloudflare Access session expired" in app
     assert 'await api("/api/auth/login"' in app
-    assert "phase1f-brain-vault-autosync-1" in index
+    assert "phase1f-copilot-memory-1" in index
     assert "headers,\n    headers:" not in app
+
 
 
 

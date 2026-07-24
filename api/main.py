@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
+from agentic.brain_memory import BrainMemoryRetriever
 from agentic.brain_vault import BrainVault
 from agentic.governance import GovernanceEngine, ValidationDecision
 from agentic.model_gateway import (
@@ -93,6 +94,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 MISSIONS_FILE = DATA_DIR / "missions.json"
 BRAIN_VAULT_ROOT = Path(os.getenv("AIOS_BRAIN_VAULT_PATH", str(DATA_DIR / "AIOS-Brain-Vault")))
 BRAIN_VAULT = BrainVault(BRAIN_VAULT_ROOT)
+BRAIN_MEMORY = BrainMemoryRetriever(BRAIN_VAULT)
 
 
 def _brain_vault_autosave_enabled() -> bool:
@@ -182,6 +184,47 @@ RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
 
 
+
+
+
+@app.get("/api/brain-vault/memory")
+def brain_vault_memory(
+    request: Request,
+    query: str,
+    specialist: str | None = None,
+    limit: int = 5,
+):
+    require_owner(request, SECURITY_STORE)
+    return BRAIN_MEMORY.build_context(
+        query,
+        specialist=specialist,
+        limit=max(1, min(limit, 20)),
+    )
+
+
+@app.post("/api/brain-vault/memory-preview")
+async def brain_vault_memory_preview(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    payload = await request.json()
+    query = str(payload.get("query", "")).strip()
+    specialist = str(payload.get("specialist", "")).strip() or None
+    limit = int(payload.get("limit", 5))
+    if not query:
+        raise HTTPException(status_code=400, detail="Memory query is required")
+    result = BRAIN_MEMORY.build_context(
+        query,
+        specialist=specialist,
+        limit=max(1, min(limit, 20)),
+    )
+    SECURITY_STORE.audit(
+        "brain_vault.memory_previewed",
+        request,
+        query=query[:200],
+        specialist=specialist,
+        citation_count=len(result["citations"]),
+    )
+    return result
 
 
 @app.get("/api/brain-vault/sync-status")
