@@ -43,7 +43,9 @@ from agentic.osint_case_store import OSINTCaseStore
 from agentic.pm_router import PMModelRouter
 from agentic.project_store import ProjectStore
 from agentic.reliability import DefectRegistry
+from agentic.settings_store import AIOSSettingsStore
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
+from agentic.unified_task_store import UnifiedTaskStore
 from security.app_security import (
     CSRF_COOKIE,
     SECURE_COOKIES,
@@ -99,6 +101,8 @@ BRAIN_VAULT = BrainVault(BRAIN_VAULT_ROOT)
 BRAIN_MEMORY = BrainMemoryRetriever(BRAIN_VAULT)
 PROJECT_STORE = ProjectStore(DATA_DIR)
 OSINT_CASES = OSINTCaseStore(DATA_DIR, BRAIN_VAULT_ROOT)
+UNIFIED_TASKS = UnifiedTaskStore(DATA_DIR, BRAIN_VAULT_ROOT)
+AIOS_SETTINGS = AIOSSettingsStore(DATA_DIR)
 
 
 def _brain_vault_autosave_enabled() -> bool:
@@ -191,6 +195,137 @@ RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
 
 
+
+
+@app.get("/api/settings")
+def get_aios_settings(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return AIOS_SETTINGS.get()
+
+
+@app.post("/api/settings")
+async def update_aios_settings(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        settings = AIOS_SETTINGS.update(await request.json())
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit("settings.updated", request)
+    return settings
+
+
+@app.post("/api/tasks/migrate-legacy")
+async def migrate_legacy_tasks(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    result = UNIFIED_TASKS.migrate_legacy_tasks()
+    SECURITY_STORE.audit("tasks.legacy.migrated", request, migrated=result["migrated"])
+    return result
+
+
+@app.post("/api/tasks/{task_id}/archive")
+async def archive_unified_task(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        task = UNIFIED_TASKS.archive(task_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Task not found") from exc
+    SECURITY_STORE.audit("task.archived", request, task_id=task_id)
+    return task
+
+
+@app.get("/api/tasks/{task_id}/budget")
+def get_task_budget(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    task = UNIFIED_TASKS.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {
+        "task_id": task_id,
+        "token_budget": task.get("token_budget", {}),
+        "model_route": task.get("model_route", {}),
+        "memory_mode": task.get("memory_mode", "automatic"),
+    }
+
+
+@app.post("/api/tasks/{task_id}/budget/usage")
+async def record_task_budget_usage(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    payload = await request.json()
+    try:
+        task = UNIFIED_TASKS.record_token_usage(task_id, payload)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Task not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit("task.budget.usage", request, task_id=task_id)
+    return task
+
+
+@app.post("/api/tasks/{task_id}/model/route")
+async def reroute_task_model(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    payload = await request.json()
+    try:
+        task = UNIFIED_TASKS.route_model(task_id, int(payload.get("memory_tokens", 0)))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Task not found") from exc
+    SECURITY_STORE.audit("task.model.routed", request, task_id=task_id)
+    return task
+
+
+@app.get("/api/tasks/readiness")
+def unified_tasks_readiness(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return UNIFIED_TASKS.readiness()
+
+
+@app.get("/api/tasks")
+def list_unified_tasks(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"tasks": UNIFIED_TASKS.list()}
+
+
+@app.post("/api/tasks")
+async def create_unified_task(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        task = UNIFIED_TASKS.create(await request.json())
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit("task.created", request, task_id=task["task_id"])
+    return task
+
+
+@app.post("/api/tasks/{task_id}/advance")
+async def advance_unified_task(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        task = UNIFIED_TASKS.advance(task_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Task not found") from exc
+    SECURITY_STORE.audit("task.advanced", request, task_id=task_id)
+    return task
+
+
+@app.post("/api/tasks/{task_id}/approvals")
+async def create_task_approval(task_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        approval = UNIFIED_TASKS.request_approval(task_id, await request.json())
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Task not found") from exc
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit("task.approval.requested", request, task_id=task_id)
+    return approval
 
 
 @app.get("/api/osint/readiness")

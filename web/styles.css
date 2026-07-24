@@ -1364,3 +1364,61 @@ button,
 .osint-stage strong {font-size:.74rem;}
 .osint-stage.active {border-color:#ffad32;}
 .osint-case-form .wide {grid-column:1/-1;}
+
+/* Phase 1G Update 2: Unified Copilot Workflow */
+.unified-intake-panel textarea{width:100%;margin-bottom:1rem}
+.task-drop-zone{border:1px dashed rgba(255,255,255,.25);border-radius:14px;padding:1.4rem;text-align:center;display:grid;gap:.35rem;cursor:pointer;margin-bottom:1rem}
+.task-drop-zone.dragging{border-color:#ffad32;background:rgba(255,173,50,.06)}
+.task-attachment-list{font-size:.85rem;color:var(--muted,#8ca9a2);margin-bottom:1rem}
+.task-tabs{display:flex;gap:.5rem;overflow-x:auto;padding-bottom:.4rem}
+.task-tabs button{white-space:nowrap}
+.unified-task-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:1rem;margin-top:1rem}
+.task-manager-summary{display:grid;gap:.3rem;padding:.8rem;border-radius:10px;background:rgba(255,255,255,.03);margin:.8rem 0}
+.task-workflow{display:grid;grid-template-columns:repeat(14,minmax(66px,1fr));gap:.35rem;overflow-x:auto;padding:.4rem 0 1rem}
+.task-stage{min-width:66px;padding:.55rem .3rem;border:1px solid rgba(255,255,255,.1);border-radius:9px;text-align:center}
+.task-stage span{display:block;font-size:.68rem;color:var(--muted,#8ca9a2)}
+.task-stage strong{font-size:.66rem}
+.task-stage.active{border-color:#ffad32}
+@media(max-width:760px){.unified-task-grid{grid-template-columns:1fr}}
+
+/* Phase 1G Update 2.1: Token Intelligence */
+.token-budget-panel {
+  padding: .9rem;
+  margin: .8rem 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+.token-budget-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+.token-budget-head > div { display: grid; gap: .2rem; }
+.token-meter {
+  height: 8px;
+  margin: .8rem 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+}
+.token-meter span { display: block; height: 100%; background: currentColor; }
+.token-budget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: .6rem;
+}
+.token-budget-grid div { display: grid; gap: .15rem; }
+.token-budget-grid span { color: var(--muted,#8ca9a2); font-size: .75rem; }
+@media(max-width:760px) { .token-budget-grid { grid-template-columns: repeat(2,1fr); } }
+
+/* Phase 1G Update 2.2: Navigation and Settings */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:1rem;margin-top:1rem}
+.settings-section{display:grid;align-content:start;gap:.75rem}
+.settings-section label{display:grid;gap:.35rem}
+.settings-section label:has(input[type="checkbox"]){grid-template-columns:auto 1fr;align-items:center}
+.settings-save{grid-column:1/-1;grid-template-columns:1fr auto;align-items:center}
+.unified-task-card[data-active-tab="models-budget"] details,.unified-task-card[data-active-tab="models-budget"] .task-workflow{display:none}
+.unified-task-card[data-active-tab="workflow"] .token-budget-panel,.unified-task-card[data-active-tab="workflow"] details{display:none}
+@media(max-width:760px){.settings-save{grid-template-columns:1fr}}

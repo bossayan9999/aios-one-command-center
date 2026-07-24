@@ -1,3 +1,4 @@
+const LEGACY_VIEW_REDIRECTS={"mission-control":"command-center",copilot:"command-center","workflow-map":"command-center",osint:"command-center",specialists:"command-center",validation:"command-center",approvals:"command-center"};
 const $ = (selector) => document.querySelector(selector);
 const dialog = $("#missionDialog");
 let dashboard = null;
@@ -6,6 +7,8 @@ let currentMission = null;
 const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
+  "command-center": "Command Center",
+  settings: "Settings",
   projects: "Projects",
   osint: "OSINT Cases",
   workflow: "Workflow Map",
@@ -67,6 +70,7 @@ async function api(path, options = {}) {
 }
 
 function switchView(view) {
+  view = LEGACY_VIEW_REDIRECTS[view] || view;
   document.querySelectorAll(".app-view").forEach(section => section.classList.remove("active"));
   document.querySelectorAll(".nav-item, .mobile-nav-item").forEach(button => button.classList.remove("active"));
 
@@ -3481,4 +3485,83 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   document.querySelector('.nav-item[data-view="osint"]')?.addEventListener("click",loadOsintCases);
   if(window.location.hash==="#osint")loadOsintCases();
+});
+
+const UNIFIED_WORKFLOW=["RECEIVE","UNDERSTAND","DEFINE","PLAN","ASSIGN","EXECUTE","OBSERVE","VERIFY","REPAIR","VALIDATE","APPROVE","REPORT","STORE","LEARN"];
+let pendingTaskFiles=[];
+function taskWorkflowHtml(active){return UNIFIED_WORKFLOW.map((stage,index)=>`<div class="task-stage ${stage===active?"active":""}"><span>${index+1}</span><strong>${stage}</strong></div>`).join("");}
+function deadlineRemaining(value){const ms=new Date(value).getTime()-Date.now();if(ms<=0)return"Overdue";const minutes=Math.ceil(ms/60000);return minutes<60?`${minutes} min`:`${Math.floor(minutes/60)}h ${minutes%60}m`;}
+function specialistRows(items){return(items||[]).map(item=>`<tr><td>${item.specialist}</td><td>${item.status}</td><td>${item.progress}%</td><td>${deadlineRemaining(item.target_completion)}</td><td>${item.current_action}</td></tr>`).join("");}
+function unifiedTaskCard(task){return`<article class="panel unified-task-card"><div class="project-card-head"><div><p class="eyebrow">${task.task_type} / ${task.priority}</p><h2>${task.task_id}</h2></div><span class="status-chip">${task.deadline_state}</span></div><p>${task.message}</p><div class="task-manager-summary"><strong>Copilot Manager</strong><span>${task.manager.summary}</span><span>Deadline: ${deadlineRemaining(task.hard_deadline)}</span></div>${renderTokenBudget(task)}<div class="task-workflow">${taskWorkflowHtml(task.workflow_stage)}</div><details open><summary>Specialists</summary><div class="table-wrap"><table><thead><tr><th>Specialist</th><th>Status</th><th>Progress</th><th>Remaining</th><th>Current action</th></tr></thead><tbody>${specialistRows(task.specialists)}</tbody></table></div></details><details><summary>Approvals (${(task.approvals||[]).length})</summary><p>${task.manager.requires_approval?"Waiting for approval":"No approval required"}</p></details><div class="dialog-actions"><button class="advance-unified-task primary" data-task="${task.task_id}">Advance workflow</button><button class="request-task-approval" data-task="${task.task_id}">Request approval</button><button class="open-task-vault">Brain Vault</button></div></article>`;}
+async function loadUnifiedTasks(){const grid=$("#unifiedTaskGrid");if(!grid)return;try{const[ready,payload]=await Promise.all([api("/api/tasks/readiness"),api("/api/tasks")]);$("#unifiedTaskReadiness").textContent=ready.status||"UNKNOWN";const tasks=payload.tasks||[];grid.innerHTML=tasks.length?tasks.map(unifiedTaskCard).join(""):`<article class="panel"><h2>No tasks yet</h2></article>`;document.querySelectorAll(".advance-unified-task").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/tasks/${button.dataset.task}/advance`,{method:"POST",body:"{}"});await loadUnifiedTasks();}));document.querySelectorAll(".request-task-approval").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/tasks/${button.dataset.task}/approvals`,{method:"POST",body:JSON.stringify({action:"Open external public source",reason:"External public-source collection",risk:"low",specialist:"copilot-manager"})});await loadUnifiedTasks();}));document.querySelectorAll(".open-task-vault").forEach(button=>button.addEventListener("click",()=>switchView("brain-vault")));}catch(error){grid.innerHTML=`<article class="panel"><h2>Task workspace unavailable</h2><p>${error.message}</p></article>`;}}
+document.addEventListener("DOMContentLoaded",()=>{const drop=$("#taskDropZone"),input=$("#taskFileInput");drop?.addEventListener("click",()=>input?.click());drop?.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragging");});drop?.addEventListener("dragleave",()=>drop.classList.remove("dragging"));drop?.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragging");pendingTaskFiles=[...event.dataTransfer.files];$("#taskAttachmentList").textContent=pendingTaskFiles.map(file=>file.name).join(", ");});input?.addEventListener("change",()=>{pendingTaskFiles=[...input.files];$("#taskAttachmentList").textContent=pendingTaskFiles.map(file=>file.name).join(", ");});$("#recordTaskVoice")?.addEventListener("click",()=>{$("#unifiedTaskStatus").textContent="Voice runtime prepared; transcription will be enabled in the voice update.";});$("#unifiedTaskForm")?.addEventListener("submit",async event=>{event.preventDefault();const deadline=$("#taskDeadline").value;const payload={message:$("#taskMessage").value.trim(),project_id:$("#taskProjectId").value.trim(),priority:$("#taskPriority").value,output_type:$("#taskOutput").value,deadline:deadline?new Date(deadline).toISOString():"",voice_transcript:$("#taskVoiceInput").value.trim(),urls:$("#taskUrl").value.trim()?[$("#taskUrl").value.trim()]:[],input_type:pendingTaskFiles.length?"mixed":"message",budget_mode:$("#taskBudgetMode").value,memory_mode:$("#taskMemoryMode").value};const task=await api("/api/tasks",{method:"POST",body:JSON.stringify(payload)});$("#unifiedTaskStatus").textContent=`Created ${task.task_id} with ${task.specialists.length} specialists.`;pendingTaskFiles=[];$("#taskAttachmentList").textContent="";event.target.reset();await loadUnifiedTasks();});$("#refreshUnifiedTasks")?.addEventListener("click",loadUnifiedTasks);document.querySelector('.nav-item[data-view="command-center"]')?.addEventListener("click",loadUnifiedTasks);if(window.location.hash==="#command-center")loadUnifiedTasks();});
+function renderTokenBudget(task) {
+  const budget = task.token_budget || {};
+  const used = Number(budget.used || 0);
+  const ceiling = Number(budget.ceiling || 0);
+  const remaining = Number(budget.remaining || 0);
+  const percent = ceiling ? Math.min(100, Math.round((used / ceiling) * 100)) : 0;
+  const route = task.model_route || {};
+  return `
+    <div class="token-budget-panel">
+      <div class="token-budget-head">
+        <div><strong>Models and Budget</strong><span>${budget.mode || "balanced"} / ${budget.state || "HEALTHY"}</span></div>
+        <span class="status-chip">${route.model_class || "UNROUTED"}</span>
+      </div>
+      <div class="token-meter"><span style="width:${percent}%"></span></div>
+      <div class="token-budget-grid">
+        <div><b>${used.toLocaleString()}</b><span>Used</span></div>
+        <div><b>${remaining.toLocaleString()}</b><span>Remaining</span></div>
+        <div><b>${Number(budget.cached_input || 0).toLocaleString()}</b><span>Cached input</span></div>
+        <div><b>${Number(budget.local_tokens || 0).toLocaleString()}</b><span>Local tokens</span></div>
+        <div><b>${Number(budget.cloud_tokens || 0).toLocaleString()}</b><span>Cloud tokens</span></div>
+        <div><b>${Number(budget.validation_reserve || 0).toLocaleString()}</b><span>Validation reserve</span></div>
+      </div>
+      <p class="muted-copy">${route.reason || "Copilot selects the least expensive suitable model."}</p>
+    </div>`;
+}
+
+function showTaskTab(tabName) {
+  document.querySelectorAll(".task-tab").forEach(button => button.classList.toggle("active", button.dataset.taskTab === tabName));
+  document.querySelectorAll(".unified-task-card").forEach(card => card.dataset.activeTab = tabName);
+}
+async function loadSettings() {
+  const s = await api("/api/settings");
+  $("#settingAppName").value=s.general.app_name||"AIOS ONE"; $("#settingTimezone").value=s.general.timezone||"Asia/Manila";
+  $("#settingTheme").value=s.general.theme||"system"; $("#settingStartup").value=s.general.startup_mode||"manual";
+  $("#settingAutoClassify").checked=!!s.copilot.auto_classify; $("#settingAutoAssign").checked=!!s.copilot.auto_assign_specialists;
+  $("#settingDefaultPriority").value=s.copilot.default_priority||"standard"; $("#settingRetryLimit").value=s.copilot.retry_limit??2;
+  $("#settingLocalFirst").checked=!!s.models.local_first; $("#settingLocalFast").value=s.models.classes.LOCAL_FAST||"";
+  $("#settingLocalCode").value=s.models.classes.LOCAL_CODE||""; $("#settingCloudEconomy").value=s.models.classes.CLOUD_ECONOMY||"";
+  $("#settingCloudReasoning").value=s.models.classes.CLOUD_REASONING||""; $("#settingValidator").value=s.models.classes.VALIDATOR||"";
+  $("#settingTokenMode").value=s.tokens.default_mode||"balanced"; $("#settingTaskCeiling").value=s.tokens.per_task_ceiling??60500;
+  $("#settingDailyCeiling").value=s.tokens.daily_cloud_ceiling??250000; $("#settingMonthlyCeiling").value=s.tokens.monthly_cloud_ceiling??5000000;
+  $("#settingPromptCaching").checked=!!s.tokens.prompt_caching; $("#settingContextCompression").checked=!!s.tokens.context_compression;
+  $("#settingApprovalOverrun").checked=!!s.tokens.approval_before_overrun; $("#settingMemoryMode").value=s.memory.mode||"automatic";
+  $("#settingNoteLimit").value=s.memory.retrieval_note_limit??6; $("#settingMemoryTokens").value=s.memory.maximum_memory_tokens??24000;
+  $("#settingDuplicatePrevention").checked=!!s.memory.duplicate_prevention; $("#settingPublicSourceOnly").checked=!!s.osint.public_source_only;
+  $("#settingMinimumSources").value=s.osint.minimum_independent_sources??3; $("#settingMaximumPages").value=s.osint.maximum_pages??20;
+  $("#settingSandboxHours").value=s.osint.sandbox_expiration_hours??24; $("#settingEvidenceHashing").checked=!!s.osint.evidence_hashing;
+  $("#settingInApp").checked=!!s.notifications.in_app; $("#settingDeadlineWarnings").checked=!!s.notifications.deadline_warnings;
+  $("#settingBudgetWarnings").checked=!!s.notifications.budget_warnings; $("#settingFailureAlerts").checked=!!s.notifications.failed_task_alerts;
+  $("#settingApprovalExpiration").value=s.notifications.approval_expiration_minutes??60; $("#settingsStatus").textContent="Settings loaded.";
+}
+function collectSettings() {
+  return {
+    general:{app_name:$("#settingAppName").value.trim(),timezone:$("#settingTimezone").value.trim(),theme:$("#settingTheme").value,startup_mode:$("#settingStartup").value},
+    copilot:{auto_classify:$("#settingAutoClassify").checked,auto_assign_specialists:$("#settingAutoAssign").checked,default_priority:$("#settingDefaultPriority").value,retry_limit:Number($("#settingRetryLimit").value||0)},
+    models:{local_first:$("#settingLocalFirst").checked,classes:{LOCAL_FAST:$("#settingLocalFast").value.trim(),LOCAL_CODE:$("#settingLocalCode").value.trim(),CLOUD_ECONOMY:$("#settingCloudEconomy").value.trim(),CLOUD_REASONING:$("#settingCloudReasoning").value.trim(),VALIDATOR:$("#settingValidator").value.trim()}},
+    tokens:{default_mode:$("#settingTokenMode").value,per_task_ceiling:Number($("#settingTaskCeiling").value||60500),daily_cloud_ceiling:Number($("#settingDailyCeiling").value||0),monthly_cloud_ceiling:Number($("#settingMonthlyCeiling").value||0),prompt_caching:$("#settingPromptCaching").checked,context_compression:$("#settingContextCompression").checked,approval_before_overrun:$("#settingApprovalOverrun").checked},
+    memory:{mode:$("#settingMemoryMode").value,retrieval_note_limit:Number($("#settingNoteLimit").value||6),maximum_memory_tokens:Number($("#settingMemoryTokens").value||24000),duplicate_prevention:$("#settingDuplicatePrevention").checked},
+    osint:{public_source_only:$("#settingPublicSourceOnly").checked,minimum_independent_sources:Number($("#settingMinimumSources").value||3),maximum_pages:Number($("#settingMaximumPages").value||20),sandbox_expiration_hours:Number($("#settingSandboxHours").value||24),evidence_hashing:$("#settingEvidenceHashing").checked},
+    notifications:{in_app:$("#settingInApp").checked,deadline_warnings:$("#settingDeadlineWarnings").checked,budget_warnings:$("#settingBudgetWarnings").checked,failed_task_alerts:$("#settingFailureAlerts").checked,approval_expiration_minutes:Number($("#settingApprovalExpiration").value||60)}
+  };
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".task-tab").forEach(button=>button.addEventListener("click",()=>showTaskTab(button.dataset.taskTab||"overview")));
+  $("#settingsForm")?.addEventListener("submit",async event=>{event.preventDefault();await api("/api/settings",{method:"POST",body:JSON.stringify(collectSettings())});$("#settingsStatus").textContent="Settings saved.";});
+  $("#refreshSettings")?.addEventListener("click",loadSettings);
+  $("#migrateLegacyTasks")?.addEventListener("click",async()=>{const r=await api("/api/tasks/migrate-legacy",{method:"POST",body:"{}"});$("#settingsStatus").textContent=`Migrated ${r.migrated} of ${r.total} tasks.`;await loadUnifiedTasks();});
+  document.querySelector('.nav-item[data-view="settings"]')?.addEventListener("click",loadSettings);
+  if(location.hash==="#settings")loadSettings();
 });

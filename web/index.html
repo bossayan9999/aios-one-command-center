@@ -1,11 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
-  <title>AIOS ONE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1g-osint-foundation-1" />
+  <title>AIOS ONE ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Hybrid Agentic Command Center</title>
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1g-navigation-settings-1" />
 </head>
 <body>
 
@@ -36,20 +36,19 @@
       <nav class="sidebar-nav" aria-label="Primary navigation">
   <details class="nav-group" open>
     <summary>Workspace</summary>
-    <button class="nav-item active" data-view="mission">Mission Control</button>
-    <button class="nav-item" data-view="copilot">Copilot Chat</button>
+
+    <button class="nav-item" data-view="command-center">Command Center</button>
     <button class="nav-item" data-view="projects">Projects</button>
-    <button class="nav-item" data-view="workflow">Workflow Map</button>
+
     <button class="nav-item" data-view="brain-vault">Brain Vault</button>
-    <button class="nav-item" data-view="osint">OSINT Cases</button>
+
   </details>
   <details class="nav-group" open>
     <summary>Operations</summary>
-    <button class="nav-item" data-view="agents">Specialists</button>
-    <button class="nav-item" data-view="reliability">Reliability Center</button>
+
+    <button class="nav-item" data-view="reliability">Reliability</button>
     <button class="nav-item" data-view="network-health">Network Health</button>
-    <button class="nav-item" data-view="governance">Validation Center</button>
-    <button class="nav-item" data-view="approvals">Approval Center</button>
+
   </details>
   <details class="nav-group" open>
     <summary>Integrations</summary>
@@ -65,7 +64,7 @@
     <button class="nav-item" data-view="mobile">Mobile Control</button>
     <button class="nav-item" data-view="budget">Budget &amp; Usage</button>
   </details>
-</nav>
+<details class="nav-group" open><summary>Administration</summary><button class="nav-item" data-view="settings">Settings</button></details></nav>
       <div class="side-status">
         <div><span class="pulse"></span> Cloud gateway online</div>
         <div><span class="dot muted"></span> Local companion offline</div>
@@ -86,6 +85,92 @@
 
 
       
+<section id="view-settings" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">ADMINISTRATION</p><h2>AIOS Settings</h2></div>
+      <div class="dialog-actions"><button id="migrateLegacyTasks" type="button">Migrate legacy tasks</button><button id="refreshSettings" type="button">Refresh</button></div>
+    </div>
+    <p class="muted-copy">Central controls for Copilot, models, token budgets, Brain Vault memory, OSINT safeguards, and notifications.</p>
+  </article>
+  <form id="settingsForm" class="settings-grid">
+    <article class="panel settings-section"><p class="eyebrow">GENERAL</p><h2>General</h2>
+      <label>Application name<input id="settingAppName"></label>
+      <label>Timezone<input id="settingTimezone"></label>
+      <label>Theme<select id="settingTheme"><option value="system">System</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+      <label>Startup<select id="settingStartup"><option value="manual">Manual</option><option value="automatic">Automatic</option></select></label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">COPILOT MANAGER</p><h2>Copilot Manager</h2>
+      <label><input id="settingAutoClassify" type="checkbox"> Automatic classification</label>
+      <label><input id="settingAutoAssign" type="checkbox"> Automatic specialist assignment</label>
+      <label>Default priority<select id="settingDefaultPriority"><option value="urgent">Urgent</option><option value="standard">Standard</option><option value="thorough">Thorough</option></select></label>
+      <label>Retry limit<input id="settingRetryLimit" type="number" min="0" max="10"></label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">MODELS</p><h2>Models and providers</h2>
+      <label><input id="settingLocalFirst" type="checkbox"> Prefer local models first</label>
+      <label>LOCAL_FAST<input id="settingLocalFast"></label><label>LOCAL_CODE<input id="settingLocalCode"></label>
+      <label>CLOUD_ECONOMY<input id="settingCloudEconomy"></label><label>CLOUD_REASONING<input id="settingCloudReasoning"></label>
+      <label>VALIDATOR<input id="settingValidator"></label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">TOKENS</p><h2>Token and cost controls</h2>
+      <label>Default mode<select id="settingTokenMode"><option value="economy">Economy</option><option value="balanced">Balanced</option><option value="thorough">Thorough</option></select></label>
+      <label>Per-task ceiling<input id="settingTaskCeiling" type="number" min="5000"></label>
+      <label>Daily cloud ceiling<input id="settingDailyCeiling" type="number" min="0"></label>
+      <label>Monthly cloud ceiling<input id="settingMonthlyCeiling" type="number" min="0"></label>
+      <label><input id="settingPromptCaching" type="checkbox"> Prompt caching</label>
+      <label><input id="settingContextCompression" type="checkbox"> Context compression</label>
+      <label><input id="settingApprovalOverrun" type="checkbox"> Approval before overrun</label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">MEMORY</p><h2>Brain Vault memory</h2>
+      <label>Memory mode<select id="settingMemoryMode"><option value="automatic">Automatic</option><option value="minimal">Minimal</option><option value="standard">Standard</option><option value="deep">Deep</option></select></label>
+      <label>Retrieval note limit<input id="settingNoteLimit" type="number" min="1" max="50"></label>
+      <label>Maximum memory tokens<input id="settingMemoryTokens" type="number" min="1000"></label>
+      <label><input id="settingDuplicatePrevention" type="checkbox"> Prevent duplicate notes</label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">OSINT</p><h2>OSINT and research</h2>
+      <label><input id="settingPublicSourceOnly" type="checkbox"> Public-source only</label>
+      <label>Minimum independent sources<input id="settingMinimumSources" type="number" min="1" max="10"></label>
+      <label>Maximum pages<input id="settingMaximumPages" type="number" min="1" max="100"></label>
+      <label>Sandbox expiration hours<input id="settingSandboxHours" type="number" min="1" max="168"></label>
+      <label><input id="settingEvidenceHashing" type="checkbox"> Evidence hashing</label>
+    </article>
+    <article class="panel settings-section"><p class="eyebrow">NOTIFICATIONS</p><h2>Notifications</h2>
+      <label><input id="settingInApp" type="checkbox"> In-app notifications</label>
+      <label><input id="settingDeadlineWarnings" type="checkbox"> Deadline warnings</label>
+      <label><input id="settingBudgetWarnings" type="checkbox"> Budget warnings</label>
+      <label><input id="settingFailureAlerts" type="checkbox"> Failed task alerts</label>
+      <label>Approval expiration minutes<input id="settingApprovalExpiration" type="number" min="5"></label>
+    </article>
+    <article class="panel settings-section settings-save"><p id="settingsStatus" class="brain-action-status">Ready.</p><button class="primary" type="submit">Save settings</button></article>
+  </form>
+</section>
+
+<section id="view-command-center" class="app-view">
+  <article class="panel unified-intake-panel">
+    <div class="panel-title"><div><p class="eyebrow">COPILOT AGENTIC MANAGER</p><h2>What should AIOS accomplish?</h2></div><span id="unifiedTaskReadiness" class="status-chip">UNKNOWN</span></div>
+    <form id="unifiedTaskForm">
+      <textarea id="taskMessage" rows="5" required placeholder="Describe the result you need."></textarea>
+      <div id="taskDropZone" class="task-drop-zone" tabindex="0"><strong>Drop files, images, or audio here</strong><span>or click to select</span><input id="taskFileInput" type="file" multiple hidden></div>
+      <div id="taskAttachmentList" class="task-attachment-list"></div>
+      <div class="form-grid">
+        <label>URL<input id="taskUrl" type="url"></label>
+        <label>Project ID<input id="taskProjectId"></label>
+        <label>Priority<select id="taskPriority"><option value="urgent">Urgent</option><option value="standard" selected>Standard</option><option value="thorough">Thorough</option></select></label>
+        <label>Output<select id="taskOutput"><option value="chat">Chat response</option><option value="executive_summary">Executive summary</option><option value="markdown">Markdown report</option><option value="pdf">PDF</option><option value="docx">Word</option><option value="spreadsheet">Spreadsheet</option><option value="json">JSON</option><option value="evidence_bundle">Evidence bundle</option><option value="technical_report">Technical report</option></select></label>
+        <label>Custom deadline<input id="taskDeadline" type="datetime-local"></label>
+        <label>Voice transcript<input id="taskVoiceInput" placeholder="Voice transcript"></label><label>Budget mode<select id="taskBudgetMode"><option value="economy">Economy</option><option value="balanced" selected>Balanced</option><option value="thorough">Thorough</option></select></label><label>Memory mode<select id="taskMemoryMode"><option value="automatic" selected>Automatic</option><option value="minimal">Minimal</option><option value="standard">Standard</option><option value="deep">Deep</option></select></label>
+      </div>
+      <div class="dialog-actions"><button id="recordTaskVoice" type="button">Record voice</button><button class="primary" type="submit">Send to Copilot Manager</button></div>
+      <p id="unifiedTaskStatus" class="brain-action-status">Ready.</p>
+    </form>
+  </article>
+  <article class="panel">
+    <div class="panel-title"><div><p class="eyebrow">LIVE TASK WORKSPACE</p><h2>Copilot-managed work</h2></div><button id="refreshUnifiedTasks">Refresh</button></div>
+    <div class="task-tabs"><button class="task-tab" data-task-tab="overview">Overview</button><button class="task-tab" data-task-tab="copilot">Copilot Manager</button><button class="task-tab" data-task-tab="workflow">Workflow</button><button class="task-tab" data-task-tab="specialists">Specialists</button><button class="task-tab" data-task-tab="inputs">Inputs</button><button class="task-tab" data-task-tab="evidence">Evidence</button><button class="task-tab" data-task-tab="approvals">Approvals</button><button class="task-tab" data-task-tab="outputs">Outputs</button><button class="task-tab" data-task-tab="brain-vault">Brain Vault</button><button class="task-tab" data-task-tab="models-budget">Models and Budget</button><button class="task-tab" data-task-tab="audit">Audit</button></div>
+  </article>
+  <section id="unifiedTaskGrid" class="unified-task-grid"></section>
+</section>
+
 <section id="view-osint" class="app-view">
   <article class="panel">
     <div class="panel-title"><div><p class="eyebrow">AGENTIC OSINT FOUNDATION</p><h2>OSINT Cases</h2></div>
@@ -186,7 +271,7 @@
               </div>
               <div class="copilot-provider">
                 <span id="copilotProviderDot"></span>
-                <strong id="copilotProviderLabel">Checking providerÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</strong>
+                <strong id="copilotProviderLabel">Checking providerÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</strong>
               </div>
             </div>
 
@@ -200,7 +285,7 @@
 
             
             <form id="copilotChatForm" class="copilot-composer">
-              <textarea id="copilotMessageInput" rows="3" placeholder="Message CopilotÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" required></textarea>
+              <textarea id="copilotMessageInput" rows="3" placeholder="Message CopilotÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" required></textarea>
               <div class="copilot-composer-options">
                 <input id="copilotImageUrl" type="url" placeholder="Optional public image URL for analysis">
                 <select id="copilotProvider">
@@ -210,10 +295,10 @@
                   <option value="openai">OpenAI direct</option>
                 </select>
                 <select id="copilotModel">
-                  <option value="claude-haiku-4-5-20251001">Simple Ãƒâ€šÃ‚Â· Claude Haiku policy</option>
-                  <option value="claude-sonnet-5" selected>Standard Ãƒâ€šÃ‚Â· Claude Sonnet policy</option>
-                  <option value="claude-opus-4-8">Complex Ãƒâ€šÃ‚Â· Claude Opus policy</option>
-                  <option value="gpt-5-mini">Standard Ãƒâ€šÃ‚Â· GPT-5 mini</option>
+                  <option value="claude-haiku-4-5-20251001">Simple ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Claude Haiku policy</option>
+                  <option value="claude-sonnet-5" selected>Standard ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Claude Sonnet policy</option>
+                  <option value="claude-opus-4-8">Complex ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Claude Opus policy</option>
+                  <option value="gpt-5-mini">Standard ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· GPT-5 mini</option>
                   <option value="gpt-5-nano">GPT-5 nano</option>
                   <option value="gpt-5.4-mini">GPT-5.4 mini</option>
                   <option value="gpt-5.4">GPT-5.4</option>
@@ -450,7 +535,7 @@
         <section class="content-grid">
           <article class="panel">
             <div class="panel-title"><div><p class="eyebrow">SPECIALIST</p><h2>Reliability &amp; Defect Specialist</h2></div><span class="status-badge">READY</span></div>
-            <div class="artifact"><span>RD</span><p><strong>Detect Ã¢â€ â€™ reproduce Ã¢â€ â€™ diagnose Ã¢â€ â€™ repair Ã¢â€ â€™ verify</strong><br>Cannot approve or validate its own repair.</p></div>
+            <div class="artifact"><span>RD</span><p><strong>Detect ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ reproduce ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ diagnose ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ repair ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ verify</strong><br>Cannot approve or validate its own repair.</p></div>
             <div id="reliabilityIntegrity"><p class="muted-copy">Run diagnostics to inspect mission-store integrity and system readiness.</p></div>
           </article>
           <article class="panel">
@@ -470,7 +555,7 @@
             </div>
             <p class="muted-copy">Plans missions, routes work across local and cloud models, assigns specialists, enforces approvals, and validates evidence before completion.</p>
             <div class="command-row">
-              <input id="quickObjective" placeholder="Give Copilot a missionÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" />
+              <input id="quickObjective" placeholder="Give Copilot a missionÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" />
               <button id="quickLaunch" class="primary">Launch</button>
             </div>
             <div class="mission-suggestions">
@@ -535,7 +620,7 @@
               <input
                 id="missionHistorySearch"
                 type="search"
-                placeholder="Search title, objective, ID, statusÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦"
+                placeholder="Search title, objective, ID, statusÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦"
               >
               <select id="missionHistoryStatus">
                 <option value="">All statuses</option>
@@ -552,7 +637,7 @@
             </div>
 
             <div id="missionHistoryList" class="mission-history-list">
-              <p class="muted-copy">Loading mission historyÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</p>
+              <p class="muted-copy">Loading mission historyÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</p>
             </div>
           </article>
         </section>
@@ -663,7 +748,7 @@
               </div>
 
               <div id="unifiedSelectedModel" class="selected-provider-model">
-                Loading current selectionÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦
+                Loading current selectionÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦
               </div>
 
               <div id="unifiedProviderStatus" class="provider-status-summary"></div>
@@ -673,7 +758,7 @@
                 <ul>
                   <li>Use local or low-cost models for routine tasks.</li>
                   <li>Require approval before premium or high-token calls.</li>
-                  <li>Fallback order: local ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ OpenRouter ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Anthropic ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ OpenAI ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ deterministic.</li>
+                  <li>Fallback order: local ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ OpenRouter ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Anthropic ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ OpenAI ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ deterministic.</li>
                   <li>Keep all provider keys server-side.</li>
                 </ul>
               </div>
@@ -695,14 +780,14 @@
                   <p class="eyebrow">MODEL SEARCH</p>
                   <h2>Find and select a model</h2>
                 </div>
-                <span id="unifiedModelCatalogSource" class="status-chip">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+                <span id="unifiedModelCatalogSource" class="status-chip">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
               </div>
 
               <div class="model-search-controls">
                 <input
                   id="unifiedModelSearchInput"
                   type="search"
-                  placeholder="Search Claude, GPT, Gemini, Llama, DeepSeekÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦"
+                  placeholder="Search Claude, GPT, Gemini, Llama, DeepSeekÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦"
                 >
                 <select id="unifiedModelProviderFilter">
                   <option value="">All providers</option>
@@ -732,7 +817,7 @@
                   <p class="eyebrow">LOCAL MODEL MANAGER</p>
                   <h2>Install and manage Ollama models</h2>
                 </div>
-                <span id="ollamaManagerStatus" class="status-chip">CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+                <span id="ollamaManagerStatus" class="status-chip">CheckingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
               </div>
 
               <div class="ollama-install-row">
@@ -752,7 +837,7 @@
               <div id="ollamaDownloadProgress" class="ollama-download-progress hidden">
                 <div class="ollama-progress-label">
                   <strong id="ollamaProgressModel">Model</strong>
-                  <span id="ollamaProgressText">StartingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+                  <span id="ollamaProgressText">StartingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
                 </div>
                 <progress id="ollamaProgressBar" max="100" value="0"></progress>
               </div>
@@ -772,7 +857,7 @@
                   <p class="eyebrow">MODEL FLOW GUARD</p>
                   <h2>Compatibility and workflow protection</h2>
                 </div>
-                <span id="modelFlowGuardStatus" class="status-chip">CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+                <span id="modelFlowGuardStatus" class="status-chip">CheckingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
               </div>
 
               <div id="modelFlowGuardSummary" class="model-flow-summary"></div>
@@ -856,22 +941,22 @@
           <div class="health-grid">
             <article class="panel">
               <p class="eyebrow">ACTIVE RUNTIME</p>
-              <div id="healthRuntimeCard" class="health-card-body">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</div>
+              <div id="healthRuntimeCard" class="health-card-body">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</div>
             </article>
 
             <article class="panel">
               <p class="eyebrow">RESOURCES</p>
-              <div id="healthResourceCard" class="health-card-body">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</div>
+              <div id="healthResourceCard" class="health-card-body">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</div>
             </article>
 
             <article class="panel">
               <p class="eyebrow">NETWORK & PROVIDERS</p>
-              <div id="healthNetworkCard" class="health-card-body">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</div>
+              <div id="healthNetworkCard" class="health-card-body">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</div>
             </article>
 
             <article class="panel emergency-panel">
               <p class="eyebrow">EMERGENCY CONTROL</p>
-              <div id="healthEmergencyCard" class="health-card-body">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</div>
+              <div id="healthEmergencyCard" class="health-card-body">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</div>
             </article>
 
             <article class="panel backup-panel">
@@ -881,7 +966,7 @@
                   <h2>Local recovery</h2>
                 </div>
               </div>
-              <div id="healthBackupCard" class="health-card-body">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</div>
+              <div id="healthBackupCard" class="health-card-body">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</div>
               <div class="stabilization-actions">
                 <button id="createSystemBackup" class="primary">Create backup</button>
                 <button id="restoreLatestBackup">Restore latest</button>
@@ -915,7 +1000,7 @@
               </p>
             </div>
             <div class="roadmap-header-actions">
-              <span id="roadmapCurrentPhase" class="status-chip">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+              <span id="roadmapCurrentPhase" class="status-chip">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
               <button id="refreshRoadmap">Refresh</button>
             </div>
           </header>
@@ -1028,7 +1113,7 @@
                 before anything runs.
               </p>
             </div>
-            <span id="desktopCompanionStatus" class="status-chip">CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+            <span id="desktopCompanionStatus" class="status-chip">CheckingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
           </div>
 
           <div id="desktopCompanionSummary" class="desktop-companion-summary"></div>
@@ -1098,7 +1183,7 @@
               <p class="eyebrow">OBSIDIAN CONNECTOR</p>
               <h2>AIOS Knowledge vault</h2>
             </div>
-            <span id="obsidianConnectionStatus" class="status-chip">CheckingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+            <span id="obsidianConnectionStatus" class="status-chip">CheckingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
           </div>
 
           <div class="obsidian-settings-grid">
@@ -1141,7 +1226,7 @@
 
           <div class="obsidian-workspace">
             <div class="obsidian-search-row">
-              <input id="obsidianSearchInput" type="search" placeholder="Search vault notesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦">
+              <input id="obsidianSearchInput" type="search" placeholder="Search vault notesÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦">
               <button id="searchObsidianNotes">Search</button>
             </div>
 
@@ -1170,7 +1255,7 @@
                 <p class="eyebrow">AUTOMATIC EXPORT</p>
                 <h2>Validated AIOS outputs</h2>
               </div>
-              <span id="obsidianAutoExportStatus" class="status-chip">LoadingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</span>
+              <span id="obsidianAutoExportStatus" class="status-chip">LoadingÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</span>
             </div>
 
             <div class="obsidian-export-options">
@@ -1230,7 +1315,7 @@
           <div class="panel-title connector-title">
             <div><p class="eyebrow">MODEL, TOOL AND MCP HUB</p><h2>Connectors</h2></div>
             <div class="connector-controls">
-              <input id="connectorSearch" type="search" placeholder="Search connectorsÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" />
+              <input id="connectorSearch" type="search" placeholder="Search connectorsÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" />
               <select id="connectorFilter">
                 <option value="all">All types</option>
                 <option value="cloud">Cloud</option>
@@ -1350,7 +1435,7 @@
           <div class="panel-title"><div><p class="eyebrow">HUMAN CONTROL GATE</p><h2>Approval Center</h2></div></div>
           <div id="approvalList" class="approval-list">
             <div class="empty-approval">
-              <span>ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“</span>
+              <span>ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ</span>
               <h3>No pending approvals</h3>
               <p>Sensitive commands, deployments, file writes, and network actions will appear here.</p>
             </div>
@@ -1364,7 +1449,7 @@
     <form id="connectorForm">
       <div class="dialog-head">
         <div><p class="eyebrow">CONNECTOR REGISTRY</p><h2>Add connector</h2></div>
-        <button type="button" id="closeConnectorDialog">ÃƒÆ’Ã¢â‚¬â€</button>
+        <button type="button" id="closeConnectorDialog">ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</button>
       </div>
       <label>Name<input name="name" required minlength="2" placeholder="My MCP Server" /></label>
       <div class="form-grid">
@@ -1384,8 +1469,8 @@
           </select>
         </label>
       </div>
-      <label>Server command or URL<input name="endpoint" required placeholder="npx -y @modelcontextprotocol/server-github or https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" /></label>
-      <label>Documentation link<input name="docs_url" type="url" placeholder="https://ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" /></label>
+      <label>Server command or URL<input name="endpoint" required placeholder="npx -y @modelcontextprotocol/server-github or https://ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" /></label>
+      <label>Documentation link<input name="docs_url" type="url" placeholder="https://ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" /></label>
       <label>Purpose<textarea name="description" placeholder="What this connector allows specialist agents to do."></textarea></label>
       <label class="checkbox-label"><input name="requires_approval" type="checkbox" checked /> Require approval for write actions</label>
       <div class="dialog-actions">
@@ -1404,7 +1489,7 @@
           <p class="eyebrow">SECURE SERVER SETUP</p>
           <h2 id="providerKeyDialogTitle">Connect AI provider</h2>
         </div>
-        <button type="button" id="closeProviderKeyDialog">ÃƒÆ’Ã¢â‚¬â€</button>
+        <button type="button" id="closeProviderKeyDialog">ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</button>
       </div>
 
       <input id="providerKeyProvider" name="provider" type="hidden">
@@ -1452,7 +1537,7 @@
     <form id="expenseForm">
       <div class="dialog-head">
         <div><p class="eyebrow">COST CONTROL</p><h2>Add expense or renewal</h2></div>
-        <button type="button" id="closeExpenseDialog">ÃƒÆ’Ã¢â‚¬â€</button>
+        <button type="button" id="closeExpenseDialog">ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</button>
       </div>
       <div class="form-grid">
         <label>Vendor<input name="vendor" required placeholder="OpenAI"></label>
@@ -1479,7 +1564,7 @@
 
   <dialog id="missionDialog">
     <form id="missionForm">
-      <div class="dialog-head"><div><p class="eyebrow">COPILOT INTAKE</p><h2>Create mission</h2></div><button type="button" id="closeDialog">ÃƒÆ’Ã¢â‚¬â€</button></div>
+      <div class="dialog-head"><div><p class="eyebrow">COPILOT INTAKE</p><h2>Create mission</h2></div><button type="button" id="closeDialog">ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</button></div>
       <label>Mission title<input name="title" required minlength="3" placeholder="Build hybrid agent workspace" /></label>
       <label>Objective<textarea name="objective" required minlength="3" placeholder="Describe the result Copilot must deliver and validate."></textarea></label>
       <div class="form-grid">
@@ -1493,33 +1578,33 @@
 
   <nav class="mobile-bottom-nav" aria-label="AIOS mobile navigation">
     <button class="mobile-nav-item active" data-view="mission">
-      <span>ÃƒÂ¢Ã…â€™Ã‚Â</span><small>Mission</small>
+      <span>ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€šÃ‚Â</span><small>Mission</small>
     </button>
     <button class="mobile-nav-item" data-view="workflow">
-      <span>ÃƒÂ¢Ã¢â‚¬â€Ã¢â‚¬Â¡</span><small>Workflow</small>
+      <span>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡</span><small>Workflow</small>
     </button>
     <button class="mobile-nav-item" data-view="agents">
-      <span>ÃƒÂ¢Ã¢â‚¬â€Ã…Â½</span><small>Agents</small>
+      <span>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬ÂÃƒâ€¦Ã‚Â½</span><small>Agents</small>
     </button>
     <button class="mobile-nav-item" data-view="connectors">
-      <span>ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â€</span><small>Connect</small>
+      <span>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â</span><small>Connect</small>
     </button>
     <button class="mobile-nav-item" data-view="mobile">
-      <span>ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â£</span><small>Mobile</small>
+      <span>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“Ãƒâ€šÃ‚Â£</span><small>Mobile</small>
     </button>
     <button class="mobile-nav-item" id="mobileMoreBtn" type="button">
-      <span>ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢</span><small>More</small>
+      <span>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢</span><small>More</small>
     </button>
   </nav>
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
-    <button type="button" data-view="copilot">ÃƒÂ¢Ã…â€œÃ‚Â¦ Copilot Chat</button>
-    <button type="button" data-view="knowledge">ÃƒÂ¢Ã…â€™Ã‹Å“ Knowledge Graph</button>
-    <button type="button" data-view="approvals">ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Approval Center</button>
-    <button type="button" data-view="budget">ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â± Budget & Usage</button>
+    <button type="button" data-view="copilot">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“Ãƒâ€šÃ‚Â¦ Copilot Chat</button>
+    <button type="button" data-view="knowledge">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬â„¢Ãƒâ€¹Ã…â€œ Knowledge Graph</button>
+    <button type="button" data-view="approvals">ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Approval Center</button>
+    <button type="button" data-view="budget">ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1g-osint-foundation-1"></script>
+  <script src="/assets/app.js?v=phase1g-navigation-settings-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
@@ -1553,6 +1638,7 @@
 
 </body>
 </html>
+
 
 
 
