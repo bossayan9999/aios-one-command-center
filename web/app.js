@@ -6,6 +6,7 @@ let currentMission = null;
 const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
+  projects: "Projects",
   workflow: "Workflow Map",
   agents: "Specialists",
   knowledge: "Knowledge Graph",
@@ -3332,3 +3333,118 @@ $("#brainMemoryPreviewForm")?.addEventListener("submit", async event => {
   }
 });
 
+
+
+function escapeProjectHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function projectCard(project) {
+  const specialists = (project.specialists || []).map(escapeProjectHtml).join(", ") || "Not assigned";
+  const repository = escapeProjectHtml(project.github_repository || "Not linked");
+  const branch = escapeProjectHtml(project.github_branch || "Not linked");
+  const vault = escapeProjectHtml(project.brain_vault_path || "Not linked");
+  return `
+    <article class="panel project-card" data-project-id="${escapeProjectHtml(project.id)}">
+      <div class="project-card-head">
+        <div><p class="eyebrow">${escapeProjectHtml(project.status).toUpperCase()}</p><h2>${escapeProjectHtml(project.name)}</h2></div>
+        <span class="status-chip">${Number(project.progress || 0)}%</span>
+      </div>
+      <p>${escapeProjectHtml(project.objective)}</p>
+      <div class="project-progress"><span style="width:${Number(project.progress || 0)}%"></span></div>
+      <dl class="project-meta">
+        <div><dt>Specialists</dt><dd>${specialists}</dd></div>
+        <div><dt>GitHub</dt><dd>${repository}</dd></div>
+        <div><dt>Branch</dt><dd>${branch}</dd></div>
+        <div><dt>Brain Vault</dt><dd>${vault}</dd></div>
+      </dl>
+      <div class="dialog-actions">
+        <button class="project-progress-button" data-project-id="${escapeProjectHtml(project.id)}" data-progress="${Number(project.progress || 0)}">Update progress</button>
+        <button class="project-open-memory" data-path="${vault}">Open memory</button>
+      </div>
+    </article>`;
+}
+
+async function loadProjects() {
+  const grid = $("#projectGrid");
+  if (!grid) return;
+  try {
+    const payload = await api("/api/projects");
+    const projects = payload.projects || [];
+    $("#projectTotal").textContent = projects.length;
+    $("#projectActive").textContent = projects.filter(item => item.status === "active").length;
+    $("#projectBlocked").textContent = projects.filter(item => item.status === "blocked").length;
+    const average = projects.length
+      ? Math.round(projects.reduce((sum, item) => sum + Number(item.progress || 0), 0) / projects.length)
+      : 0;
+    $("#projectAverageProgress").textContent = `${average}%`;
+    grid.innerHTML = projects.length
+      ? projects.map(projectCard).join("")
+      : `<article class="panel empty-project"><h2>No projects yet</h2><p>Create the first persistent AIOS project.</p></article>`;
+    wireProjectCards();
+  } catch (error) {
+    grid.innerHTML = `<article class="panel"><h2>Projects unavailable</h2><p>${escapeProjectHtml(error.message)}</p></article>`;
+  }
+}
+
+function wireProjectCards() {
+  document.querySelectorAll(".project-progress-button").forEach(button => {
+    button.addEventListener("click", async () => {
+      const current = Number(button.dataset.progress || 0);
+      const raw = window.prompt("Set project progress from 0 to 100:", String(current));
+      if (raw === null) return;
+      const progress = Math.max(0, Math.min(Number(raw), 100));
+      if (!Number.isFinite(progress)) return;
+      await api(`/api/projects/${button.dataset.projectId}`, {
+        method: "POST",
+        body: JSON.stringify({progress}),
+      });
+      await loadProjects();
+    });
+  });
+  document.querySelectorAll(".project-open-memory").forEach(button => {
+    button.addEventListener("click", () => {
+      switchView("brain-vault");
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const open = $("#openProjectForm");
+  const close = $("#closeProjectForm");
+  const panel = $("#projectCreatePanel");
+  open?.addEventListener("click", () => panel?.classList.remove("hidden"));
+  close?.addEventListener("click", () => panel?.classList.add("hidden"));
+
+  $("#projectForm")?.addEventListener("submit", async event => {
+    event.preventDefault();
+    const status = $("#projectFormStatus");
+    status.textContent = "Creating project...";
+    try {
+      const payload = {
+        name: $("#projectName").value.trim(),
+        objective: $("#projectObjective").value.trim(),
+        status: $("#projectStatus").value,
+        github_repository: $("#projectGithubRepository").value.trim(),
+        github_branch: $("#projectGithubBranch").value.trim(),
+        brain_vault_path: $("#projectBrainVaultPath").value.trim(),
+        specialists: $("#projectSpecialists").value.split(",").map(item => item.trim()).filter(Boolean),
+      };
+      await api("/api/projects", {method: "POST", body: JSON.stringify(payload)});
+      event.target.reset();
+      panel?.classList.add("hidden");
+      status.textContent = "Project created.";
+      await loadProjects();
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  });
+
+  document.querySelector('.nav-item[data-view="projects"]')?.addEventListener("click", loadProjects);
+  if (window.location.hash === "#projects") loadProjects();
+});
