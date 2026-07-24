@@ -1300,3 +1300,37 @@ button,
 #brainVaultAutosave {
   overflow-wrap: anywhere;
 }
+
+
+.brain-memory-context {
+  border: 1px solid rgba(251, 191, 36, .45);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.brain-memory-citations {
+  display: grid;
+  gap: .75rem;
+}
+
+.brain-memory-citation {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.brain-memory-citation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.brain-memory-citation code {
+  display: block;
+  margin: .5rem 0;
+  overflow-wrap: anywhere;
+  opacity: .75;
+}
