@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 import platform
@@ -375,3 +375,84 @@ def run_network_health(root: Path, public_url: str) -> dict[str, Any]:
         "checks": [item.as_dict() for item in checks],
     }
 
+
+
+def diagnostic_workflow_definition() -> list[dict[str, object]]:
+    return [
+        {
+            "id": "desktop",
+            "name": "Desktop health",
+            "steps": [
+                "Read CPU load",
+                "Read memory usage",
+                "Check free disk space",
+                "Confirm AIOS process",
+                "Confirm port 8000 listener",
+                "Check cloudflared service",
+                "Check Ollama endpoint",
+            ],
+        },
+        {
+            "id": "router",
+            "name": "Router and gateway",
+            "steps": [
+                "Detect active default route",
+                "Read default gateway address",
+                "Ping the gateway",
+                "Measure gateway latency",
+                "Classify reachability",
+            ],
+        },
+        {
+            "id": "cloudflare",
+            "name": "Cloudflare path",
+            "steps": [
+                "Check cloudflared Windows service",
+                "Check local AIOS health",
+                "Check public AIOS health",
+                "Detect Cloudflare Access HTML",
+                "Compare local and public results",
+                "Produce likely root cause",
+            ],
+        },
+        {
+            "id": "dns-internet",
+            "name": "DNS and internet",
+            "steps": [
+                "Resolve cloudflare.com",
+                "Measure DNS latency",
+                "Call internet trace endpoint",
+                "Classify internet reachability",
+            ],
+        },
+        {
+            "id": "obsidian",
+            "name": "Obsidian backup",
+            "steps": [
+                "Locate backup directory",
+                "Count backup files",
+                "Find newest backup",
+                "Calculate backup age",
+                "Classify freshness",
+            ],
+        },
+    ]
+
+
+def build_diagnostic_report(result: dict[str, Any]) -> dict[str, Any]:
+    failed = [
+        item for item in result.get("checks", [])
+        if item.get("status") not in {HEALTHY, AUTH_REQUIRED}
+    ]
+    root_cause = "No operational fault detected."
+    if failed:
+        names = ", ".join(str(item.get("name", item.get("id", "unknown"))) for item in failed)
+        root_cause = f"Attention required for: {names}."
+    return {
+        "generated_at": _now(),
+        "status": result.get("status", "unknown"),
+        "root_cause_summary": root_cause,
+        "desktop": result.get("desktop", {}),
+        "checks": result.get("checks", []),
+        "workflow": diagnostic_workflow_definition(),
+    }

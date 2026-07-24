@@ -3040,3 +3040,125 @@ async function loadNetworkHealth() {
 
 $("#runNetworkHealth")?.addEventListener("click", loadNetworkHealth);
 
+
+
+let latestNetworkDiagnosticReport = null;
+
+function renderDiagnosticWorkflow(report) {
+  const host = $("#networkWorkflowProgress");
+  const workflows = report.workflow || [];
+  host.innerHTML = workflows.map(group => `
+    <article class="diagnostic-workflow-group">
+      <div class="diagnostic-workflow-head">
+        <strong>${escapeHtml(group.name || group.id)}</strong>
+        <span>COMPLETE</span>
+      </div>
+      <ol>
+        ${(group.steps || []).map(step => `
+          <li>
+            <span class="diagnostic-step-state">✓</span>
+            <span>${escapeHtml(step)}</span>
+          </li>`).join("")}
+      </ol>
+    </article>`).join("");
+}
+
+function networkDiagnosticText(report) {
+  const lines = [
+    `AIOS Network & Desktop Diagnostic`,
+    `Generated: ${report.generated_at || "unknown"}`,
+    `Status: ${String(report.status || "unknown").toUpperCase()}`,
+    `Root cause: ${report.root_cause_summary || "Not available"}`,
+    "",
+    "Checks:",
+  ];
+  for (const item of report.checks || []) {
+    lines.push(
+      `- ${item.name || item.id}: ${String(item.status || "unknown").toUpperCase()}` +
+      `${item.latency_ms == null ? "" : ` (${item.latency_ms} ms)`}`,
+      `  Detail: ${item.detail || ""}`,
+      `  Recommended: ${item.recommended_action || "No action required."}`
+    );
+  }
+  return lines.join("\n");
+}
+
+async function loadNetworkDiagnosticWorkflow() {
+  const progress = $("#networkWorkflowProgress");
+  const started = performance.now();
+  progress.innerHTML = `
+    <article class="diagnostic-workflow-group running">
+      <div class="diagnostic-workflow-head">
+        <strong>Running live diagnostic workflow</strong>
+        <span id="networkWorkflowElapsed">0.0 s</span>
+      </div>
+      <ol>
+        <li><span class="diagnostic-step-state">…</span><span>Collecting safe health signals</span></li>
+        <li><span class="diagnostic-step-state">…</span><span>Comparing local and public health</span></li>
+        <li><span class="diagnostic-step-state">…</span><span>Building root-cause summary</span></li>
+      </ol>
+    </article>`;
+  const timer = window.setInterval(() => {
+    const elapsed = $("#networkWorkflowElapsed");
+    if (elapsed) elapsed.textContent = `${((performance.now() - started) / 1000).toFixed(1)} s`;
+  }, 100);
+
+  try {
+    const report = await api("/api/network-health/workflow");
+    latestNetworkDiagnosticReport = report;
+    renderDiagnosticWorkflow(report);
+    const rootCause = $("#networkRootCause");
+    rootCause.classList.remove("hidden");
+    rootCause.innerHTML = `
+      <p class="eyebrow">ROOT CAUSE SUMMARY</p>
+      <h3>${escapeHtml(report.root_cause_summary || "No summary available.")}</h3>
+      <p>Completed in ${((performance.now() - started) / 1000).toFixed(1)} seconds.</p>`;
+    return report;
+  } finally {
+    window.clearInterval(timer);
+  }
+}
+
+const originalLoadNetworkHealth = loadNetworkHealth;
+loadNetworkHealth = async function() {
+  await originalLoadNetworkHealth();
+  try {
+    await loadNetworkDiagnosticWorkflow();
+  } catch (error) {
+    const progress = $("#networkWorkflowProgress");
+    progress.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+};
+
+$("#retryNetworkHealth")?.addEventListener("click", loadNetworkHealth);
+
+$("#copyNetworkHealthReport")?.addEventListener("click", async () => {
+  if (!latestNetworkDiagnosticReport) {
+    await loadNetworkHealth();
+  }
+  await navigator.clipboard.writeText(networkDiagnosticText(latestNetworkDiagnosticReport));
+  if (typeof showAiosToast === "function") {
+    showAiosToast({
+      title: "Diagnostic report copied",
+      message: "The safe health report is in your clipboard.",
+      type: "success",
+    });
+  }
+});
+
+$("#downloadNetworkHealthReport")?.addEventListener("click", async () => {
+  if (!latestNetworkDiagnosticReport) {
+    await loadNetworkHealth();
+  }
+  const blob = new Blob(
+    [JSON.stringify(latestNetworkDiagnosticReport, null, 2)],
+    {type: "application/json"}
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `aios-network-diagnostic-${new Date().toISOString().replaceAll(":", "-")}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
