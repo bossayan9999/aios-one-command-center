@@ -9,7 +9,7 @@ and local Ollama models. It is not yet a production multi-user SaaS.
 ## Fixed in this release
 
 - Missing Ollama gateway methods that broke provider settings
-- “Loading current selection…” status bug
+- "Loading current selection…" status bug
 - New `/api/models/active` source of truth
 - Global Active Brain indicator
 - Ready, fallback, and offline states

@@ -9,6 +9,7 @@ const viewTitles = {
   copilot: "Copilot Chat",
   "command-center": "Command Center",
   settings: "Settings",
+  connectors: "Tools and Connectors",
   projects: "Projects",
   osint: "OSINT Cases",
   workflow: "Workflow Map",
@@ -326,7 +327,7 @@ $("#missionForm").addEventListener("submit", async (event) => {
   const submit = event.submitter;
 
   submit.disabled = true;
-  submit.textContent = "Planningâ€¦";
+  submit.textContent = "Planning…";
 
   try {
     const formData = new FormData(missionForm);
@@ -453,7 +454,7 @@ function renderBudget(payload) {
   document.querySelectorAll("[data-pay-expense]").forEach(button => {
     button.addEventListener("click", async () => {
       button.disabled = true;
-      button.textContent = "Recordingâ€¦";
+      button.textContent = "Recording…";
       try {
         const result = await api(`/api/budget/expenses/${button.dataset.payExpense}/paid`, { method: "POST" });
         showBrowserBudgetNotification(result.notification.message);
@@ -621,7 +622,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   renderCopilotMessages([...(existing.messages || []), pending]);
 
   send.disabled = true;
-  send.textContent = "Thinkingâ€¦";
+  send.textContent = "Thinking…";
   $("#copilotChatStatus").textContent = "Copilot is using the live model gateway.";
 
   try {
@@ -735,7 +736,7 @@ async function loadModelCatalog() {
     free_only: String($("#freeModelsOnly").checked),
     limit: "120",
   });
-  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching modelsâ€¦</p>`;
+  $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching models…</p>`;
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#modelCatalogSource").textContent = `${payload.count} models · ${payload.source}`;
   $("#modelCatalogResults").innerHTML = payload.models.length
@@ -953,7 +954,7 @@ $("#providerKeyForm")?.addEventListener("submit", async event => {
 
   const submit = event.currentTarget.querySelector('button[type="submit"]');
   submit.disabled = true;
-  submit.textContent = "Savingâ€¦";
+  submit.textContent = "Saving…";
 
   try {
     await api("/api/settings/providers/key", {
@@ -1068,7 +1069,7 @@ async function loadUnifiedModelCatalog() {
   });
 
   $("#unifiedModelCatalogResults").innerHTML =
-    `<p class="muted-copy">Searching modelsâ€¦</p>`;
+    `<p class="muted-copy">Searching models…</p>`;
 
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#unifiedModelCatalogSource").textContent =
@@ -1210,7 +1211,7 @@ async function loadOllamaManager() {
     button.addEventListener("click", async () => {
       const model = button.dataset.testOllama;
       button.disabled = true;
-      button.textContent = "Testingâ€¦";
+      button.textContent = "Testing…";
       try {
         const result = await api("/api/ollama/test", {
           method: "POST",
@@ -1281,7 +1282,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
   const button = $("#installOllamaModel");
   button.disabled = true;
-  button.textContent = "Startingâ€¦";
+  button.textContent = "Starting…";
 
   try {
     const job = await api("/api/ollama/pull", {
@@ -1291,7 +1292,7 @@ $("#installOllamaModel")?.addEventListener("click", async () => {
 
     $("#ollamaDownloadProgress").classList.remove("hidden");
     $("#ollamaProgressModel").textContent = model;
-    $("#ollamaProgressText").textContent = "Starting downloadâ€¦";
+    $("#ollamaProgressText").textContent = "Starting download…";
     $("#ollamaProgressBar").value = 0;
     pollOllamaPull(job.job_id);
   } catch (error) {
@@ -1333,7 +1334,7 @@ async function loadActiveModelIndicator() {
       $("#testActiveModel")?.addEventListener("click", async event => {
         const button = event.currentTarget;
         button.disabled = true;
-        button.textContent = "Testingâ€¦";
+        button.textContent = "Testing…";
         try {
           if (active.effective_provider === "ollama") {
             const result = await api("/api/ollama/test", {
@@ -1756,7 +1757,7 @@ async function loadMissionHistory() {
     limit: "300",
   });
 
-  target.innerHTML = '<p class="muted-copy">Loading mission historyâ€¦</p>';
+  target.innerHTML = '<p class="muted-copy">Loading mission history…</p>';
 
   try {
     const payload = await api(`/api/missions?${params.toString()}`);
@@ -1824,7 +1825,7 @@ async function loadMissionHistory() {
     document.querySelectorAll("[data-reexport-history]").forEach(button => {
       button.addEventListener("click", async () => {
         button.disabled = true;
-        button.textContent = "Exportingâ€¦";
+        button.textContent = "Exporting…";
         try {
           const result = await api(
             `/api/connectors/obsidian/reexport-mission/${button.dataset.reexportHistory}`,
@@ -1901,7 +1902,7 @@ function showAiosToast({ title, message, type = "success", actions = [] }) {
       <p>${escapeHtml(message)}</p>
     </div>
     <div class="aios-toast-actions"></div>
-    <button class="aios-toast-close" type="button" aria-label="Close">Ã—</button>
+    <button class="aios-toast-close" type="button" aria-label="Close">×</button>
   `;
 
   const actionsTarget = toast.querySelector(".aios-toast-actions");
@@ -2625,7 +2626,7 @@ document.querySelectorAll("[data-mobile-command]").forEach(button => {
 
     const command = button.dataset.mobileCommand;
     button.disabled = true;
-    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}â€¦`;
+    $("#remoteCommandStatus").textContent = `Sending ${command.replaceAll("_", " ")}…`;
 
     try {
       const result = await api("/api/mobile/command", {
@@ -3564,4 +3565,42 @@ document.addEventListener("DOMContentLoaded",()=>{
   $("#migrateLegacyTasks")?.addEventListener("click",async()=>{const r=await api("/api/tasks/migrate-legacy",{method:"POST",body:"{}"});$("#settingsStatus").textContent=`Migrated ${r.migrated} of ${r.total} tasks.`;await loadUnifiedTasks();});
   document.querySelector('.nav-item[data-view="settings"]')?.addEventListener("click",loadSettings);
   if(location.hash==="#settings")loadSettings();
+});
+function connectorCard(connector, health) {
+  const status = health?.status || "UNKNOWN";
+  const latency = health?.latency_ms == null ? "n/a" : `${health.latency_ms} ms`;
+  const tools = (connector.allowed_tools || connector.toolsets || []).join(", ") || "None";
+  return `<article class="panel connector-card">
+    <div class="project-card-head"><div><p class="eyebrow">${connector.transport}</p><h2>${connector.name}</h2></div><span class="status-chip">${status}</span></div>
+    <dl class="project-meta">
+      <div><dt>Mode</dt><dd>${connector.read_only ? "READ ONLY" : "APPROVAL GATED"}</dd></div>
+      <div><dt>Trust</dt><dd>${connector.trust_level}</dd></div>
+      <div><dt>Latency</dt><dd>${latency}</dd></div>
+      <div><dt>Daily ceiling</dt><dd>${connector.daily_call_ceiling}</dd></div>
+      <div><dt>Tools / toolsets</dt><dd>${tools}</dd></div>
+      <div><dt>Health message</dt><dd>${health?.message || "Not checked"}</dd></div>
+    </dl>
+  </article>`;
+}
+
+async function loadConnectors() {
+  const grid = $("#connectorGrid");
+  if (!grid) return;
+  try {
+    const [registry, health] = await Promise.all([
+      api("/api/connectors"),
+      api("/api/connectors/health"),
+    ]);
+    const healthMap = Object.fromEntries((health.connectors || []).map(item => [item.connector_id, item]));
+    const connectors = registry.connectors || [];
+    grid.innerHTML = connectors.map(item => connectorCard(item, healthMap[item.connector_id])).join("");
+  } catch (error) {
+    grid.innerHTML = `<article class="panel"><h2>Connector runtime unavailable</h2><p>${error.message}</p></article>`;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("#refreshConnectorHealth")?.addEventListener("click", loadConnectors);
+  document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", loadConnectors);
+  if (location.hash === "#connectors") loadConnectors();
 });

@@ -32,7 +32,9 @@ from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
 from agentic.brain_vault import BrainVault
+from agentic.connector_registry import ConnectorRegistry
 from agentic.governance import GovernanceEngine, ValidationDecision
+from agentic.mcp_runtime import MCPRuntime
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
     ModelGateway,
@@ -103,6 +105,8 @@ PROJECT_STORE = ProjectStore(DATA_DIR)
 OSINT_CASES = OSINTCaseStore(DATA_DIR, BRAIN_VAULT_ROOT)
 UNIFIED_TASKS = UnifiedTaskStore(DATA_DIR, BRAIN_VAULT_ROOT)
 AIOS_SETTINGS = AIOSSettingsStore(DATA_DIR)
+CONNECTOR_REGISTRY = ConnectorRegistry(DATA_DIR)
+MCP_RUNTIME = MCPRuntime()
 
 
 def _brain_vault_autosave_enabled() -> bool:
@@ -2303,7 +2307,7 @@ def list_ai_model_catalog(
         sources.append("built-in fallback")
     source = " + ".join(sources)
     if errors:
-        source += " ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· unavailable: " + ", ".join(errors)
+        source += " · unavailable: " + ", ".join(errors)
 
     q = query.strip().lower()
     provider_filter = provider.strip().lower()
@@ -3302,14 +3306,14 @@ def _render_mission_note(mission):
     for step in mission.get("workflow", []):
         lines.append(
             f"- [{ 'x' if step.get('status') == 'complete' else ' ' }] "
-            f"{step.get('label', '')} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â `{step.get('agent', '')}` "
+            f"{step.get('label', '')} — `{step.get('agent', '')}` "
             f"({step.get('status', 'unknown')})"
         )
     lines.extend(["", "## Evidence", ""])
     if evidence:
         for item in evidence:
             lines.append(
-                f"- {'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦' if item.get('verified') else 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â»ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â'} "
+                f"- {'✅' if item.get('verified') else '◻️'} "
                 f"{item.get('label', item.get('type', 'Evidence'))}"
             )
     else:
@@ -3340,7 +3344,7 @@ def _render_agent_report_note(mission, result):
     agent = result.get("agent") or result.get("specialist_id") or "agent"
     model = result.get("model", "unknown")
     provider = result.get("provider", "unknown")
-    title = f"{mission.get('title', 'Mission')} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â {agent.title()}"
+    title = f"{mission.get('title', 'Mission')} — {agent.title()}"
     content = (
         result.get("output")
         or result.get("text")
@@ -3388,7 +3392,7 @@ validated: {str(_mission_is_validated(mission)).lower()}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# {mission.get("title", "Mission")} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â {label}
+# {mission.get("title", "Mission")} — {label}
 
 ## Agent
 
@@ -3430,7 +3434,7 @@ validated: {str(_mission_is_validated(mission)).lower()}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# Research ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â {title}
+# Research — {title}
 
 {chr(10).join(sections)}
 """
@@ -3449,7 +3453,7 @@ output_type: {_yaml_scalar(mission.get("output_type", ""))}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# Decision Record ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â {title}
+# Decision Record — {title}
 
 ## Decision
 
@@ -3881,7 +3885,7 @@ def _desktop_export_audit_to_obsidian(record):
         day = _utc_now_iso()[:10]
         path = f"Audit Logs/{day} - Desktop Companion.md"
         section = f"""
-## {record.get("time", _utc_now_iso())} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â {record.get("tool", "tool")}
+## {record.get("time", _utc_now_iso())} — {record.get("tool", "tool")}
 
 - Request ID: `{record.get("id", "")}`
 - Status: **{record.get("status", "")}**
@@ -4100,13 +4104,13 @@ ROADMAP_STATE_FILE = DATA_DIR / "roadmap_state.json"
 ROADMAP_REMINDERS_FILE = DATA_DIR / "roadmap_reminders.json"
 
 DEFAULT_ROADMAP_STATE = {
-    "current_phase": "Phase 1 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Secure single-owner product",
+    "current_phase": "Phase 1 — Secure single-owner product",
     "overall_status": "in-progress",
     "last_reviewed_at": "",
     "phases": [
         {
             "id": "phase-0",
-            "name": "Phase 0 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Stabilize the alpha",
+            "name": "Phase 0 — Stabilize the alpha",
             "status": "complete",
             "progress": 100,
             "completed": [
@@ -4130,7 +4134,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-1",
-            "name": "Phase 1 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Secure single-owner product",
+            "name": "Phase 1 — Secure single-owner product",
             "status": "in-progress",
             "progress": 35,
             "completed": [
@@ -4154,7 +4158,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-2",
-            "name": "Phase 2 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Production data foundation",
+            "name": "Phase 2 — Production data foundation",
             "status": "planned",
             "progress": 10,
             "completed": [
@@ -4171,7 +4175,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-3",
-            "name": "Phase 3 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Real agentic engineering loop",
+            "name": "Phase 3 — Real agentic engineering loop",
             "status": "planned",
             "progress": 20,
             "completed": [
@@ -4191,7 +4195,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-4",
-            "name": "Phase 4 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Team SaaS",
+            "name": "Phase 4 — Team SaaS",
             "status": "planned",
             "progress": 0,
             "completed": [],
@@ -4206,7 +4210,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-5",
-            "name": "Phase 5 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Autonomous R&D platform",
+            "name": "Phase 5 — Autonomous R&D platform",
             "status": "planned",
             "progress": 5,
             "completed": [

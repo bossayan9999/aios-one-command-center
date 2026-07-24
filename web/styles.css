@@ -1422,3 +1422,17 @@ button,
 .unified-task-card[data-active-tab="models-budget"] details,.unified-task-card[data-active-tab="models-budget"] .task-workflow{display:none}
 .unified-task-card[data-active-tab="workflow"] .token-budget-panel,.unified-task-card[data-active-tab="workflow"] details{display:none}
 @media(max-width:760px){.settings-save{grid-template-columns:1fr}}
+
+/* Phase 1H: MCP Runtime and Connectors */
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.connector-card .project-meta {
+  margin-top: .8rem;
+}
+.connector-card dd {
+  overflow-wrap: anywhere;
+}
