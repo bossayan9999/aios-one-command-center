@@ -46,3 +46,8 @@ data/AIOS-Brain-Vault/06-Backups/
 data/osint_cases.json
 data/osint-sandboxes/
 
+
+data/unified_tasks.json
+data/task-files/
+
+data/settings.json
