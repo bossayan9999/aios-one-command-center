@@ -1169,3 +1169,44 @@ button,
 .mission-lifecycle-dialog label { display: grid; gap: .4rem; }
 .mission-lifecycle-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .mission-archived-badge { font-size: .75rem; letter-spacing: .08em; }
+
+
+#networkHealthCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.network-health-card {
+  display: grid;
+  gap: .65rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+}
+
+.network-health-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.network-health-card small {
+  display: block;
+}
+
+.network-health-healthy {
+  border-color: rgba(45, 212, 191, .45);
+}
+
+.network-health-degraded,
+.network-health-timeout,
+.network-health-auth-required {
+  border-color: rgba(251, 191, 36, .6);
+}
+
+.network-health-offline,
+.network-health-escalate,
+.network-health-misconfigured {
+  border-color: rgba(248, 113, 113, .65);
+}

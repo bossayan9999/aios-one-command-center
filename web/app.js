@@ -13,6 +13,7 @@ const viewTitles = {
   "ai-settings": "AI & Providers",
   "system-health": "System Health",
   reliability: "Reliability Center",
+  "network-health": "Network & Desktop Health",
   "roadmap": "Roadmap & Progress",
   approvals: "Approval Center",
   mobile: "Mobile Control",
@@ -2991,4 +2992,51 @@ $("#missionLifecycleForm")?.addEventListener("submit", async event => {
 $("#cancelMissionLifecycle")?.addEventListener("click", () => $("#missionLifecycleDialog")?.close());
 $("#runReliabilityDiagnostics")?.addEventListener("click", runReliabilityDiagnostics);
 $("#refreshReliability")?.addEventListener("click", loadReliability);
+
+
+
+function networkHealthStatusClass(status) {
+  return `network-health-${String(status || "unknown").replaceAll("_", "-")}`;
+}
+
+async function loadNetworkHealth() {
+  const host = $("#networkHealthCards");
+  host.innerHTML = '<p class="muted-copy">Running checks...</p>';
+  try {
+    const payload = await api("/api/network-health");
+    $("#networkOverallStatus").textContent =
+      String(payload.status || "unknown").toUpperCase();
+    $("#networkCpu").textContent = `${payload.desktop?.cpu_percent ?? 0}%`;
+    $("#networkMemory").textContent = `${payload.desktop?.memory_percent ?? 0}%`;
+    $("#networkCheckedAt").textContent = payload.checked_at
+      ? new Date(payload.checked_at).toLocaleString()
+      : "Never";
+    host.innerHTML = (payload.checks || []).map(item => `
+      <article class="network-health-card ${networkHealthStatusClass(item.status)}">
+        <div class="network-health-card-head">
+          <div>
+            <p class="eyebrow">${escapeHtml(String(item.status || "unknown").toUpperCase())}</p>
+            <h3>${escapeHtml(item.name || item.id)}</h3>
+          </div>
+          <span>${item.latency_ms == null ? "—" : `${escapeHtml(String(item.latency_ms))} ms`}</span>
+        </div>
+        <p>${escapeHtml(item.detail || "")}</p>
+        ${item.likely_cause
+          ? `<small><strong>Likely cause:</strong> ${escapeHtml(item.likely_cause)}</small>`
+          : ""}
+        <small>
+          <strong>Recommended:</strong>
+          ${escapeHtml(item.recommended_action || "No action required.")}
+        </small>
+        ${item.error_id
+          ? `<code>Error ID: ${escapeHtml(item.error_id)}</code>`
+          : ""}
+      </article>`).join("");
+  } catch (error) {
+    host.innerHTML =
+      `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+}
+
+$("#runNetworkHealth")?.addEventListener("click", loadNetworkHealth);
 

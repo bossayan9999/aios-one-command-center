@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE â€” Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1e-reliability-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1e-network-health-1" />
 </head>
 <body>
 
@@ -43,6 +43,7 @@
         <button class="nav-item" data-view="connectors">â†— Connectors</button>
         <button class="nav-item" data-view="ai-settings">âœ¦ AI & Providers</button>
         <button class="nav-item" data-view="reliability">🛠 Reliability Center</button>
+        <button class="nav-item" data-view="network-health">Network &amp; Desktop Health</button>
         <button class="nav-item" data-view="system-health">â—‰ System Health</button>
         <button class="nav-item" data-view="roadmap">â—† Roadmap & Progress</button>
         <button class="nav-item" data-view="governance">âš– Validation Center</button>
@@ -188,7 +189,40 @@
       </section>
 
       
-      <section id="view-reliability" class="app-view">
+      
+      <section id="view-network-health" class="app-view">
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">OPERATIONS HEALTH</p>
+              <h2>Network &amp; Desktop Health</h2>
+            </div>
+            <button id="runNetworkHealth" class="primary" type="button">
+              Run health checks
+            </button>
+          </div>
+          <p class="muted-copy">
+            Safe read-only checks for AIOS, Cloudflare Tunnel, router/gateway,
+            DNS, internet, Ollama, desktop resources, and Obsidian backups.
+          </p>
+          <div class="posture-grid">
+            <div><b id="networkOverallStatus">UNKNOWN</b><span>Overall status</span></div>
+            <div><b id="networkCpu">0%</b><span>Desktop CPU</span></div>
+            <div><b id="networkMemory">0%</b><span>Desktop memory</span></div>
+            <div><b id="networkCheckedAt">Never</b><span>Last checked</span></div>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-title">
+            <div><p class="eyebrow">DIAGNOSTICS</p><h2>Health checks</h2></div>
+          </div>
+          <div id="networkHealthCards">
+            <p class="muted-copy">Run health checks to inspect the system.</p>
+          </div>
+        </article>
+      </section>
+
+<section id="view-reliability" class="app-view">
         <article class="panel">
           <div class="panel-title">
             <div>
@@ -1277,7 +1311,7 @@
     <button type="button" data-view="budget">â‚± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1e-reliability-1"></script>
+  <script src="/assets/app.js?v=phase1e-network-health-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

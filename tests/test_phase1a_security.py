@@ -18,8 +18,21 @@ def configured_client(monkeypatch, tmp_path):
     monkeypatch.setattr(app_security, "SECURE_COOKIES", False)
 
     import api.main as main
+
+    test_data_dir = tmp_path / "data"
+    test_data_dir.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(main, "DATA_DIR", test_data_dir)
+    monkeypatch.setattr(main, "MISSIONS_FILE", test_data_dir / "missions.json")
+    monkeypatch.setattr(main, "missions", {})
+    monkeypatch.setattr(
+        main,
+        "RELIABILITY_REGISTRY",
+        main.DefectRegistry(test_data_dir),
+    )
     monkeypatch.setattr(main, "SECURITY_STORE", app_security.SecurityStore(tmp_path))
     monkeypatch.setattr(main, "SECURE_COOKIES", False)
+
     return TestClient(main.app), password
 
 
