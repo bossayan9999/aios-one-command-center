@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1f-project-workspace-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1g-osint-foundation-1" />
 </head>
 <body>
 
@@ -41,6 +41,7 @@
     <button class="nav-item" data-view="projects">Projects</button>
     <button class="nav-item" data-view="workflow">Workflow Map</button>
     <button class="nav-item" data-view="brain-vault">Brain Vault</button>
+    <button class="nav-item" data-view="osint">OSINT Cases</button>
   </details>
   <details class="nav-group" open>
     <summary>Operations</summary>
@@ -84,7 +85,38 @@
       </header>
 
 
-      <section id="view-projects" class="app-view">
+      
+<section id="view-osint" class="app-view">
+  <article class="panel">
+    <div class="panel-title"><div><p class="eyebrow">AGENTIC OSINT FOUNDATION</p><h2>OSINT Cases</h2></div>
+    <div class="dialog-actions"><button id="refreshOsintCases">Refresh</button><button id="openOsintCaseForm" class="primary">+ New case</button></div></div>
+    <p class="muted-copy">Authorized public-source research with specialist routing, sandbox manifests, validation, and Obsidian Brain Vault memory.</p>
+    <div class="posture-grid">
+      <div><b id="osintReadinessStatus">UNKNOWN</b><span>Readiness</span></div>
+      <div><b id="osintCaseCount">0</b><span>Cases</span></div>
+      <div><b id="osintCategoryCount">0</b><span>Categories</span></div>
+      <div><b id="osintWorkflowCount">0</b><span>Workflow stages</span></div>
+    </div>
+  </article>
+  <article id="osintCaseFormPanel" class="panel hidden">
+    <div class="panel-title"><div><p class="eyebrow">CASE INTAKE</p><h2>Create authorized OSINT case</h2></div><button id="closeOsintCaseForm">Close</button></div>
+    <form id="osintCaseForm" class="form-grid osint-case-form">
+      <label>Case title<input id="osintCaseTitle" required></label>
+      <label>Target type<input id="osintTargetType" value="public website"></label>
+      <label class="wide">Authorized purpose<textarea id="osintPurpose" required></textarea></label>
+      <label class="wide">Scope and boundaries<textarea id="osintScope" required></textarea></label>
+      <label>Categories<input id="osintCategories" placeholder="Domains and Infrastructure"></label>
+      <label>Specialists<input id="osintSpecialists" value="osint, security, governance"></label>
+      <label class="wide"><input id="osintAuthorized" type="checkbox" required> Authorized, defensive, lawful, public-source research only.</label>
+      <button class="primary wide" type="submit">Create case</button>
+    </form>
+    <p id="osintCaseFormStatus" class="brain-action-status">Ready.</p>
+  </article>
+  <article class="panel"><div class="panel-title"><div><p class="eyebrow">AGENTIC ENGINEERING LOOP</p><h2>Workflow</h2></div></div><div id="osintWorkflowLegend" class="osint-workflow-legend"></div></article>
+  <section id="osintCaseGrid" class="osint-case-grid"></section>
+</section>
+
+<section id="view-projects" class="app-view">
   <article class="panel project-hero">
     <div class="panel-title">
       <div>
@@ -1487,7 +1519,7 @@
     <button type="button" data-view="budget">ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1f-project-workspace-1"></script>
+  <script src="/assets/app.js?v=phase1g-osint-foundation-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

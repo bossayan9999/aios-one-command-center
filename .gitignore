@@ -42,3 +42,7 @@ backups/
 data/AIOS-Brain-Vault/
 
 data/AIOS-Brain-Vault/06-Backups/
+
+data/osint_cases.json
+data/osint-sandboxes/
+

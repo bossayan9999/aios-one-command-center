@@ -39,6 +39,7 @@ from agentic.model_gateway import (
     model_preflight,
 )
 from agentic.network_health import build_diagnostic_report, run_network_health
+from agentic.osint_case_store import OSINTCaseStore
 from agentic.pm_router import PMModelRouter
 from agentic.project_store import ProjectStore
 from agentic.reliability import DefectRegistry
@@ -97,6 +98,7 @@ BRAIN_VAULT_ROOT = Path(os.getenv("AIOS_BRAIN_VAULT_PATH", str(DATA_DIR / "AIOS-
 BRAIN_VAULT = BrainVault(BRAIN_VAULT_ROOT)
 BRAIN_MEMORY = BrainMemoryRetriever(BRAIN_VAULT)
 PROJECT_STORE = ProjectStore(DATA_DIR)
+OSINT_CASES = OSINTCaseStore(DATA_DIR, BRAIN_VAULT_ROOT)
 
 
 def _brain_vault_autosave_enabled() -> bool:
@@ -188,6 +190,43 @@ RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
 
 
+
+
+
+@app.get("/api/osint/readiness")
+def osint_readiness(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return OSINT_CASES.readiness()
+
+
+@app.get("/api/osint/cases")
+def list_osint_cases(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"cases": OSINT_CASES.list()}
+
+
+@app.post("/api/osint/cases")
+async def create_osint_case(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        case = OSINT_CASES.create(await request.json())
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit("osint.case.created", request, case_id=case["case_id"])
+    return case
+
+
+@app.post("/api/osint/cases/{case_id}/advance")
+async def advance_osint_case(case_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    try:
+        case = OSINT_CASES.advance(case_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="OSINT case not found") from exc
+    SECURITY_STORE.audit("osint.case.advanced", request, case_id=case["case_id"])
+    return case
 
 
 @app.get("/api/projects")
