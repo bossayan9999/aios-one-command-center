@@ -1,4 +1,4 @@
-import hashlib
+﻿import hashlib
 import hmac
 import io
 import json
@@ -37,6 +37,7 @@ from agentic.model_gateway import (
     model_preflight,
 )
 from agentic.pm_router import PMModelRouter
+from agentic.reliability import DefectRegistry
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from security.app_security import (
     CSRF_COOKIE,
@@ -105,6 +106,7 @@ SPECIALISTS = [
     {"id": "qa", "name": "Validation Engineer", "role": "Tests and evidence review", "status": "ready", "mode": "local", "model": "deepseek-coder"},
     {"id": "governance-validator", "name": "Governance & Validation Specialist", "role": "Independent policy, approval, quality, and result validation", "status": "ready", "mode": "local", "model": "router:auto"},
     {"id": "productivity", "name": "Productivity Agent", "role": "Tasks, briefings, calendar, email, and notes", "status": "ready", "mode": "hybrid", "model": "router:auto"},
+    {"id": "reliability-repair", "name": "Reliability & Defect Specialist", "role": "Detects, reproduces, diagnoses, repairs, and verifies frontend, backend, network, storage, and workflow defects.", "status": "ready", "mode": "local", "model": "router:auto", "reports_to": "Copilot Manager", "validation_authority": "Governance & Validation Specialist"},
 ]
 
 CONNECTORS = [
@@ -130,10 +132,157 @@ def load_missions() -> dict[str, dict]:
 
 
 def save_missions() -> None:
-    MISSIONS_FILE.write_text(json.dumps(missions, indent=2), encoding="utf-8")
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".missions-", suffix=".json", dir=DATA_DIR
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(missions, handle, ensure_ascii=False, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, MISSIONS_FILE)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 missions: dict[str, dict] = load_missions()
+RELIABILITY_REGISTRY = DefectRegistry(DATA_DIR)
+
+RELIABILITY_LAST_DIAGNOSTIC: str | None = None
+
+
+@app.get("/api/reliability")
+def reliability_summary(request: Request):
+    require_owner(request, SECURITY_STORE)
+    summary = dict(RELIABILITY_REGISTRY.summary())
+    summary["last_diagnostic"] = RELIABILITY_LAST_DIAGNOSTIC
+    return {
+        "specialist": {
+            "id": "reliability-repair",
+            "name": "Reliability & Defect Specialist",
+            "status": "ready",
+        },
+        "summary": summary,
+    }
+
+
+@app.get("/api/reliability/defects")
+def reliability_defects(request: Request):
+    require_owner(request, SECURITY_STORE)
+    items = RELIABILITY_REGISTRY.list_defects()
+    return {
+        "count": len(items),
+        "items": items,
+    }
+
+
+@app.get("/api/reliability/defects/{defect_id}")
+def reliability_defect(defect_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    try:
+        return RELIABILITY_REGISTRY.get_defect(defect_id)
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=404, detail="Defect not found") from None
+
+
+@app.post("/api/reliability/diagnostics")
+def run_reliability_diagnostics(request: Request):
+    from datetime import UTC, datetime
+
+    global RELIABILITY_LAST_DIAGNOSTIC
+
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+
+    mission_items = list(missions.values())
+    mission_ids = [str(item.get("id", "")) for item in mission_items]
+    archived_count = sum(bool(item.get("archived", False)) for item in mission_items)
+    duplicate_ids = len(mission_ids) - len(set(mission_ids))
+    missing_required = sum(
+        not item.get("id") or not item.get("title")
+        for item in mission_items
+    )
+
+    checks = [
+        {
+            "id": "mission-store-readable",
+            "name": "Mission store readability",
+            "ok": isinstance(missions, dict),
+            "detail": f"{len(mission_items)} mission records loaded.",
+        },
+        {
+            "id": "mission-id-integrity",
+            "name": "Mission ID integrity",
+            "ok": duplicate_ids == 0,
+            "detail": f"{duplicate_ids} duplicate mission IDs detected.",
+        },
+        {
+            "id": "mission-required-fields",
+            "name": "Mission required fields",
+            "ok": missing_required == 0,
+            "detail": f"{missing_required} records are missing an ID or title.",
+        },
+        {
+            "id": "archived-missions",
+            "name": "Archived mission inventory",
+            "ok": True,
+            "detail": f"{archived_count} archived missions.",
+        },
+        {
+            "id": "quality-gate-result",
+            "name": "Quality-gate result availability",
+            "ok": (Path(__file__).resolve().parents[1] / "quality-gate-results.json").exists(),
+            "detail": "Quality-gate result file checked.",
+        },
+        {
+            "id": "governance-engine",
+            "name": "Governance engine availability",
+            "ok": GOVERNANCE_ENGINE is not None,
+            "detail": "Governance approval and validation engine checked.",
+        },
+    ]
+
+    RELIABILITY_LAST_DIAGNOSTIC = datetime.now(UTC).isoformat()
+
+    RELIABILITY_REGISTRY.record_event(
+        "reliability.diagnostics_completed",
+        status="healthy" if all(item["ok"] for item in checks) else "escalate",
+        endpoint="/api/reliability/diagnostics",
+    )
+
+    return {
+        "status": "completed",
+        "last_diagnostic": RELIABILITY_LAST_DIAGNOSTIC,
+        "checks": checks,
+        "summary": RELIABILITY_REGISTRY.summary(),
+    }
+
+
+
+
+@app.exception_handler(Exception)
+async def unexpected_application_error(request: Request, exc: Exception):
+    error_id = f"AIOS-ERR-{secrets.token_hex(4).upper()}"
+    RELIABILITY_REGISTRY.record_event(
+        "application.unexpected_error",
+        error_id=error_id,
+        endpoint=request.url.path,
+        method=request.method,
+    )
+    print(
+        f"{error_id} {request.method} {request.url.path}: "
+        f"{type(exc).__name__}: {exc}",
+        file=sys.stderr,
+    )
+    traceback.print_exc(file=sys.stderr)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "An unexpected AIOS error occurred.",
+            "error_id": error_id,
+        },
+    )
 
 
 class ChatRequest(BaseModel):
@@ -773,8 +922,10 @@ def create_mission(req: MissionRequest):
 
 
 
-class MissionArchiveRequest(BaseModel):
-    archived: bool = True
+class MissionDeleteRequest(BaseModel):
+    confirm_mission_id: str = Field(min_length=1, max_length=100)
+    confirm_title: str = Field(min_length=1, max_length=120)
+    approval_id: str | None = Field(default=None, max_length=200)
 
 @app.get("/api/missions")
 def list_missions(
@@ -842,18 +993,120 @@ def list_missions(
     }
 
 @app.post("/api/missions/{mission_id}/archive")
-def archive_mission(mission_id: str, req: MissionArchiveRequest):
+def archive_mission(mission_id: str, request: Request):
+    session = require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
     mission = missions.get(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    mission["archived"] = req.archived
+    if not mission.get("archived", False):
+        mission["archived"] = True
+        mission["archived_at"] = utc_now()
+        mission["archived_by"] = session.get("username", "owner")
     mission["updated_at"] = utc_now()
     save_missions()
+    SECURITY_STORE.audit("mission.archived", request, mission_id=mission_id)
+    return mission
+
+
+@app.post("/api/missions/{mission_id}/restore")
+def restore_mission(mission_id: str, request: Request):
+    session = require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    mission = missions.get(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    mission["archived"] = False
+    mission["archived_at"] = None
+    mission["restored_at"] = utc_now()
+    mission["restored_by"] = session.get("username", "owner")
+    mission["updated_at"] = utc_now()
+    save_missions()
+    SECURITY_STORE.audit("mission.restored", request, mission_id=mission_id)
+    return mission
+
+
+def _mission_delete_payload(mission_id: str, title: str) -> dict[str, str]:
     return {
-        "id": mission_id,
-        "archived": mission["archived"],
-        "updated_at": mission["updated_at"],
+        "mission_id": mission_id,
+        "title": title,
+        "operation": "permanent_delete",
     }
+
+
+@app.post("/api/missions/{mission_id}/delete-approval")
+def request_mission_delete_approval(mission_id: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    mission = missions.get(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    if not mission.get("archived", False):
+        raise HTTPException(status_code=409, detail="Mission must be archived first")
+    payload = _mission_delete_payload(mission_id, mission.get("title", "Untitled mission"))
+    approval = GOVERNANCE_ENGINE.request_approval(
+        tool_id="mission.permanent_delete",
+        specialist="copilot",
+        payload=payload,
+        preview=payload,
+        reason="Permanently delete an archived mission record",
+        risk="critical",
+    )
+    SECURITY_STORE.audit(
+        "mission.delete_approval_requested",
+        request,
+        mission_id=mission_id,
+        approval_id=approval["id"],
+    )
+    return approval
+
+
+@app.delete("/api/missions/{mission_id}")
+def delete_mission(
+    mission_id: str, req: MissionDeleteRequest, request: Request
+):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    mission = missions.get(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    if not mission.get("archived", False):
+        raise HTTPException(status_code=409, detail="Mission must be archived first")
+    title = mission.get("title", "Untitled mission")
+    if req.confirm_mission_id != mission_id or not hmac.compare_digest(
+        req.confirm_title, title
+    ):
+        raise HTTPException(status_code=400, detail="Mission confirmation does not match")
+    if not req.approval_id:
+        raise HTTPException(status_code=403, detail="Approved deletion is required")
+    payload = _mission_delete_payload(mission_id, title)
+    decision = GOVERNANCE_ENGINE.consume(
+        approval_id=req.approval_id,
+        tool_id="mission.permanent_delete",
+        specialist="copilot",
+        payload=payload,
+    )
+    if decision is not ValidationDecision.PASS:
+        status_code = 409 if decision is ValidationDecision.BLOCKED else 403
+        raise HTTPException(
+            status_code=status_code,
+            detail=f"Deletion approval rejected: {decision.value}",
+        )
+    SECURITY_STORE.audit(
+        "mission.delete_started",
+        request,
+        mission_id=mission_id,
+        approval_id=req.approval_id,
+    )
+    del missions[mission_id]
+    save_missions()
+    SECURITY_STORE.audit(
+        "mission.deleted",
+        request,
+        mission_id=mission_id,
+        approval_id=req.approval_id,
+    )
+    return {"deleted": True, "mission_id": mission_id}
 
 
 @app.get("/api/missions/{mission_id}")
@@ -1652,7 +1905,7 @@ def list_ai_model_catalog(
         sources.append("built-in fallback")
     source = " + ".join(sources)
     if errors:
-        source += " · unavailable: " + ", ".join(errors)
+        source += " Â· unavailable: " + ", ".join(errors)
 
     q = query.strip().lower()
     provider_filter = provider.strip().lower()
@@ -2651,14 +2904,14 @@ def _render_mission_note(mission):
     for step in mission.get("workflow", []):
         lines.append(
             f"- [{ 'x' if step.get('status') == 'complete' else ' ' }] "
-            f"{step.get('label', '')} — `{step.get('agent', '')}` "
+            f"{step.get('label', '')} â€” `{step.get('agent', '')}` "
             f"({step.get('status', 'unknown')})"
         )
     lines.extend(["", "## Evidence", ""])
     if evidence:
         for item in evidence:
             lines.append(
-                f"- {'✅' if item.get('verified') else '◻️'} "
+                f"- {'âœ…' if item.get('verified') else 'â—»ï¸'} "
                 f"{item.get('label', item.get('type', 'Evidence'))}"
             )
     else:
@@ -2689,7 +2942,7 @@ def _render_agent_report_note(mission, result):
     agent = result.get("agent") or result.get("specialist_id") or "agent"
     model = result.get("model", "unknown")
     provider = result.get("provider", "unknown")
-    title = f"{mission.get('title', 'Mission')} — {agent.title()}"
+    title = f"{mission.get('title', 'Mission')} â€” {agent.title()}"
     content = (
         result.get("output")
         or result.get("text")
@@ -2737,7 +2990,7 @@ validated: {str(_mission_is_validated(mission)).lower()}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# {mission.get("title", "Mission")} — {label}
+# {mission.get("title", "Mission")} â€” {label}
 
 ## Agent
 
@@ -2779,7 +3032,7 @@ validated: {str(_mission_is_validated(mission)).lower()}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# Research — {title}
+# Research â€” {title}
 
 {chr(10).join(sections)}
 """
@@ -2798,7 +3051,7 @@ output_type: {_yaml_scalar(mission.get("output_type", ""))}
 exported_at: {_yaml_scalar(_utc_now_iso())}
 ---
 
-# Decision Record — {title}
+# Decision Record â€” {title}
 
 ## Decision
 
@@ -3230,7 +3483,7 @@ def _desktop_export_audit_to_obsidian(record):
         day = _utc_now_iso()[:10]
         path = f"Audit Logs/{day} - Desktop Companion.md"
         section = f"""
-## {record.get("time", _utc_now_iso())} — {record.get("tool", "tool")}
+## {record.get("time", _utc_now_iso())} â€” {record.get("tool", "tool")}
 
 - Request ID: `{record.get("id", "")}`
 - Status: **{record.get("status", "")}**
@@ -3449,13 +3702,13 @@ ROADMAP_STATE_FILE = DATA_DIR / "roadmap_state.json"
 ROADMAP_REMINDERS_FILE = DATA_DIR / "roadmap_reminders.json"
 
 DEFAULT_ROADMAP_STATE = {
-    "current_phase": "Phase 1 — Secure single-owner product",
+    "current_phase": "Phase 1 â€” Secure single-owner product",
     "overall_status": "in-progress",
     "last_reviewed_at": "",
     "phases": [
         {
             "id": "phase-0",
-            "name": "Phase 0 — Stabilize the alpha",
+            "name": "Phase 0 â€” Stabilize the alpha",
             "status": "complete",
             "progress": 100,
             "completed": [
@@ -3479,7 +3732,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-1",
-            "name": "Phase 1 — Secure single-owner product",
+            "name": "Phase 1 â€” Secure single-owner product",
             "status": "in-progress",
             "progress": 35,
             "completed": [
@@ -3503,7 +3756,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-2",
-            "name": "Phase 2 — Production data foundation",
+            "name": "Phase 2 â€” Production data foundation",
             "status": "planned",
             "progress": 10,
             "completed": [
@@ -3520,7 +3773,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-3",
-            "name": "Phase 3 — Real agentic engineering loop",
+            "name": "Phase 3 â€” Real agentic engineering loop",
             "status": "planned",
             "progress": 20,
             "completed": [
@@ -3540,7 +3793,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-4",
-            "name": "Phase 4 — Team SaaS",
+            "name": "Phase 4 â€” Team SaaS",
             "status": "planned",
             "progress": 0,
             "completed": [],
@@ -3555,7 +3808,7 @@ DEFAULT_ROADMAP_STATE = {
         },
         {
             "id": "phase-5",
-            "name": "Phase 5 — Autonomous R&D platform",
+            "name": "Phase 5 â€” Autonomous R&D platform",
             "status": "planned",
             "progress": 5,
             "completed": [
@@ -3778,3 +4031,5 @@ def health():
         "service": "aios-one-command-center",
         "agent_backend": AGENT_BACKEND_AVAILABLE,
     }
+
+

@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 
 def test_frontend_handles_cloudflare_html_without_json_crash() -> None:
@@ -8,5 +8,6 @@ def test_frontend_handles_cloudflare_html_without_json_crash() -> None:
     assert "cloudflare_access_html" in app
     assert "Cloudflare Access session expired" in app
     assert 'await api("/api/auth/login"' in app
-    assert "phase1d-governance-final-2" in index
+    assert "phase1e-reliability-1" in index
     assert "headers,\n    headers:" not in app
+

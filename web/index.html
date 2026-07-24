@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE â€” Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1d-governance-final-2" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1e-reliability-1" />
 </head>
 <body>
 
@@ -42,6 +42,7 @@
 <button data-view="tools-skills"><span>Tools &amp; Skills</span></button>
         <button class="nav-item" data-view="connectors">â†— Connectors</button>
         <button class="nav-item" data-view="ai-settings">âœ¦ AI & Providers</button>
+        <button class="nav-item" data-view="reliability">🛠 Reliability Center</button>
         <button class="nav-item" data-view="system-health">â—‰ System Health</button>
         <button class="nav-item" data-view="roadmap">â—† Roadmap & Progress</button>
         <button class="nav-item" data-view="governance">âš– Validation Center</button>
@@ -186,7 +187,38 @@
         </section>
       </section>
 
-      <section id="view-mission" class="app-view active">
+      
+      <section id="view-reliability" class="app-view">
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">DEFECT INTELLIGENCE</p>
+              <h2>Reliability Center</h2>
+            </div>
+            <button id="runReliabilityDiagnostics" class="primary" type="button">Run diagnostics</button>
+          </div>
+          <p class="muted-copy">The Reliability &amp; Defect Specialist reproduces failures, records root cause, proposes safe repairs, and verifies fixes through the governance gate.</p>
+          <div class="posture-grid">
+            <div><b id="reliabilityOpenCount">0</b><span>Open defects</span></div>
+            <div><b id="reliabilityCriticalCount">0</b><span>Critical defects</span></div>
+            <div><b id="reliabilityVerifiedCount">0</b><span>Verified fixes</span></div>
+            <div><b id="reliabilityDiagnosticTime">Never</b><span>Last diagnostic</span></div>
+          </div>
+        </article>
+        <section class="content-grid">
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">SPECIALIST</p><h2>Reliability &amp; Defect Specialist</h2></div><span class="status-badge">READY</span></div>
+            <div class="artifact"><span>RD</span><p><strong>Detect → reproduce → diagnose → repair → verify</strong><br>Cannot approve or validate its own repair.</p></div>
+            <div id="reliabilityIntegrity"><p class="muted-copy">Run diagnostics to inspect mission-store integrity and system readiness.</p></div>
+          </article>
+          <article class="panel">
+            <div class="panel-title"><div><p class="eyebrow">DEFECT RECORDS</p><h2>Recent defects and error IDs</h2></div><button id="refreshReliability" type="button">Refresh</button></div>
+            <div id="reliabilityDefects"><p class="muted-copy">Loading defect records...</p></div>
+          </article>
+        </section>
+      </section>
+
+<section id="view-mission" class="app-view active">
         <section class="hero-grid">
           <article class="copilot-card panel">
             <div class="copilot-head">
@@ -1245,9 +1277,37 @@
     <button type="button" data-view="budget">â‚± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1d-governance-final-2"></script>
+  <script src="/assets/app.js?v=phase1e-reliability-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
+
+
+  <dialog id="missionLifecycleDialog" class="mission-lifecycle-dialog">
+    <form id="missionLifecycleForm" method="dialog">
+      <p class="eyebrow">MISSION LIFECYCLE</p>
+      <h2 id="missionLifecycleTitle">Manage mission</h2>
+      <p id="missionLifecycleWarning" class="muted-copy"></p>
+      <input id="missionLifecycleId" type="hidden">
+      <input id="missionLifecycleAction" type="hidden">
+      <label id="missionDeleteConfirmationLabel" class="hidden">
+        Confirm mission ID
+        <input id="missionDeleteConfirmation" autocomplete="off">
+      </label>
+      <label id="missionDeleteTitleLabel" class="hidden">
+        Confirm mission title
+        <input id="missionDeleteTitleConfirmation" autocomplete="off">
+      </label>
+      <label id="missionDeleteApprovalLabel" class="hidden">
+        Approval ID
+        <input id="missionDeleteApprovalId" autocomplete="off">
+      </label>
+      <p id="missionLifecycleStatus" class="muted-copy"></p>
+      <div class="dialog-actions">
+        <button id="cancelMissionLifecycle" type="button">Cancel</button>
+        <button id="confirmMissionLifecycle" class="primary" type="submit">Continue</button>
+      </div>
+    </form>
+  </dialog>
 
 </body>
 </html>
