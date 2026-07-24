@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE â€” Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1e-live-diagnostics-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1f-brain-vault-1" />
 </head>
 <body>
 
@@ -43,6 +43,7 @@
         <button class="nav-item" data-view="connectors">â†— Connectors</button>
         <button class="nav-item" data-view="ai-settings">âœ¦ AI & Providers</button>
         <button class="nav-item" data-view="reliability">🛠 Reliability Center</button>
+        <button class="nav-item" data-view="brain-vault">Obsidian Brain Vault</button>
         <button class="nav-item" data-view="network-health">Network &amp; Desktop Health</button>
         <button class="nav-item" data-view="system-health">â—‰ System Health</button>
         <button class="nav-item" data-view="roadmap">â—† Roadmap & Progress</button>
@@ -190,7 +191,80 @@
 
       
       
-      <section id="view-network-health" class="app-view">
+      
+      <section id="view-brain-vault" class="app-view">
+        <article class="panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">PERSISTENT PROJECT MEMORY</p>
+              <h2>Obsidian Brain Vault</h2>
+            </div>
+            <div class="dialog-actions">
+              <button id="refreshBrainVault" type="button">Refresh</button>
+              <button id="exportMissionsToVault" class="primary" type="button">
+                Export missions
+              </button>
+              <button id="backupBrainVault" type="button">Create backup</button>
+            </div>
+          </div>
+          <p class="muted-copy">
+            Local-first project memory for missions, phases, decisions, defects,
+            diagnostics, releases, workflows, and specialist knowledge.
+          </p>
+          <div class="posture-grid">
+            <div><b id="brainVaultStatus">UNKNOWN</b><span>Vault status</span></div>
+            <div><b id="brainVaultNotes">0</b><span>Notes</span></div>
+            <div><b id="brainVaultIndexed">0</b><span>Indexed</span></div>
+            <div><b id="brainVaultPath">Not configured</b><span>Vault path</span></div>
+          </div>
+        </article>
+
+        <section class="content-grid">
+          <article class="panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">SEARCH</p><h2>Find project memory</h2></div>
+            </div>
+            <form id="brainVaultSearchForm" class="form-grid">
+              <label>
+                Search vault
+                <input id="brainVaultSearchInput" placeholder="mission, decision, defect, phase...">
+              </label>
+              <button class="primary" type="submit">Search</button>
+            </form>
+            <div id="brainVaultResults">
+              <p class="muted-copy">Search the vault to find project knowledge.</p>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title">
+              <div><p class="eyebrow">PHASE MEMORY</p><h2>Write phase summary</h2></div>
+            </div>
+            <form id="brainVaultPhaseForm" class="form-grid">
+              <label>
+                Phase
+                <input id="brainVaultPhaseName" required placeholder="Phase 1F Update 1">
+              </label>
+              <label>
+                Status
+                <select id="brainVaultPhaseStatus">
+                  <option value="active">Active</option>
+                  <option value="completed">Completed</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+              </label>
+              <label>
+                Summary
+                <textarea id="brainVaultPhaseSummary" required placeholder="What was completed, decisions made, tests passed, and what comes next."></textarea>
+              </label>
+              <button class="primary" type="submit">Save phase summary</button>
+            </form>
+            <p id="brainVaultMessage" class="muted-copy"></p>
+          </article>
+        </section>
+      </section>
+
+<section id="view-network-health" class="app-view">
         <article class="panel">
           <div class="panel-title">
             <div>
@@ -1320,7 +1394,7 @@
     <button type="button" data-view="budget">â‚± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1e-live-diagnostics-1"></script>
+  <script src="/assets/app.js?v=phase1f-brain-vault-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

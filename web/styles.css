@@ -1269,3 +1269,25 @@ button,
 
 .diagnostic-workflow-head { flex-wrap: wrap; }
 .diagnostic-workflow-head span { margin-left: auto; white-space: nowrap; }
+
+
+.brain-vault-result {
+  display: grid;
+  gap: .4rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  margin-bottom: .75rem;
+}
+
+.brain-vault-result code {
+  overflow-wrap: anywhere;
+  opacity: .75;
+}
+
+#view-brain-vault .content-grid { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+#brainVaultPhaseForm { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+#brainVaultPhaseForm label:has(textarea) { grid-column: 1 / -1; }
+#brainVaultPhaseSummary { min-height: 220px; resize: vertical; }
+#brainVaultPhaseForm button { grid-column: 1 / -1; width: 100%; }
+@media (max-width: 700px) { #brainVaultPhaseForm { grid-template-columns: 1fr; } #view-brain-vault .content-grid { grid-template-columns: 1fr; } }

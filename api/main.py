@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
+from agentic.brain_vault import BrainVault
 from agentic.governance import GovernanceEngine, ValidationDecision
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
@@ -90,6 +91,8 @@ WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 MISSIONS_FILE = DATA_DIR / "missions.json"
+BRAIN_VAULT_ROOT = Path(os.getenv("AIOS_BRAIN_VAULT_PATH", str(DATA_DIR / "AIOS-Brain-Vault")))
+BRAIN_VAULT = BrainVault(BRAIN_VAULT_ROOT)
 PAIRING_FILE = DATA_DIR / "mobile_pairing.json"
 COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
@@ -153,6 +156,61 @@ RELIABILITY_REGISTRY = DefectRegistry(DATA_DIR)
 RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
 
+
+
+
+@app.get("/api/brain-vault/health")
+def brain_vault_health(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return BRAIN_VAULT.health()
+
+
+@app.get("/api/brain-vault/search")
+def brain_vault_search(request: Request, query: str = "", limit: int = 50):
+    require_owner(request, SECURITY_STORE)
+    return {"items": BRAIN_VAULT.search(query, limit=max(1, min(limit, 100)))}
+
+
+@app.post("/api/brain-vault/export-missions")
+def brain_vault_export_missions(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    exported = [BRAIN_VAULT.export_mission(item) for item in missions.values()]
+    SECURITY_STORE.audit(
+        "brain_vault.missions_exported",
+        request,
+        count=len(exported),
+    )
+    return {"count": len(exported), "items": exported}
+
+
+@app.post("/api/brain-vault/phase-summary")
+async def brain_vault_phase_summary(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    payload = await request.json()
+    phase = str(payload.get("phase", "")).strip()
+    summary = str(payload.get("summary", "")).strip()
+    status = str(payload.get("status", "active")).strip() or "active"
+    if not phase or not summary:
+        raise HTTPException(status_code=400, detail="Phase and summary are required")
+    result = BRAIN_VAULT.write_phase_summary(phase, summary, status=status)
+    SECURITY_STORE.audit(
+        "brain_vault.phase_summary_written",
+        request,
+        phase=phase,
+        status=status,
+    )
+    return result
+
+
+@app.post("/api/brain-vault/backup")
+def brain_vault_backup(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    result = BRAIN_VAULT.backup()
+    SECURITY_STORE.audit("brain_vault.backup_created", request, path=result["path"])
+    return result
 
 
 @app.get("/api/network-health/workflow")

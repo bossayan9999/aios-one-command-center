@@ -14,6 +14,7 @@ const viewTitles = {
   "system-health": "System Health",
   reliability: "Reliability Center",
   "network-health": "Network & Desktop Health",
+  "brain-vault": "Obsidian Brain Vault",
   "roadmap": "Roadmap & Progress",
   approvals: "Approval Center",
   mobile: "Mobile Control",
@@ -3160,5 +3161,93 @@ $("#downloadNetworkHealthReport")?.addEventListener("click", async () => {
   link.download = `aios-network-diagnostic-${new Date().toISOString().replaceAll(":", "-")}.json`;
   link.click();
   URL.revokeObjectURL(url);
+});
+
+
+
+async function loadBrainVaultHealth() {
+  try {
+    const payload = await api("/api/brain-vault/health");
+    $("#brainVaultStatus").textContent = String(payload.status || "unknown").toUpperCase();
+    $("#brainVaultNotes").textContent = String(payload.note_count ?? 0);
+    $("#brainVaultIndexed").textContent = String(payload.indexed_count ?? 0);
+    $("#brainVaultPath").textContent = payload.vault_root || "Not configured";
+  } catch (error) {
+    $("#brainVaultMessage").textContent = reliabilityErrorMessage(error);
+  }
+}
+
+async function searchBrainVault(query) {
+  const host = $("#brainVaultResults");
+  host.innerHTML = '<p class="muted-copy">Searching...</p>';
+  try {
+    const payload = await api(`/api/brain-vault/search?query=${encodeURIComponent(query)}`);
+    const items = payload.items || [];
+    host.innerHTML = items.length
+      ? items.map(item => `
+        <article class="brain-vault-result">
+          <strong>${escapeHtml(item.name || item.path)}</strong>
+          <code>${escapeHtml(item.path || "")}</code>
+          <p>${escapeHtml(item.preview || "")}</p>
+        </article>`).join("")
+      : '<p class="muted-copy">No matching notes found.</p>';
+  } catch (error) {
+    host.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+}
+
+$("#refreshBrainVault")?.addEventListener("click", loadBrainVaultHealth);
+
+$("#brainVaultSearchForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  await searchBrainVault($("#brainVaultSearchInput").value.trim());
+});
+
+$("#exportMissionsToVault")?.addEventListener("click", async () => {
+  const message = $("#brainVaultMessage");
+  try {
+    message.textContent = "Exporting missions...";
+    const payload = await api("/api/brain-vault/export-missions", {
+      method: "POST",
+      body: "{}",
+    });
+    message.textContent = `Exported ${payload.count ?? 0} missions to the Brain Vault.`;
+    await loadBrainVaultHealth();
+  } catch (error) {
+    message.textContent = reliabilityErrorMessage(error);
+  }
+});
+
+$("#backupBrainVault")?.addEventListener("click", async () => {
+  const message = $("#brainVaultMessage");
+  try {
+    message.textContent = "Creating backup...";
+    const payload = await api("/api/brain-vault/backup", {
+      method: "POST",
+      body: "{}",
+    });
+    message.textContent = `Backup created: ${payload.path || "unknown"}`;
+  } catch (error) {
+    message.textContent = reliabilityErrorMessage(error);
+  }
+});
+
+$("#brainVaultPhaseForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const message = $("#brainVaultMessage");
+  try {
+    const payload = await api("/api/brain-vault/phase-summary", {
+      method: "POST",
+      body: JSON.stringify({
+        phase: $("#brainVaultPhaseName").value.trim(),
+        status: $("#brainVaultPhaseStatus").value,
+        summary: $("#brainVaultPhaseSummary").value.trim(),
+      }),
+    });
+    message.textContent = `Phase summary saved: ${payload.path || "unknown"}`;
+    await loadBrainVaultHealth();
+  } catch (error) {
+    message.textContent = reliabilityErrorMessage(error);
+  }
 });
 
