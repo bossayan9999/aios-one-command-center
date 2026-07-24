@@ -36,7 +36,7 @@ from agentic.model_gateway import (
     ModelGateway,
     model_preflight,
 )
-from agentic.network_health import run_network_health
+from agentic.network_health import build_diagnostic_report, run_network_health
 from agentic.pm_router import PMModelRouter
 from agentic.reliability import DefectRegistry
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
@@ -152,6 +152,15 @@ RELIABILITY_REGISTRY = DefectRegistry(DATA_DIR)
 
 RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
+
+
+
+@app.get("/api/network-health/workflow")
+def network_health_workflow(request: Request):
+    require_owner(request, SECURITY_STORE)
+    public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
+    result = run_network_health(Path(__file__).resolve().parents[1], public_url)
+    return build_diagnostic_report(result)
 
 
 @app.get("/api/network-health")
