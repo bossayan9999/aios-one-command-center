@@ -26,8 +26,8 @@ quality-gate result endpoint PASS
 
 Regression suite:
 
-[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                   [100%][0m
-[32m[32m[1m22 passed[0m, [33m1 deselected[0m[32m in 0.49s[0m[0m
+......................                                                   [100%]
+22 passed, 1 deselected in 0.49s
 
 Local quality-gate diagnostic:
 
