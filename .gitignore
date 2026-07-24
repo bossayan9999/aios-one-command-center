@@ -36,3 +36,5 @@ start-aios-at-login.ps1
 reports/phase-runs/
 
 backups/
+
+*-test-output.txt
