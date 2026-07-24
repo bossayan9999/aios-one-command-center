@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 import platform
@@ -374,3 +374,4 @@ def run_network_health(root: Path, public_url: str) -> dict[str, Any]:
         "desktop": desktop,
         "checks": [item.as_dict() for item in checks],
     }
+
