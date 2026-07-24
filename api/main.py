@@ -93,6 +93,29 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 MISSIONS_FILE = DATA_DIR / "missions.json"
 BRAIN_VAULT_ROOT = Path(os.getenv("AIOS_BRAIN_VAULT_PATH", str(DATA_DIR / "AIOS-Brain-Vault")))
 BRAIN_VAULT = BrainVault(BRAIN_VAULT_ROOT)
+
+
+def _brain_vault_autosave_enabled() -> bool:
+    configured = os.getenv("AIOS_BRAIN_VAULT_AUTOSAVE", "true").strip().lower()
+    return (
+        configured in {"1", "true", "yes", "on"}
+        and "PYTEST_CURRENT_TEST" not in os.environ
+    )
+
+
+def _sync_brain_vault_missions() -> None:
+    if not _brain_vault_autosave_enabled():
+        return
+    try:
+        BRAIN_VAULT.sync_missions(missions)
+    except Exception as exc:
+        RELIABILITY_REGISTRY.record_event(
+            "brain_vault.autosave_failed",
+            status="escalate",
+            detail=f"{type(exc).__name__}: {exc}",
+        )
+
+
 PAIRING_FILE = DATA_DIR / "mobile_pairing.json"
 COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
@@ -145,6 +168,7 @@ def save_missions() -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, MISSIONS_FILE)
+        _sync_brain_vault_missions()
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
@@ -157,6 +181,31 @@ RELIABILITY_LAST_DIAGNOSTIC: str | None = None
 
 
 
+
+
+
+@app.get("/api/brain-vault/sync-status")
+def brain_vault_sync_status(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {
+        "autosave_enabled": _brain_vault_autosave_enabled(),
+        **BRAIN_VAULT.sync_status(),
+    }
+
+
+@app.post("/api/brain-vault/sync")
+def brain_vault_sync(request: Request):
+    require_owner(request, SECURITY_STORE)
+    require_csrf(request, SECURITY_STORE)
+    result = BRAIN_VAULT.sync_missions(missions)
+    SECURITY_STORE.audit(
+        "brain_vault.manual_sync",
+        request,
+        exported=result["exported"],
+        unchanged=result["unchanged"],
+        total=result["total"],
+    )
+    return result
 
 
 @app.get("/api/brain-vault/health")

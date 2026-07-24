@@ -3196,7 +3196,9 @@ async function searchBrainVault(query) {
   }
 }
 
-$("#refreshBrainVault")?.addEventListener("click", loadBrainVaultHealth);
+$("#refreshBrainVault")?.addEventListener("click", async () => {
+  await Promise.all([loadBrainVaultHealth(), loadBrainVaultSyncStatus()]);
+});
 
 $("#brainVaultSearchForm")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -3246,6 +3248,38 @@ $("#brainVaultPhaseForm")?.addEventListener("submit", async event => {
     });
     message.textContent = `Phase summary saved: ${payload.path || "unknown"}`;
     await loadBrainVaultHealth();
+  } catch (error) {
+    message.textContent = reliabilityErrorMessage(error);
+  }
+});
+
+
+
+async function loadBrainVaultSyncStatus() {
+  try {
+    const payload = await api("/api/brain-vault/sync-status");
+    $("#brainVaultAutosave").textContent =
+      payload.autosave_enabled ? "ENABLED" : "DISABLED";
+    $("#brainVaultLastSync").textContent = payload.checked_at
+      ? new Date(payload.checked_at).toLocaleString()
+      : "Never";
+  } catch (error) {
+    $("#brainVaultMessage").textContent = reliabilityErrorMessage(error);
+  }
+}
+
+$("#syncBrainVaultNow")?.addEventListener("click", async () => {
+  const message = $("#brainVaultMessage");
+  try {
+    message.textContent = "Synchronizing changed missions...";
+    const payload = await api("/api/brain-vault/sync", {
+      method: "POST",
+      body: "{}",
+    });
+    message.textContent =
+      `Sync completed: ${payload.exported ?? 0} changed, ` +
+      `${payload.unchanged ?? 0} unchanged, ${payload.total ?? 0} total.`;
+    await Promise.all([loadBrainVaultHealth(), loadBrainVaultSyncStatus()]);
   } catch (error) {
     message.textContent = reliabilityErrorMessage(error);
   }

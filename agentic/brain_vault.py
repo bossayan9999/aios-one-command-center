@@ -131,6 +131,65 @@ class BrainVault:
             overwrite=True,
         )
 
+    def sync_missions(
+        self,
+        missions: dict[str, dict[str, Any]],
+    ) -> dict[str, Any]:
+        state_file = self.root / ".aios-mission-sync.json"
+        try:
+            previous = json.loads(state_file.read_text(encoding="utf-8"))
+            if not isinstance(previous, dict):
+                previous = {}
+        except Exception:
+            previous = {}
+
+        current: dict[str, str] = {}
+        exported: list[dict[str, Any]] = []
+        unchanged = 0
+
+        for mission_id, mission in missions.items():
+            payload = json.dumps(mission, ensure_ascii=False, sort_keys=True)
+            checksum = _checksum(payload)
+            current[str(mission_id)] = checksum
+            if previous.get(str(mission_id)) == checksum:
+                unchanged += 1
+                continue
+            exported.append(self.export_mission(mission))
+
+        state_file.write_text(
+            json.dumps(current, indent=2),
+            encoding="utf-8",
+        )
+
+        sync_status = {
+            "status": "completed",
+            "checked_at": _now(),
+            "exported": len(exported),
+            "unchanged": unchanged,
+            "total": len(missions),
+        }
+        (self.root / ".aios-last-sync.json").write_text(
+            json.dumps(sync_status, indent=2),
+            encoding="utf-8",
+        )
+        return sync_status
+
+    def sync_status(self) -> dict[str, Any]:
+        path = self.root / ".aios-last-sync.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                return payload
+        except Exception:
+            pass
+        return {
+            "status": "never",
+            "checked_at": None,
+            "exported": 0,
+            "unchanged": 0,
+            "total": 0,
+        }
+
     def write_phase_summary(
         self,
         phase: str,

@@ -38,3 +38,7 @@ reports/phase-runs/
 backups/
 
 *-test-output.txt
+
+data/AIOS-Brain-Vault/
+
+data/AIOS-Brain-Vault/06-Backups/
