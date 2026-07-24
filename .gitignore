@@ -28,3 +28,7 @@ data/security_audit.jsonl
 data/agent_team.db
 data/obsidian_backups/
 *.bak
+
+logs/
+start-aios.ps1
+start-aios-at-login.ps1
