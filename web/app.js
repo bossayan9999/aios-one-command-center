@@ -1,4 +1,4 @@
-﻿const $ = (selector) => document.querySelector(selector);
+const $ = (selector) => document.querySelector(selector);
 const dialog = $("#missionDialog");
 let dashboard = null;
 let currentMission = null;
@@ -21,32 +21,41 @@ let aiosCsrfToken = "";
 
 async function api(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
-  const headers = {...(options.headers || {})};
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
   if (!["GET", "HEAD", "OPTIONS"].includes(method) && aiosCsrfToken) {
     headers["X-CSRF-Token"] = aiosCsrfToken;
   }
+
   const response = await fetch(path, {
+    ...options,
     credentials: "same-origin",
-    ...options,
     headers,
-    headers: {"Content-Type": "application/json", ...(options.headers || {})},
-    ...options,
+    redirect: "follow",
   });
 
   const contentType = response.headers.get("content-type") || "";
-  let payload;
+  const isJson = contentType.includes("application/json");
+  const payload = isJson ? await response.json() : await response.text();
 
-  if (contentType.includes("application/json")) {
-    payload = await response.json();
-  } else {
-    payload = await response.text();
+  if (!isJson && typeof payload === "string" && payload.trim().startsWith("<")) {
+    const error = new Error(
+      "Cloudflare Access session expired or intercepted this request. Re-authenticate to Cloudflare Access, then try again."
+    );
+    error.code = "cloudflare_access_html";
+    error.status = response.status;
+    throw error;
   }
 
   if (!response.ok) {
     const message = typeof payload === "object"
       ? (payload.detail || payload.message || "Request failed")
       : (payload || `Request failed with status ${response.status}`);
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   return payload;
@@ -203,11 +212,11 @@ function renderBrainResults(results = []) {
     <article class="brain-result-card">
       <div class="brain-result-head">
         <div><p class="eyebrow">${result.specialist_id.toUpperCase()} BRAIN</p><h3>${result.summary}</h3></div>
-        <span class="confidence">${result.confidence}% Â· ${(result.provider || "local").toUpperCase()}</span>
+        <span class="confidence">${result.confidence}% · ${(result.provider || "local").toUpperCase()}</span>
       </div>
       <ul>${result.findings.map(item => `<li>${item}</li>`).join("")}</ul>
       <div class="brain-result-foot">
-        <span>${result.status.toUpperCase()} Â· ${result.model || "fallback"}</span>
+        <span>${result.status.toUpperCase()} · ${result.model || "fallback"}</span>
         <span>${result.next_action}</span>
       </div>
     </article>
@@ -242,7 +251,7 @@ function renderWorkflow(mission) {
   $("#missionCount").textContent = String(Math.max(dashboard?.missions?.length || 0, 1));
   $("#artifactList").innerHTML = `
     <div class="artifact"><span>IN</span><p>${mission.objective}</p></div>
-    ${mission.evidence.map(item => `<div class="artifact"><span>âœ“</span><p>${item.label}</p></div>`).join("")}
+    ${mission.evidence.map(item => `<div class="artifact"><span>✓</span><p>${item.label}</p></div>`).join("")}
   `;
   renderBrainResults(mission.brain_results || []);
   setBrainControlState(mission);
@@ -413,7 +422,7 @@ function renderBudget(payload) {
       <div>
         <strong>${expense.vendor}</strong>
         <p>${expense.description}</p>
-        <small>${expense.category} Â· due ${expense.due_date}${expense.recurring ? ` Â· ${expense.recurrence}` : ""}</small>
+        <small>${expense.category} · due ${expense.due_date}${expense.recurring ? ` · ${expense.recurrence}` : ""}</small>
       </div>
       <div class="expense-amount">
         <strong>${formatMoney(expense.amount, expense.currency)}</strong>
@@ -576,8 +585,8 @@ async function loadCopilotStatus() {
   if (!dot || !label) return;
   dot.dataset.live = String(status.live);
   label.textContent = status.live
-    ? `${String(status.provider).toUpperCase()} LIVE Â· ${status.default_model}`
-    : "DETERMINISTIC FALLBACK Â· key unavailable";
+    ? `${String(status.provider).toUpperCase()} LIVE · ${status.default_model}`
+    : "DETERMINISTIC FALLBACK · key unavailable";
 }
 
 async function loadCopilotConversation() {
@@ -719,7 +728,7 @@ async function loadModelCatalog() {
   });
   $("#modelCatalogResults").innerHTML = `<p class="muted-copy">Searching modelsâ€¦</p>`;
   const payload = await api(`/api/models/catalog?${params.toString()}`);
-  $("#modelCatalogSource").textContent = `${payload.count} models Â· ${payload.source}`;
+  $("#modelCatalogSource").textContent = `${payload.count} models · ${payload.source}`;
   $("#modelCatalogResults").innerHTML = payload.models.length
     ? payload.models.map(model => `
       <article class="model-catalog-card">
@@ -1054,7 +1063,7 @@ async function loadUnifiedModelCatalog() {
 
   const payload = await api(`/api/models/catalog?${params.toString()}`);
   $("#unifiedModelCatalogSource").textContent =
-    `${payload.count} models Â· ${payload.source}`;
+    `${payload.count} models · ${payload.source}`;
 
   $("#unifiedModelCatalogResults").innerHTML = payload.models.length
     ? payload.models.map(model => `
@@ -1155,7 +1164,7 @@ function formatBytes(bytes) {
 async function loadOllamaManager() {
   const payload = await api("/api/ollama/status");
   $("#ollamaManagerStatus").textContent = payload.connected
-    ? `CONNECTED Â· ${payload.count} installed`
+    ? `CONNECTED · ${payload.count} installed`
     : "NOT RUNNING";
 
   $("#ollamaManagerStatus").classList.toggle("connected", payload.connected);
@@ -1231,7 +1240,7 @@ async function pollOllamaPull(jobId) {
     try {
       const job = await api(`/api/ollama/jobs/${jobId}`);
       $("#ollamaProgressText").textContent =
-        `${job.status}${job.percent ? ` Â· ${job.percent}%` : ""}`;
+        `${job.status}${job.percent ? ` · ${job.percent}%` : ""}`;
       $("#ollamaProgressBar").value = job.percent || 0;
 
       if (job.state === "completed") {
@@ -1296,7 +1305,7 @@ async function loadActiveModelIndicator() {
     const stateText = active.ready ? (active.fallback_active ? "FALLBACK ACTIVE" : "READY") : "OFFLINE";
     if (badge) {
       badge.className = `global-active-brain ${stateClass}`;
-      badge.innerHTML = `<span class="brain-dot ${stateClass}"></span><span><small>${stateText}</small><strong>${active.effective_provider} Â· ${active.effective_model}</strong></span>`;
+      badge.innerHTML = `<span class="brain-dot ${stateClass}"></span><span><small>${stateText}</small><strong>${active.effective_provider} · ${active.effective_model}</strong></span>`;
     }
     if (card) {
       card.innerHTML = `
@@ -1305,7 +1314,7 @@ async function loadActiveModelIndicator() {
           <div><small>${stateText}</small><strong>${active.effective_provider}</strong><code>${active.effective_model}</code></div>
         </div>
         ${active.fallback_active
-          ? `<p class="active-model-warning">Requested ${active.requested_provider} Â· ${active.requested_model}, but AIOS is using fallback.</p>`
+          ? `<p class="active-model-warning">Requested ${active.requested_provider} · ${active.requested_model}, but AIOS is using fallback.</p>`
           : `<p class="active-model-success">This is the model AIOS will use first.</p>`}
         <div class="active-model-actions">
           <button type="button" id="testActiveModel">Test active model</button>
@@ -1410,10 +1419,10 @@ async function loadSystemHealthDashboard() {
     $("#healthResourceCard").innerHTML = `
       <div class="health-line"><span>Disk</span>${healthState(health.disk.healthy)}</div>
       <progress max="100" value="${health.disk.percent}"></progress>
-      <small>${health.disk.percent}% used Â· ${formatHealthBytes(health.disk.free_bytes)} free</small>
+      <small>${health.disk.percent}% used · ${formatHealthBytes(health.disk.free_bytes)} free</small>
       <div class="health-line"><span>Memory</span>${healthState(health.memory.healthy)}</div>
       <progress max="100" value="${health.memory.percent}"></progress>
-      <small>${health.memory.percent}% used Â· ${formatHealthBytes(health.memory.available_bytes)} available</small>
+      <small>${health.memory.percent}% used · ${formatHealthBytes(health.memory.available_bytes)} available</small>
     `;
 
     $("#healthNetworkCard").innerHTML = `
@@ -1501,7 +1510,7 @@ async function loadObsidianStatus() {
   try {
     const status = await api("/api/connectors/obsidian/status");
     $("#obsidianConnectionStatus").textContent = status.connected
-      ? `CONNECTED Â· ${status.note_count} notes`
+      ? `CONNECTED · ${status.note_count} notes`
       : "NOT CONNECTED";
     $("#obsidianConnectionStatus").classList.toggle("connected", status.connected);
     $("#obsidianVaultPath").value = status.vault_path || $("#obsidianVaultPath").value;
@@ -2019,7 +2028,7 @@ async function loadDesktopCompanion() {
     ]);
 
     $("#desktopCompanionStatus").textContent = status.connected
-      ? `CONNECTED Â· ${status.pending_approvals} pending`
+      ? `CONNECTED · ${status.pending_approvals} pending`
       : "NOT ON WINDOWS";
     $("#desktopCompanionStatus").classList.toggle("connected", status.connected);
 
@@ -2036,7 +2045,7 @@ async function loadDesktopCompanion() {
           <div class="desktop-request-head">
             <div>
               <strong>${escapeHtml(item.tool)}</strong>
-              <small>${escapeHtml(item.id)} Â· ${escapeHtml(item.created_at)}</small>
+              <small>${escapeHtml(item.id)} · ${escapeHtml(item.created_at)}</small>
             </div>
             <span class="desktop-request-status ${escapeHtml(item.status)}">
               ${escapeHtml(String(item.status).replaceAll("_", " ").toUpperCase())}
@@ -2399,24 +2408,25 @@ $("#securityLoginForm")?.addEventListener("submit", async event => {
   event.preventDefault();
   $("#securityLoginError").textContent = "";
   try {
-    const response = await fetch("/api/auth/login", {
+    const payload = await api("/api/auth/login", {
       method: "POST",
-      credentials: "same-origin",
-      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         username: $("#securityUsername").value,
         password: $("#securityPassword").value,
       }),
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Login failed");
     aiosCsrfToken = payload.csrf_token || "";
     $("#securityPassword").value = "";
     $("#securityLogin").classList.add("hidden");
     $("#securityLogout")?.classList.remove("hidden");
     location.reload();
   } catch (error) {
-    $("#securityLoginError").textContent = error.message;
+    if (error.code === "cloudflare_access_html") {
+      $("#securityLoginError").innerHTML =
+        'Cloudflare Access session expired. <a href="/cdn-cgi/access/logout">Sign in to Cloudflare again</a>, then retry.';
+    } else {
+      $("#securityLoginError").textContent = error.message || "Login failed";
+    }
   }
 });
 
@@ -2445,8 +2455,8 @@ $("#runNextBrain")?.addEventListener("click", async () => {
     return;
   }
   button.disabled = true;
-  button.textContent = "Agent runningâ€¦";
-  setBrainControlState(currentMission, "Delegating the active task to its specialist brainâ€¦");
+  button.textContent = "Agent running…";
+  setBrainControlState(currentMission, "Delegating the active task to its specialist brain…");
   try {
     const payload = await api(`/api/missions/${currentMission.id}/run-next`, {method: "POST"});
     renderWorkflow(payload.mission);
@@ -2471,7 +2481,7 @@ $("#runFullTeam")?.addEventListener("click", async () => {
 
   const button = $("#runFullTeam");
   button.disabled = true;
-  button.textContent = "Team executingâ€¦";
+  button.textContent = "Team executing…";
   setBrainControlState(currentMission, "Copilot is delegating the mission to the specialist team.");
 
   try {
@@ -2500,7 +2510,7 @@ $("#approveBrainStep")?.addEventListener("click", async () => {
   }
   const button = $("#approveBrainStep");
   button.disabled = true;
-  button.textContent = "Approvingâ€¦";
+  button.textContent = "Approving…";
   try {
     const mission = await api(`/api/missions/${currentMission.id}/approve`, {method: "POST"});
     renderWorkflow(mission);
@@ -2559,7 +2569,7 @@ async function loadPairedDevices() {
   try {
     const devices = await api("/api/mobile/devices");
     $("#pairedDevices").innerHTML = devices.length
-      ? devices.map(device => `<div class="artifact"><span>âœ“</span><p>${device.name} â€” paired ${new Date(device.paired_at).toLocaleString()}</p></div>`).join("")
+      ? devices.map(device => `<div class="artifact"><span>✓</span><p>${device.name} — paired ${new Date(device.paired_at).toLocaleString()}</p></div>`).join("")
       : `<div class="brain-action-status">No paired devices yet.</div>`;
   } catch (error) {
     $("#pairedDevices").innerHTML = `<div class="brain-action-status">Error: ${error.message}</div>`;
@@ -2672,8 +2682,8 @@ async function loadSecurityAdmin() {
 
     $("#securitySummaryCards").innerHTML = `
       <article><span>Active sessions</span><strong>${summary.active_sessions}</strong></article>
-      <article><span>Failed logins Â· 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
-      <article><span>Denied requests Â· 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
+      <article><span>Failed logins · 1h</span><strong>${summary.failed_logins_last_hour}</strong></article>
+      <article><span>Denied requests · 1h</span><strong>${summary.access_denied_last_hour}</strong></article>
       <article class="${summary.suspicious ? "security-warning" : ""}">
         <span>Security posture</span>
         <strong>${summary.suspicious ? "REVIEW" : "NORMAL"}</strong>
@@ -2686,7 +2696,7 @@ async function loadSecurityAdmin() {
             <div>
               <strong>${escapeHtml(item.username || "Owner")}</strong>
               <span>${item.current ? "Current session" : "Other session"}</span>
-              <small>Created ${securityDate(item.created_at)} Â· Expires ${securityDate(item.expires_at)}</small>
+              <small>Created ${securityDate(item.created_at)} · Expires ${securityDate(item.expires_at)}</small>
             </div>
             ${item.current
               ? '<span class="status-chip">CURRENT</span>'
@@ -2700,7 +2710,7 @@ async function loadSecurityAdmin() {
           <article class="security-audit-item">
             <strong>${escapeHtml(item.event || "event")}</strong>
             <span>${securityDate(item.at)}</span>
-            <small>${escapeHtml(item.ip || "unknown")} Â· ${escapeHtml(item.path || "")}</small>
+            <small>${escapeHtml(item.ip || "unknown")} · ${escapeHtml(item.path || "")}</small>
           </article>
         `).join("")
       : '<p class="muted-copy">No security events recorded.</p>';
@@ -2828,7 +2838,7 @@ async function loadGovernanceCenter() {
           <span>${escapeHtml(String(item.status || "pending").toUpperCase())}</span>
           <p>
             <strong>${escapeHtml(item.tool_id || "unknown tool")}</strong><br>
-            ${escapeHtml(item.specialist || "unknown specialist")} Â· ${escapeHtml(item.risk || "unknown risk")}<br>
+            ${escapeHtml(item.specialist || "unknown specialist")} · ${escapeHtml(item.risk || "unknown risk")}<br>
             ${escapeHtml(item.reason || "No reason provided")}
           </p>
         </div>
