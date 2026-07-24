@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import hmac
 import io
 import json
@@ -36,6 +36,7 @@ from agentic.model_gateway import (
     ModelGateway,
     model_preflight,
 )
+from agentic.network_health import run_network_health
 from agentic.pm_router import PMModelRouter
 from agentic.reliability import DefectRegistry
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
@@ -150,6 +151,14 @@ missions: dict[str, dict] = load_missions()
 RELIABILITY_REGISTRY = DefectRegistry(DATA_DIR)
 
 RELIABILITY_LAST_DIAGNOSTIC: str | None = None
+
+
+
+@app.get("/api/network-health")
+def network_health(request: Request):
+    require_owner(request, SECURITY_STORE)
+    public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
+    return run_network_health(Path(__file__).resolve().parents[1], public_url)
 
 
 @app.get("/api/reliability")
