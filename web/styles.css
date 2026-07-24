@@ -1150,3 +1150,22 @@ button,
 .mcp-server-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:950px){.mcp-server-form{grid-template-columns:1fr 1fr}}
 @media(max-width:600px){.mcp-server-form{grid-template-columns:1fr}.mcp-server-item,.registered-tool-item,.registered-skill-item{align-items:flex-start;flex-direction:column}}
+
+
+.reliability-defect-card {
+  display: grid;
+  gap: .5rem;
+  padding: 1rem;
+  border: 1px solid var(--line, rgba(255,255,255,.12));
+  border-radius: 14px;
+  margin-bottom: .75rem;
+}
+.reliability-defect-card.critical { border-color: #ff5c5c; }
+.reliability-defect-card.high { border-color: #ffad3b; }
+.reliability-defect-card span,
+.reliability-defect-card small { opacity: .75; }
+.mission-lifecycle-dialog { width: min(560px, calc(100vw - 2rem)); }
+.mission-lifecycle-dialog form { display: grid; gap: 1rem; }
+.mission-lifecycle-dialog label { display: grid; gap: .4rem; }
+.mission-lifecycle-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.mission-archived-badge { font-size: .75rem; letter-spacing: .08em; }

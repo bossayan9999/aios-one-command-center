@@ -31,6 +31,7 @@ SPECIALISTS = {
     "osint": SpecialistProfile("osint", "OSINT Researcher", "Passive public-source research", "Use passive public sources, preserve provenance, rate sources, and distinguish facts from inference.", ("web.search", "dns.passive", "evidence.write", "knowledge.search"), "hybrid", "gemini-pro"),
     "qa": SpecialistProfile("qa", "Validation Engineer", "Acceptance tests and evidence review", "Verify acceptance criteria with reproducible evidence and return pass, fail, or needs-revision.", ("repository.read", "test.run", "browser.test", "evidence.read"), "local", "deepseek-coder"),
     "productivity": SpecialistProfile("productivity", "Productivity Agent", "Tasks, briefings, calendar, email, and notes", "Organize priorities, prepare drafts and briefings, and require approval before external writes.", ("tasks.read", "tasks.write", "calendar.read", "email.read", "draft.write", "approval.request"), "hybrid", "router:auto"),
+    "reliability-repair": SpecialistProfile("reliability-repair", "Reliability & Defect Specialist", "Detects, reproduces, diagnoses, repairs, and verifies frontend, backend, network, storage, and workflow defects.", "Detect before repairing. Reproduce before root-cause claims, record error IDs, propose bounded repairs, run focused tests, and require independent Governance & Validation Specialist verification.", ("repository.read", "repository.write", "test.run", "browser.test", "evidence.read", "evidence.write", "approval.request"), "local", "router:auto"),
 }
 
 

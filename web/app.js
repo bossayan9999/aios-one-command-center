@@ -12,6 +12,7 @@ const viewTitles = {
   connectors: "Connectors",
   "ai-settings": "AI & Providers",
   "system-health": "System Health",
+  reliability: "Reliability Center",
   "roadmap": "Roadmap & Progress",
   approvals: "Approval Center",
   mobile: "Mobile Control",
@@ -2858,4 +2859,136 @@ document.addEventListener("click", event => {
 
 document.addEventListener("click", event => { if (event.target.closest("#openGovernanceRules")) { window.open("/assets/policy-rules.html?build=phase1d-governance-final", "_blank", "noopener,noreferrer"); } });
 
+
+
+
+function reliabilityErrorMessage(error) {
+  const errorId = error?.error_id || error?.payload?.error_id || "";
+  return `${error?.message || "Request failed"}${errorId ? ` · Error ID: ${errorId}` : ""}`;
+}
+
+async function loadReliability() {
+  const defectsHost = $("#reliabilityDefects");
+  try {
+    const payload = await api("/api/reliability");
+    const summary = payload.summary || payload;
+    $("#reliabilityOpenCount").textContent = String(summary.open ?? summary.open_defects ?? 0);
+    $("#reliabilityCriticalCount").textContent = String(summary.critical ?? summary.critical_defects ?? 0);
+    $("#reliabilityVerifiedCount").textContent = String(summary.verified ?? summary.verified_fixes ?? 0);
+    $("#reliabilityDiagnosticTime").textContent = summary.last_diagnostic
+      ? new Date(summary.last_diagnostic).toLocaleString()
+      : "Never";
+    const defectsPayload = await api("/api/reliability/defects");
+    const defects = defectsPayload.items || defectsPayload.defects || [];
+    defectsHost.innerHTML = defects.length
+      ? defects.map(item => `
+        <article class="reliability-defect-card ${escapeHtml(item.severity || "unknown")}">
+          <div>
+            <span>${escapeHtml((item.status || "unknown").replaceAll("_", " ").toUpperCase())}</span>
+            <strong>${escapeHtml(item.title || "Untitled defect")}</strong>
+            <p>${escapeHtml(item.summary || "")}</p>
+          </div>
+          <small>${escapeHtml(item.error_id || "No error ID")} · ${escapeHtml(item.category || "unknown")}</small>
+        </article>`).join("")
+      : '<p class="muted-copy">No defects recorded.</p>';
+  } catch (error) {
+    defectsHost.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+}
+
+async function runReliabilityDiagnostics() {
+  const host = $("#reliabilityIntegrity");
+  host.innerHTML = '<p class="muted-copy">Running safe diagnostics...</p>';
+  try {
+    const payload = await api("/api/reliability/diagnostics", {method: "POST", body: "{}"});
+    const checks = payload.checks || payload.results || [];
+    host.innerHTML = checks.length
+      ? checks.map(check => `<div class="artifact"><span>${check.ok ? "PASS" : "FAIL"}</span><p><strong>${escapeHtml(check.name || check.id || "Check")}</strong><br>${escapeHtml(check.detail || check.message || "")}</p></div>`).join("")
+      : '<p class="muted-copy">Diagnostics completed.</p>';
+    await loadReliability();
+  } catch (error) {
+    host.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  }
+}
+
+function openMissionLifecycleDialog(action, mission) {
+  const dialog = $("#missionLifecycleDialog");
+  $("#missionLifecycleId").value = mission.id;
+  $("#missionLifecycleAction").value = action;
+  $("#missionLifecycleTitle").textContent =
+    action === "archive" ? "Archive mission" :
+    action === "restore" ? "Restore mission" :
+    "Delete mission permanently";
+  $("#missionLifecycleWarning").textContent =
+    action === "delete"
+      ? `This permanently deletes "${mission.title || "Untitled mission"}" (${mission.id}). This cannot be undone.`
+      : action === "archive"
+        ? "Archive removes this mission from normal history but keeps it available for restore."
+        : "Restore returns this mission to normal Mission History.";
+  const deleting = action === "delete";
+  $("#missionDeleteConfirmationLabel").classList.toggle("hidden", !deleting);
+  $("#missionDeleteTitleLabel").classList.toggle("hidden", !deleting);
+  $("#missionDeleteApprovalLabel").classList.toggle("hidden", !deleting);
+  $("#missionDeleteConfirmation").value = "";
+  $("#missionDeleteTitleConfirmation").value = "";
+  $("#missionDeleteApprovalId").value = "";
+  $("#missionDeleteTitleConfirmation").dataset.expectedTitle = mission.title || "Untitled mission";
+  $("#missionLifecycleStatus").textContent = deleting
+    ? "Permanent deletion requires an approved, single-use governance approval."
+    : "";
+  dialog.showModal();
+}
+
+async function executeMissionLifecycle(action, missionId) {
+  if (action === "archive") {
+    return api(`/api/missions/${missionId}/archive`, {method: "POST", body: "{}"});
+  }
+  if (action === "restore") {
+    return api(`/api/missions/${missionId}/restore`, {method: "POST", body: "{}"});
+  }
+  return api(`/api/missions/${missionId}`, {
+    method: "DELETE",
+    body: JSON.stringify({
+      confirm_mission_id: $("#missionDeleteConfirmation").value.trim(),
+      confirm_title: $("#missionDeleteTitleConfirmation").value.trim(),
+      approval_id: $("#missionDeleteApprovalId").value.trim(),
+    }),
+  });
+}
+
+document.addEventListener("click", event => {
+  const lifecycleButton = event.target.closest("[data-mission-lifecycle]");
+  if (lifecycleButton) {
+    openMissionLifecycleDialog(lifecycleButton.dataset.missionLifecycle, {
+      id: lifecycleButton.dataset.missionId,
+      title: lifecycleButton.dataset.missionTitle,
+    });
+  }
+});
+
+$("#missionLifecycleForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const action = $("#missionLifecycleAction").value;
+  const missionId = $("#missionLifecycleId").value;
+  const status = $("#missionLifecycleStatus");
+  try {
+    status.textContent = "Working...";
+    await executeMissionLifecycle(action, missionId);
+    $("#missionLifecycleDialog").close();
+    if (typeof loadMissionHistory === "function") await loadMissionHistory();
+    if (typeof showAiosToast === "function") {
+      showAiosToast({
+        title: action === "archive" ? "Mission archived" : action === "restore" ? "Mission restored" : "Mission deleted",
+        message: action === "archive" ? "The mission can be restored from Archived missions." : "Mission lifecycle updated.",
+        type: "success",
+      });
+    }
+  } catch (error) {
+    status.textContent = reliabilityErrorMessage(error);
+  }
+});
+
+$("#cancelMissionLifecycle")?.addEventListener("click", () => $("#missionLifecycleDialog")?.close());
+$("#runReliabilityDiagnostics")?.addEventListener("click", runReliabilityDiagnostics);
+$("#refreshReliability")?.addEventListener("click", loadReliability);
 

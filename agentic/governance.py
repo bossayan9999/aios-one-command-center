@@ -49,6 +49,11 @@ RULES = [
     AgentRule("raw-terminal-blocked", "Raw terminal blocked", "Unrestricted shell execution is always blocked."),
     AgentRule("secrets-blocked", "Secret access blocked", "Tokens, passwords, private keys, and credentials cannot be exposed."),
     AgentRule("destructive-actions-blocked", "Destructive actions blocked", "Deletion and repository settings changes are blocked."),
+    AgentRule("detect-before-repair", "Detect before repair", "Application defects must be detected and reproduced before root-cause or repair claims."),
+    AgentRule("focused-tests-before-fix", "Focused tests before verified", "A repair is not verified until focused tests pass."),
+    AgentRule("reliability-validator-independence", "Independent repair validation", "The Reliability & Defect Specialist cannot validate its own repair; Governance & Validation must return PASS."),
+    AgentRule("archive-before-delete", "Archive before permanent deletion", "Archive is preferred; permanent mission deletion requires a payload-bound owner approval."),
+    AgentRule("recurring-errors-visible", "Recurring errors remain visible", "Failed repairs and recurring errors are recorded rather than hidden or suppressed."),
 ]
 
 
