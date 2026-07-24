@@ -1334,3 +1334,24 @@ button,
   overflow-wrap: anywhere;
   opacity: .75;
 }
+
+
+/* Phase 1F Update 2.1: website navigation and project workspace */
+.sidebar { height: 100vh; max-height: 100vh; overflow: hidden; }
+.sidebar-nav { min-height: 0; flex: 1; overflow-y: auto; overflow-x: hidden; padding: .25rem .55rem 2rem; scrollbar-gutter: stable; }
+.nav-group { margin: .35rem 0 .8rem; }
+.nav-group summary { cursor: pointer; padding: .55rem .7rem; color: var(--muted, #8ca9a2); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; user-select: none; }
+.nav-group .nav-item { width: 100%; display: block; text-align: left; margin: .18rem 0; }
+.project-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.project-card-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.project-progress { height: 8px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; margin: 1rem 0; }
+.project-progress span { display: block; height: 100%; background: #ffad32; }
+.project-meta { display: grid; gap: .7rem; }
+.project-meta div { display: grid; grid-template-columns: 90px 1fr; gap: .6rem; }
+.project-meta dt { color: var(--muted, #8ca9a2); }
+.project-meta dd { margin: 0; overflow-wrap: anywhere; }
+.project-form .wide { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .project-grid { grid-template-columns: 1fr; }
+  .project-form .wide { grid-column: auto; }
+}
