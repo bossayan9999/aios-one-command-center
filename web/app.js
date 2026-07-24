@@ -7,6 +7,7 @@ const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
   projects: "Projects",
+  osint: "OSINT Cases",
   workflow: "Workflow Map",
   agents: "Specialists",
   knowledge: "Knowledge Graph",
@@ -3447,4 +3448,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.querySelector('.nav-item[data-view="projects"]')?.addEventListener("click", loadProjects);
   if (window.location.hash === "#projects") loadProjects();
+});
+
+const OSINT_WORKFLOW = ["DEFINE","PLAN","COLLECT","VERIFY","ANALYZE","VALIDATE","REPORT","STORE","LEARN"];
+function renderOsintWorkflow(active="") {
+  return OSINT_WORKFLOW.map((stage,index)=>`<div class="osint-stage ${stage===active?"active":""}"><span>${index+1}</span><strong>${stage}</strong></div>`).join("");
+}
+function osintCaseCard(item) {
+  return `<article class="panel"><div class="project-card-head"><div><p class="eyebrow">${item.status}</p><h2>${item.case_id} - ${item.title}</h2></div><span class="status-chip">${item.workflow_stage}</span></div><p>${item.purpose}</p><div class="osint-case-workflow">${renderOsintWorkflow(item.workflow_stage)}</div><button class="advance-osint-case primary" data-case-id="${item.case_id}">Advance workflow</button></article>`;
+}
+async function loadOsintCases() {
+  const [ready,payload]=await Promise.all([api("/api/osint/readiness"),api("/api/osint/cases")]);
+  const cases=payload.cases||[];
+  $("#osintReadinessStatus").textContent=ready.status;
+  $("#osintCaseCount").textContent=cases.length;
+  $("#osintCategoryCount").textContent=(ready.categories||[]).length;
+  $("#osintWorkflowCount").textContent=(ready.workflow||[]).length;
+  $("#osintWorkflowLegend").innerHTML=renderOsintWorkflow();
+  $("#osintCaseGrid").innerHTML=cases.length?cases.map(osintCaseCard).join(""):`<article class="panel"><h2>No OSINT cases yet</h2></article>`;
+  document.querySelectorAll(".advance-osint-case").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/osint/cases/${button.dataset.caseId}/advance`,{method:"POST",body:"{}"});await loadOsintCases();}));
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  const panel=$("#osintCaseFormPanel");
+  $("#openOsintCaseForm")?.addEventListener("click",()=>panel?.classList.remove("hidden"));
+  $("#closeOsintCaseForm")?.addEventListener("click",()=>panel?.classList.add("hidden"));
+  $("#refreshOsintCases")?.addEventListener("click",loadOsintCases);
+  $("#osintCaseForm")?.addEventListener("submit",async event=>{
+    event.preventDefault();
+    const payload={title:$("#osintCaseTitle").value.trim(),target_type:$("#osintTargetType").value.trim(),purpose:$("#osintPurpose").value.trim(),scope:$("#osintScope").value.trim(),categories:$("#osintCategories").value.split(",").map(x=>x.trim()).filter(Boolean),specialists:$("#osintSpecialists").value.split(",").map(x=>x.trim()).filter(Boolean),authorized:$("#osintAuthorized").checked};
+    await api("/api/osint/cases",{method:"POST",body:JSON.stringify(payload)});
+    event.target.reset();panel?.classList.add("hidden");await loadOsintCases();
+  });
+  document.querySelector('.nav-item[data-view="osint"]')?.addEventListener("click",loadOsintCases);
+  if(window.location.hash==="#osint")loadOsintCases();
 });

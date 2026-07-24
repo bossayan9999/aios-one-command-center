@@ -1355,3 +1355,12 @@ button,
   .project-grid { grid-template-columns: 1fr; }
   .project-form .wide { grid-column: auto; }
 }
+
+/* Phase 1G Update 1 */
+.osint-case-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:1rem;margin-top:1rem;}
+.osint-workflow-legend,.osint-case-workflow {display:grid;grid-template-columns:repeat(9,minmax(72px,1fr));gap:.45rem;overflow-x:auto;padding-bottom:.4rem;}
+.osint-stage {min-width:72px;padding:.7rem .45rem;border:1px solid rgba(255,255,255,.1);border-radius:10px;text-align:center;}
+.osint-stage span {display:block;color:var(--muted,#8ca9a2);font-size:.72rem;}
+.osint-stage strong {font-size:.74rem;}
+.osint-stage.active {border-color:#ffad32;}
+.osint-case-form .wide {grid-column:1/-1;}
