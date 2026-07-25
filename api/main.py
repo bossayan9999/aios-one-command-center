@@ -28,8 +28,6 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from api.final_system_routes import router as final_system_router
-
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
@@ -51,6 +49,7 @@ from agentic.settings_store import AIOSSettingsStore
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from agentic.unified_task_store import UnifiedTaskStore
 from api.brain_vault_tree_routes import router as brain_vault_tree_router
+from api.final_system_routes import router as final_system_router
 from api.quantum_solver_routes import router as quantum_solver_router
 from api.workspace_routes import router as workspace_router
 from security.app_security import (

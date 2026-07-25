@@ -20,7 +20,6 @@ from uuid import uuid4
 
 from agentic.quantum_branch_solver import QuantumBranchSolver
 
-
 ENGINEERING_STAGES = [
     "understand",
     "plan",
