@@ -28,6 +28,10 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from security.env_loader import load_security_environment, missing_security_variables
+
+load_security_environment(Path(__file__).resolve().parents[1])
+
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
@@ -47,6 +51,7 @@ from agentic.project_store import ProjectStore
 from agentic.reliability import DefectRegistry
 from agentic.settings_store import AIOSSettingsStore
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
+from agentic.task_worker import AgentWorker
 from agentic.unified_task_store import UnifiedTaskStore
 from api.brain_vault_tree_routes import router as brain_vault_tree_router
 from api.final_system_routes import router as final_system_router
@@ -110,6 +115,7 @@ BRAIN_MEMORY = BrainMemoryRetriever(BRAIN_VAULT)
 PROJECT_STORE = ProjectStore(DATA_DIR)
 OSINT_CASES = OSINTCaseStore(DATA_DIR, BRAIN_VAULT_ROOT)
 UNIFIED_TASKS = UnifiedTaskStore(DATA_DIR, BRAIN_VAULT_ROOT)
+TASK_WORKER = AgentWorker(DATA_DIR, BRAIN_VAULT_ROOT)
 AIOS_SETTINGS = AIOSSettingsStore(DATA_DIR)
 CONNECTOR_REGISTRY = ConnectorRegistry(DATA_DIR)
 MCP_RUNTIME = MCPRuntime()
@@ -817,6 +823,25 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
 SECURITY_STORE = SecurityStore(DATA_DIR)
 TOOL_REGISTRY = ToolRegistry(DATA_DIR, WEB_DIR.parent)
 GOVERNANCE_ENGINE = GovernanceEngine(DATA_DIR)
+
+
+@app.on_event("startup")
+def start_task_worker() -> None:
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    if os.getenv("AIOS_WORKER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
+        missing = missing_security_variables()
+        if missing or not owner_is_configured():
+            raise RuntimeError(
+                "Security preflight failed. Missing required variables: "
+                + ", ".join(missing or ["AIOS_OWNER_PASSWORD_HASH", "AIOS_OWNER_PASSWORD_SALT"])
+            )
+        TASK_WORKER.start()
+
+
+@app.on_event("shutdown")
+def stop_task_worker() -> None:
+    TASK_WORKER.stop()
 
 
 

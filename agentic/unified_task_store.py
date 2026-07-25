@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,8 @@ class UnifiedTaskStore:
         "STORE", "LEARN",
     ]
     PRIORITY_MINUTES = {"urgent": 20, "standard": 60, "thorough": 180}
+
+    _lock = threading.RLock()
 
     def __init__(self, data_dir: Path, vault_root: Path):
         self.data_dir = Path(data_dir)
@@ -79,14 +82,14 @@ class UnifiedTaskStore:
             target = min(deadline, start + timedelta(minutes=minutes))
             result.append({
                 "specialist": name,
-                "status": "WORKING" if index == 0 else "WAITING",
+                "status": "WAITING",
                 "assigned_at": self._iso(now),
                 "start_deadline": self._iso(start),
                 "target_completion": self._iso(target),
                 "hard_deadline": self._iso(deadline),
                 "estimated_minutes": minutes,
-                "progress": 5 if index == 0 else 0,
-                "current_action": "Reviewing assigned task" if index == 0 else "Waiting for dependency",
+                "progress": 0,
+                "current_action": "Waiting for a worker claim",
                 "blocker": "",
                 "confidence": 0,
             })
@@ -150,6 +153,7 @@ class UnifiedTaskStore:
         task_id = f"TASK-{now.year}-{uuid4().hex[:6].upper()}"
         task = {
             "task_id": task_id,
+            "title": str(payload.get("title") or payload.get("name") or message[:80]).strip(),
             "project_id": str(payload.get("project_id", "")).strip(),
             "message": message,
             "input_type": str(payload.get("input_type", "message")),
@@ -159,7 +163,7 @@ class UnifiedTaskStore:
             "requested_output": str(payload.get("output_type", "chat")),
             "priority": priority,
             "task_type": task_type,
-            "status": "ACTIVE",
+            "status": "QUEUED",
             "workflow_stage": "RECEIVE",
             "deadline_state": "ON_TRACK",
             "created_at": self._iso(now),
@@ -178,6 +182,15 @@ class UnifiedTaskStore:
             "memory_mode": str(payload.get("memory_mode", "automatic")).strip().lower(),
             "token_budget": token_budget,
             "model_route": {},
+            "worker_id": "",
+            "worker_heartbeat_at": "",
+            "task_heartbeat_at": "",
+            "current_specialist": "",
+            "current_execution_step": "QUEUED",
+            "retry_count": 0,
+            "max_retries": int(payload.get("max_retries", 2)),
+            "last_error": "",
+            "cancel_requested": False,
         }
         route = self.model_router.route(task)
         task["model_route"] = {
