@@ -1454,3 +1454,30 @@ button,
 .osint-case-grid article{border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;justify-content:space-between}
 @media(max-width:1100px){.workspace-explorer{grid-template-columns:220px 1fr}.workspace-preview{grid-column:1 / -1;position:static}}
 @media(max-width:720px){.workspace-explorer{display:block}.workspace-folders,.workspace-preview{position:static;margin-bottom:12px}.osint-case-grid{grid-template-columns:1fr}.workspace-item-card{grid-template-columns:72px 1fr}}
+
+
+
+.brain-vault-tree-panel{display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:14px;margin-top:14px}
+.brain-vault-tree-sidebar{max-height:75vh;overflow:auto}
+.brain-vault-tree-preview{min-height:420px}
+.brain-vault-folder{margin:4px 0}
+.brain-vault-folder>summary{cursor:pointer;padding:8px;border-radius:8px}
+.brain-vault-folder>div{padding-left:14px}
+.brain-vault-file,.brain-vault-search-result{width:100%;display:grid;grid-template-columns:55px 1fr;gap:8px;text-align:left;margin:4px 0}
+.brain-vault-file span{font-size:.68rem;letter-spacing:.08em}
+.brain-vault-search-result small,.brain-vault-search-result span{grid-column:2}
+.brain-vault-note-content{max-height:48vh;overflow:auto;white-space:pre-wrap}
+.brain-vault-related{display:flex;flex-wrap:wrap;gap:8px}
+@media(max-width:800px){.brain-vault-tree-panel{grid-template-columns:1fr}.brain-vault-tree-sidebar{max-height:none}}
+
+
+
+.quantum-branch-panel{margin-top:14px}
+.mode-toggle{display:flex;align-items:center;gap:8px}
+.quantum-flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:14px 0}
+.quantum-flow span{padding:10px;border:1px solid var(--border);border-radius:10px;text-align:center}
+.quantum-result-summary{display:flex;justify-content:space-between;gap:12px;margin:14px 0}
+.quantum-branch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.quantum-branch-card{border:1px solid var(--border);border-radius:14px;padding:14px}
+.quantum-branch-card.winner{box-shadow:0 0 0 1px #ffab3d inset}
+@media(max-width:900px){.quantum-flow{grid-template-columns:repeat(2,minmax(0,1fr))}}

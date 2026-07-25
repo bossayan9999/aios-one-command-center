@@ -55,3 +55,5 @@ data/settings.json
 data/connectors.json
 data/workspace/
 *.phase1j-*.bak
+data/brain_vault_selected_memory.json
+*.phase1k-*.bak
