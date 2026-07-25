@@ -1490,3 +1490,24 @@ button,
 .system-model-memory span{border:1px solid var(--border);padding:8px 10px;border-radius:10px}
 .system-model-loop{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .system-model-loop span{border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center;text-transform:capitalize}
+
+
+
+.live-task-control-center{margin-top:14px}
+.live-task-selector-row{display:flex;gap:10px;align-items:center;margin:12px 0}
+.live-task-selector-row select{min-width:280px;max-width:100%;flex:1}
+.live-task-actions{display:flex;gap:8px;flex-wrap:wrap}
+.live-task-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.live-task-group{border:1px solid var(--border);border-radius:12px;padding:10px;min-width:0}
+.live-task-group h3{display:flex;justify-content:space-between;gap:8px}
+.live-task-row{display:grid;width:100%;text-align:left;gap:4px;margin-top:8px;padding:10px}
+.live-task-row span,.live-task-row small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-task-row.active{outline:2px solid currentColor}
+.inline-error{margin-top:10px;padding:10px;border:1px solid currentColor;border-radius:8px}
+@media (max-width:700px){
+  .workspace-tabs,.task-tabs{overflow-x:auto;display:flex;flex-wrap:nowrap;scroll-snap-type:x proximity}
+  .workspace-tabs button,.task-tabs button{flex:0 0 auto;scroll-snap-align:center}
+  .live-task-selector-row{position:sticky;top:0;z-index:4;display:grid;background:var(--surface)}
+  .live-task-owner-actions button,.live-task-actions button{width:100%}
+  .live-task-groups{grid-template-columns:1fr}
+}

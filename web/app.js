@@ -3969,3 +3969,170 @@ window.addEventListener("hashchange", () => {
   if (location.hash === "#outputs") loadTaskOutputs();
   if (location.hash === "#skills-library") loadSkillsLibrary();
 });
+
+
+
+let liveTaskDashboard = null;
+let selectedLiveTaskId = "";
+
+function allLiveTasks() {
+  if (!liveTaskDashboard) return [];
+  return Object.values(liveTaskDashboard.groups || {}).flat();
+}
+
+function liveTaskById(taskId) {
+  return allLiveTasks().find(item => item.task_id === taskId);
+}
+
+function renderLiveTaskGroups() {
+  const root = $("#liveTaskGroups");
+  if (!root || !liveTaskDashboard) return;
+  const labels = {
+    active: "Active tasks",
+    waiting_approval: "Waiting for approval",
+    failed: "Failed tasks",
+    completed: "Completed tasks",
+    archived: "Archived tasks",
+    cancelled: "Cancelled tasks",
+  };
+  root.innerHTML = Object.entries(liveTaskDashboard.groups).map(([group, tasks]) => `
+    <article class="live-task-group">
+      <h3>${labels[group] || group} <span>${tasks.length}</span></h3>
+      ${tasks.length ? tasks.map(task => `
+        <button class="live-task-row ${task.task_id === selectedLiveTaskId ? "active" : ""}"
+                type="button" data-live-task-id="${task.task_id}">
+          <strong>${task.task_id}</strong>
+          <span>${escapeHtml(task.message || "")}</span>
+          <small>${task.status} · ${task.runtime_state}</small>
+        </button>`).join("") : `<p class="muted-copy">None</p>`}
+    </article>`).join("");
+  root.querySelectorAll("[data-live-task-id]").forEach(button => {
+    button.addEventListener("click", async () => {
+      selectedLiveTaskId = button.dataset.liveTaskId;
+      $("#liveTaskSelector").value = selectedLiveTaskId;
+      await loadSelectedLiveTask();
+      renderLiveTaskGroups();
+    });
+  });
+}
+
+function renderLiveTaskSelector() {
+  const selector = $("#liveTaskSelector");
+  if (!selector) return;
+  const tasks = allLiveTasks();
+  if (!selectedLiveTaskId && tasks.length) selectedLiveTaskId = tasks[0].task_id;
+  selector.innerHTML = tasks.length
+    ? tasks.map(task => `<option value="${task.task_id}">${task.task_id} — ${escapeHtml(task.message || "")}</option>`).join("")
+    : `<option value="">No tasks</option>`;
+  selector.value = selectedLiveTaskId;
+}
+
+function renderLiveTaskTab(task, tabName) {
+  const name = (tabName || "overview").toLowerCase().replaceAll(" ", "-");
+  const host = document.querySelector(`[data-workspace-panel="${name}"]`)
+    || document.querySelector(`#workspace-${name}`)
+    || document.querySelector(`#task-${name}`);
+  if (!host) return;
+  const map = {
+    overview: {
+      Status: task.status,
+      "Runtime state": task.runtime_state,
+      "Workflow stage": task.workflow_stage,
+      "Last update age": `${task.last_update_age_seconds}s`,
+    },
+    "copilot-manager": task.manager || {},
+    workflow: {stage: task.workflow_stage, deadline_state: task.deadline_state},
+    specialists: task.specialists || [],
+    inputs: {message: task.message, urls: task.urls || [], attachments: task.attachments || []},
+    evidence: task.evidence || [],
+    approvals: task.approvals || [],
+    outputs: task.outputs || [],
+    "brain-vault": {task_id: task.task_id, output_paths: (task.outputs || []).map(item => item.brain_vault_path)},
+    "models-and-budget": {model_route: task.model_route || {}, token_budget: task.token_budget || {}},
+    "tools-and-connectors": task.tools || [],
+    audit: task.workspace_audit || [],
+  };
+  const value = map[name] ?? {};
+  host.innerHTML = `<pre>${escapeHtml(JSON.stringify(value, null, 2))}</pre>`;
+}
+
+async function loadSelectedLiveTask() {
+  if (!selectedLiveTaskId) return;
+  const task = await api(`/api/live-tasks/${encodeURIComponent(selectedLiveTaskId)}`);
+  $("#liveTaskRuntimeState").textContent = `${task.status} · ${task.runtime_state}`;
+  document.querySelectorAll("[data-workspace-tab]").forEach(tab => {
+    renderLiveTaskTab(task, tab.dataset.workspaceTab);
+  });
+  [
+    "Overview", "Copilot Manager", "Workflow", "Specialists", "Inputs", "Evidence",
+    "Approvals", "Outputs", "Brain Vault", "Models and Budget",
+    "Tools and Connectors", "Audit"
+  ].forEach(name => renderLiveTaskTab(task, name));
+}
+
+async function loadLiveTaskWorkspace() {
+  const error = $("#liveTaskError");
+  if (error) error.hidden = true;
+  try {
+    liveTaskDashboard = await api("/api/live-tasks");
+    renderLiveTaskSelector();
+    renderLiveTaskGroups();
+    await loadSelectedLiveTask();
+    $("#liveTaskLastRefreshed").textContent =
+      `Last refreshed: ${new Date(liveTaskDashboard.generated_at).toLocaleString()}`;
+  } catch (exception) {
+    if (error) {
+      error.hidden = false;
+      error.textContent = exception.message;
+    }
+  }
+}
+
+async function runLiveTaskAction(action, confirmationText = "") {
+  if (!selectedLiveTaskId) return;
+  if (confirmationText && !window.confirm(confirmationText)) return;
+  await api(`/api/live-tasks/${encodeURIComponent(selectedLiveTaskId)}/${action}`, {method: "POST"});
+  await loadLiveTaskWorkspace();
+}
+
+$("#liveTaskRefresh")?.addEventListener("click", loadLiveTaskWorkspace);
+$("#liveTaskSelector")?.addEventListener("change", async event => {
+  selectedLiveTaskId = event.target.value;
+  await loadSelectedLiveTask();
+  renderLiveTaskGroups();
+});
+$("#liveTaskResume")?.addEventListener("click", () => runLiveTaskAction("resume"));
+$("#liveTaskRetry")?.addEventListener("click", () => runLiveTaskAction("retry"));
+$("#liveTaskCancel")?.addEventListener("click", () =>
+  runLiveTaskAction("cancel", "Cancel this task? The current execution will stop."));
+$("#liveTaskArchive")?.addEventListener("click", () =>
+  runLiveTaskAction("archive", "Archive this task? It will leave the active workspace."));
+$("#archiveCompletedTasks")?.addEventListener("click", async () => {
+  if (!window.confirm("Archive all completed tasks?")) return;
+  await api("/api/live-tasks/archive-completed", {method: "POST"});
+  await loadLiveTaskWorkspace();
+});
+$("#liveTaskOpenOutput")?.addEventListener("click", () => {
+  const task = liveTaskById(selectedLiveTaskId);
+  const output = task?.outputs?.[task.outputs.length - 1];
+  if (!output) {
+    window.alert("This task has no final output yet.");
+    return;
+  }
+  location.hash = "#outputs";
+});
+
+document.querySelectorAll("[data-workspace-tab]").forEach(tab => {
+  tab.addEventListener("click", async () => {
+    if (!selectedLiveTaskId) return;
+    const task = await api(`/api/live-tasks/${encodeURIComponent(selectedLiveTaskId)}`);
+    renderLiveTaskTab(task, tab.dataset.workspaceTab);
+    tab.scrollIntoView({behavior: "smooth", inline: "center", block: "nearest"});
+  });
+});
+
+window.addEventListener("hashchange", () => {
+  if (location.hash.includes("task") || location.hash === "#command-center") {
+    loadLiveTaskWorkspace();
+  }
+});
