@@ -3725,3 +3725,176 @@ document.querySelectorAll(".osint-workspace-tab").forEach(button => {
     button.classList.add("active");
   });
 });
+
+
+
+let selectedBrainVaultPath = "";
+
+function renderBrainVaultTreeNode(node) {
+  if (node.type === "file") {
+    return `<button class="brain-vault-file" data-vault-path="${node.path}">
+      <span>NOTE</span><strong>${node.name}</strong>
+    </button>`;
+  }
+  const children = (node.children || []).map(renderBrainVaultTreeNode).join("");
+  const label = node.path ? node.name : "AIOS Brain Vault";
+  return `<details class="brain-vault-folder" ${node.path ? "" : "open"}>
+    <summary>${label}</summary>
+    <div>${children}</div>
+  </details>`;
+}
+
+async function loadBrainVaultTree() {
+  const tree = await api("/api/brain-vault/tree");
+  $("#brainVaultTreeRoot").innerHTML = renderBrainVaultTreeNode(tree);
+  wireBrainVaultTreeFiles();
+}
+
+function wireBrainVaultTreeFiles() {
+  document.querySelectorAll("[data-vault-path]").forEach(button => {
+    button.addEventListener("click", async () => {
+      await previewBrainVaultNote(button.dataset.vaultPath);
+    });
+  });
+}
+
+async function previewBrainVaultNote(path) {
+  const item = await api(`/api/brain-vault/tree/preview?path=${encodeURIComponent(path)}`);
+  selectedBrainVaultPath = item.path;
+  $("#brainVaultTreePreview").innerHTML = `
+    <p class="eyebrow">${(item.extension || "FILE").replace(".","").toUpperCase()}</p>
+    <h3>${item.name}</h3>
+    <p><code>${item.path}</code></p>
+    <p>Modified: ${new Date(item.modified_at).toLocaleString()}</p>
+    ${item.previewable ? `<pre class="brain-vault-note-content">${escapeHtml(item.content || "")}</pre>` : `<p class="muted-copy">Preview is unavailable for this file type.</p>`}
+    <h4>Related notes</h4>
+    <div class="brain-vault-related">
+      ${(item.related || []).map(note => `<button data-vault-path="${note.path}">${note.name}</button>`).join("") || "<span>No related notes found.</span>"}
+    </div>`;
+  $("#useBrainVaultMemory").disabled = false;
+  $("#useBrainVaultMemory").textContent = item.selected_for_memory ? "Remove from Copilot memory" : "Use as Copilot memory";
+  $("#useBrainVaultMemory").dataset.selected = item.selected_for_memory ? "true" : "false";
+  $("#openSelectedInObsidian").disabled = false;
+  $("#fileSelectedWithOrganizer").disabled = false;
+  wireBrainVaultTreeFiles();
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[character]));
+}
+
+async function searchBrainVaultTree() {
+  const query = ($("#brainVaultTreeSearch")?.value || "").trim();
+  if (!query) {
+    $("#brainVaultSearchResults").innerHTML = "";
+    return;
+  }
+  const payload = await api(`/api/brain-vault/tree/search?q=${encodeURIComponent(query)}`);
+  $("#brainVaultSearchResults").innerHTML = payload.results.length
+    ? payload.results.map(item => `<button class="brain-vault-search-result" data-vault-path="${item.path}">
+        <strong>${item.name}</strong><small>${item.path}</small><span>${escapeHtml(item.snippet || "")}</span>
+      </button>`).join("")
+    : `<div class="empty-approval"><p>No matching notes.</p></div>`;
+  wireBrainVaultTreeFiles();
+}
+
+$("#openBrainVaultTree")?.addEventListener("click", async () => {
+  $("#brainVaultTreePanel")?.classList.remove("hidden");
+  await loadBrainVaultTree();
+});
+$("#closeBrainVaultTree")?.addEventListener("click", () => $("#brainVaultTreePanel")?.classList.add("hidden"));
+$("#refreshBrainVaultTree")?.addEventListener("click", loadBrainVaultTree);
+$("#brainVaultTreeSearchButton")?.addEventListener("click", searchBrainVaultTree);
+$("#brainVaultTreeSearch")?.addEventListener("keydown", event => {
+  if (event.key === "Enter") { event.preventDefault(); searchBrainVaultTree(); }
+});
+$("#useBrainVaultMemory")?.addEventListener("click", async buttonEvent => {
+  if (!selectedBrainVaultPath) return;
+  const button = buttonEvent.currentTarget;
+  const selected = button.dataset.selected !== "true";
+  await api("/api/brain-vault/tree/memory", {
+    method: "POST",
+    body: JSON.stringify({path:selectedBrainVaultPath, selected})
+  });
+  button.dataset.selected = selected ? "true" : "false";
+  button.textContent = selected ? "Remove from Copilot memory" : "Use as Copilot memory";
+});
+$("#openSelectedInObsidian")?.addEventListener("click", () => {
+  if (!selectedBrainVaultPath) return;
+  window.location.href = `obsidian://open?path=${encodeURIComponent(selectedBrainVaultPath)}`;
+});
+$("#fileSelectedWithOrganizer")?.addEventListener("click", () => {
+  if (!selectedBrainVaultPath) return;
+  switchView("file-explorer");
+  const search = $("#workspaceSearch");
+  if (search) {
+    search.value = selectedBrainVaultPath.split("/").at(-1) || selectedBrainVaultPath;
+    loadWorkspaceExplorer();
+  }
+});
+
+
+
+let latestQuantumResult = null;
+
+function quantumSpecialistsFromDashboard() {
+  return (dashboard?.specialists || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    role: item.role,
+    status: item.status || "ready"
+  }));
+}
+
+function renderQuantumResult(result) {
+  const target = $("#quantumBranchResults");
+  if (!target) return;
+  const branches = result.survivors?.length ? result.survivors : result.branches || [];
+  target.innerHTML = `
+    <div class="quantum-result-summary">
+      <strong>${result.branch_count} branches explored</strong>
+      <span>${result.pruned?.length || 0} weak branches pruned</span>
+    </div>
+    <div class="quantum-branch-grid">
+      ${branches.map((branch, index) => `
+        <article class="quantum-branch-card ${index === 0 ? "winner" : ""}">
+          <p class="eyebrow">${branch.specialist_name || branch.specialist_id}</p>
+          <h3>${branch.summary || branch.hypothesis}</h3>
+          <p>Score: ${Number(branch.score || 0).toFixed(2)} · Confidence: ${branch.confidence || 0}%</p>
+          <ul>${(branch.findings || []).map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </article>`).join("")}
+    </div>`;
+}
+
+async function runQuantumBranchSolver() {
+  if (!$("#quantumBranchMode")?.checked) {
+    $("#quantumBranchResults").innerHTML = `<div class="empty-approval"><p>Enable Quantum-inspired mode first.</p></div>`;
+    return;
+  }
+  const problem = ($("#taskMessage")?.value || "").trim();
+  if (!problem) {
+    $("#quantumBranchResults").innerHTML = `<div class="empty-approval"><p>Enter a problem in the Copilot task box first.</p></div>`;
+    return;
+  }
+  $("#quantumBranchResults").innerHTML = `<div class="empty-approval"><p>Exploring specialist branches...</p></div>`;
+  const result = await api("/api/copilot/quantum/solve", {
+    method: "POST",
+    body: JSON.stringify({
+      problem,
+      specialists: quantumSpecialistsFromDashboard(),
+      branch_results: []
+    })
+  });
+  latestQuantumResult = result;
+  renderQuantumResult(result);
+  $("#saveQuantumResultToVault").disabled = false;
+}
+
+$("#runQuantumBranchSolver")?.addEventListener("click", runQuantumBranchSolver);
+$("#saveQuantumResultToVault")?.addEventListener("click", () => {
+  if (!latestQuantumResult) return;
+  switchView("brain-vault");
+  $("#openBrainVaultTree")?.click();
+});

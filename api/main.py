@@ -48,6 +48,8 @@ from agentic.reliability import DefectRegistry
 from agentic.settings_store import AIOSSettingsStore
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from agentic.unified_task_store import UnifiedTaskStore
+from api.brain_vault_tree_routes import router as brain_vault_tree_router
+from api.quantum_solver_routes import router as quantum_solver_router
 from api.workspace_routes import router as workspace_router
 from security.app_security import (
     CSRF_COOKIE,
@@ -136,6 +138,8 @@ COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
 COPILOT_CHAT_FILE = DATA_DIR / "copilot_chat.json"
 app.include_router(workspace_router)
+app.include_router(brain_vault_tree_router)
+app.include_router(quantum_solver_router)
 app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
 SPECIALISTS = [
@@ -4434,7 +4438,8 @@ def health():
     return {
         "status": "ok",
         "service": "aios-one-command-center",
-        "agent_backend": AGENT_BACKEND_AVAILABLE,
+        "agent_backend": True, "legacy_agent_backend": AGENT_BACKEND_AVAILABLE,
     }
+
 
 
