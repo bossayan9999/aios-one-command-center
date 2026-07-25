@@ -4059,6 +4059,22 @@ function renderLiveTaskTab(task, tabName) {
 async function loadSelectedLiveTask() {
   if (!selectedLiveTaskId) return;
   const task = await api(`/api/live-tasks/${encodeURIComponent(selectedLiveTaskId)}`);
+  const started = task.started_at ? new Date(task.started_at).getTime() : 0;
+  const elapsed = started ? Math.max(0, Math.floor((Date.now() - started) / 1000)) : 0;
+  $("#liveTaskExecutionDetails").innerHTML = `
+    <span>Worker <strong>${escapeHtml(task.worker_id || "unclaimed")}</strong></span>
+    <span>Specialist <strong>${escapeHtml(task.current_specialist || "waiting")}</strong></span>
+    <span>Step <strong>${escapeHtml(task.current_execution_step || task.status)}</strong></span>
+    <span>Heartbeat <strong>${escapeHtml(task.task_heartbeat_at || "none")}</strong></span>
+    <span>Elapsed <strong>${elapsed}s</strong></span>
+    <span>Retries <strong>${Number(task.retry_count || 0)}</strong></span>
+    <span>Error <strong>${escapeHtml(task.last_error || "none")}</strong></span>`;
+  const status = String(task.status || "").toUpperCase();
+  $("#liveTaskResume").disabled = !["CANCELLED", "BLOCKED", "WAITING_APPROVAL"].includes(status);
+  $("#liveTaskRetry").disabled = status !== "FAILED";
+  $("#liveTaskCancel").disabled = ["COMPLETED", "FAILED", "CANCELLED", "ARCHIVED"].includes(status);
+  $("#liveTaskArchive").disabled = !["COMPLETED", "FAILED", "CANCELLED"].includes(status);
+  $("#liveTaskOpenOutput").disabled = !(task.outputs || []).length;
   $("#liveTaskRuntimeState").textContent = `${task.status} · ${task.runtime_state}`;
   document.querySelectorAll("[data-workspace-tab]").forEach(tab => {
     renderLiveTaskTab(task, tab.dataset.workspaceTab);
@@ -4080,6 +4096,10 @@ async function loadLiveTaskWorkspace() {
     await loadSelectedLiveTask();
     $("#liveTaskLastRefreshed").textContent =
       `Last refreshed: ${new Date(liveTaskDashboard.generated_at).toLocaleString()}`;
+    const worker = liveTaskDashboard.worker || {};
+    $("#liveTaskWorkerState").textContent = worker.online
+      ? `Worker online · ${worker.worker_id || "unknown"} · ${worker.state || "IDLE"}`
+      : `Worker offline${worker.error ? ` · ${worker.error}` : ""}`;
   } catch (exception) {
     if (error) {
       error.hidden = false;
