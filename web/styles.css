@@ -1481,3 +1481,12 @@ button,
 .quantum-branch-card{border:1px solid var(--border);border-radius:14px;padding:14px}
 .quantum-branch-card.winner{box-shadow:0 0 0 1px #ffab3d inset}
 @media(max-width:900px){.quantum-flow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+
+.system-model-flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+.system-model-flow article{display:grid;gap:8px}
+.system-model-modes,.system-model-memory{display:flex;flex-wrap:wrap;gap:8px}
+.system-model-memory span{border:1px solid var(--border);padding:8px 10px;border-radius:10px}
+.system-model-loop{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.system-model-loop span{border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:8px;align-items:center;text-transform:capitalize}

@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1k-quantum-branch-solver-1">
+  <meta name="aios-build" content="phase1l-final-system-model-1">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1k-quantum-branch-solver-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1l-final-system-model-1" />
 </head>
 <body>
 
@@ -64,6 +64,7 @@
     <summary>Administration</summary>
     <button class="nav-item" data-view="system-health">System Health</button>
     <button class="nav-item" data-view="roadmap">Roadmap &amp; Progress</button>
+    <button class="nav-item" data-view="system-model">System Model</button>
     <button class="nav-item" data-view="mobile">Mobile Control</button>
     <button class="nav-item" data-view="budget">Budget &amp; Usage</button>
   </details>
@@ -227,6 +228,42 @@
     </div>
     <p id="osintWorkspaceStatus" class="brain-action-status">Ready.</p>
   </form>
+</section>
+
+
+<section id="view-system-model" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">AIOS ARCHITECTURE</p><h2>Final AIOS System Model</h2></div>
+      <button id="refreshSystemModel" type="button">Refresh</button>
+    </div>
+    <p class="muted-copy">Copilot combines quantum-inspired branch exploration, the agentic engineering loop, OSINT research, validation, approvals, and Obsidian Brain Vault memory.</p>
+  </article>
+
+  <section class="system-model-flow">
+    <article class="panel"><strong>1. Copilot Manager</strong><span>Understands the objective and selects execution mode.</span></article>
+    <article class="panel"><strong>2. Quantum Branch Solver</strong><span>Explores specialist solution paths and prunes weak branches.</span></article>
+    <article class="panel"><strong>3. Agentic Engineering Loop</strong><span>Plans, builds, tests, validates, repairs, and re-tests.</span></article>
+    <article class="panel"><strong>4. OSINT Framework</strong><span>Organizes cases, sources, evidence, timelines, findings, and reports.</span></article>
+    <article class="panel"><strong>5. Validation &amp; Approvals</strong><span>Blocks unsafe or unverified completion.</span></article>
+    <article class="panel"><strong>6. Obsidian Brain Vault</strong><span>Retrieves memory before work and saves reusable knowledge after work.</span></article>
+    <article class="panel"><strong>7. Storage &amp; Backup</strong><span>Local now; Git, Supabase, S3, Drive, and VPS backends later.</span></article>
+  </section>
+
+  <article class="panel">
+    <p class="eyebrow">EXECUTION MODES</p>
+    <div id="systemModelModes" class="system-model-modes"></div>
+  </article>
+
+  <article class="panel">
+    <p class="eyebrow">ENGINEERING LOOP</p>
+    <div id="systemModelLoop" class="system-model-loop"></div>
+  </article>
+
+  <article class="panel">
+    <p class="eyebrow">MEMORY BACKENDS</p>
+    <div id="systemModelMemory" class="system-model-memory"></div>
+  </article>
 </section>
 
 <section id="view-command-center" class="app-view">
@@ -1744,7 +1781,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1k-quantum-branch-solver-1"></script>
+  <script src="/assets/app.js?v=phase1l-final-system-model-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

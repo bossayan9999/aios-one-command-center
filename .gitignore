@@ -59,3 +59,4 @@ data/brain_vault_selected_memory.json
 *.phase1k-*.bak
 start-aios-hidden.ps1
 start-aios-hidden.ps1
+*.phase1l-*.bak
