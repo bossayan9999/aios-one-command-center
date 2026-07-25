@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1n-llm-wiki-skills-1">
+  <meta name="aios-build" content="phase1o-live-task-execution-1">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1n-llm-wiki-skills-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1o-live-task-execution-1" />
 </head>
 <body>
 
@@ -309,6 +309,38 @@
 </section>
 
 <section id="view-command-center" class="app-view">
+
+<section id="liveTaskControlCenter" class="panel live-task-control-center">
+  <div class="panel-title">
+    <div>
+      <p class="eyebrow">CONNECTED TASK RUNTIME</p>
+      <h2>Live Task Control Center</h2>
+      <p id="liveTaskLastRefreshed" class="muted-copy">Not refreshed yet</p>
+    </div>
+    <div class="live-task-actions">
+      <button id="liveTaskRefresh" type="button">Refresh</button>
+      <button id="archiveCompletedTasks" type="button">Archive completed</button>
+    </div>
+  </div>
+
+  <div class="live-task-selector-row">
+    <select id="liveTaskSelector" aria-label="Select live task"></select>
+    <span id="liveTaskRuntimeState" class="status-pill">No task selected</span>
+  </div>
+
+  <div id="liveTaskGroups" class="live-task-groups"></div>
+
+  <div class="live-task-actions live-task-owner-actions">
+    <button id="liveTaskResume" type="button">Resume</button>
+    <button id="liveTaskRetry" type="button">Retry failed step</button>
+    <button id="liveTaskCancel" type="button">Cancel task</button>
+    <button id="liveTaskArchive" type="button">Archive task</button>
+    <button id="liveTaskOpenOutput" type="button">Open final output</button>
+  </div>
+
+  <div id="liveTaskError" class="inline-error" hidden></div>
+</section>
+
   <article class="panel unified-intake-panel">
     <div class="panel-title"><div><p class="eyebrow">COPILOT AGENTIC MANAGER</p><h2>What should AIOS accomplish?</h2></div><span id="unifiedTaskReadiness" class="status-chip">UNKNOWN</span></div>
     <form id="unifiedTaskForm">
@@ -1823,7 +1855,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1n-llm-wiki-skills-1"></script>
+  <script src="/assets/app.js?v=phase1o-live-task-execution-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
