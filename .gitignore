@@ -53,3 +53,5 @@ data/task-files/
 data/settings.json
 
 data/connectors.json
+data/workspace/
+*.phase1j-*.bak

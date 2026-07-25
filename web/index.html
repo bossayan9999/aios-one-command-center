@@ -1,12 +1,12 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1h-mcp-runtime-4">
+  <meta name="aios-build" content="phase1j-workspace-organizer-1">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE â€” Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1h-mcp-runtime-3" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1j-workspace-organizer-1" />
 </head>
 <body>
 
@@ -40,6 +40,8 @@
 
     <button class="nav-item" data-view="command-center">Command Center</button>
     <button class="nav-item" data-view="projects">Projects</button>
+    <button class="nav-item" data-view="file-explorer">File Explorer</button>
+    <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
 
     <button class="nav-item" data-view="brain-vault">Brain Vault</button>
 
@@ -143,6 +145,87 @@
       <label>Approval expiration minutes<input id="settingApprovalExpiration" type="number" min="5"></label>
     </article>
     <article class="panel settings-section settings-save"><p id="settingsStatus" class="brain-action-status">Ready.</p><button class="primary" type="submit">Save settings</button></article>
+  </form>
+</section>
+
+
+<section id="view-file-explorer" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">WORKSPACE ORGANIZER</p><h2>File Explorer</h2></div>
+      <div class="dialog-actions">
+        <button id="undoWorkspaceAction" type="button">Undo last move</button>
+        <button id="refreshWorkspace" type="button">Refresh</button>
+      </div>
+    </div>
+    <p class="muted-copy">Workspace Organizer Specialist classifies, files, indexes, archives, and links project and research artifacts without touching application source code.</p>
+    <div class="posture-grid">
+      <div><b id="workspaceItemCount">0</b><span>Items</span></div>
+      <div><b id="workspaceActiveCount">0</b><span>Active</span></div>
+      <div><b id="workspaceArchivedCount">0</b><span>Archived</span></div>
+      <div><b id="workspaceFolderCount">0</b><span>Folders</span></div>
+    </div>
+  </article>
+
+  <section class="workspace-explorer">
+    <aside class="panel workspace-folders">
+      <div class="panel-title"><div><p class="eyebrow">FOLDERS</p><h3>Workspace</h3></div></div>
+      <button class="workspace-folder active" data-workspace-bucket="">All items</button>
+      <div id="workspaceFolderList"></div>
+    </aside>
+
+    <article class="panel workspace-items-panel">
+      <div class="workspace-toolbar">
+        <input id="workspaceSearch" placeholder="Search files, cases, projects, or tags">
+        <button id="workspaceSearchButton" type="button">Search</button>
+      </div>
+      <div id="workspaceItemList" class="workspace-item-list"></div>
+    </article>
+
+    <aside class="panel workspace-preview">
+      <p class="eyebrow">PREVIEW</p>
+      <div id="workspacePreview">
+        <h3>Select an item</h3>
+        <p class="muted-copy">Details, links, tags, project, case, and organizer actions appear here.</p>
+      </div>
+    </aside>
+  </section>
+</section>
+
+<section id="view-osint-workspace" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">OSINT RESEARCH DESKTOP</p><h2>Investigation Workspace</h2></div>
+      <button id="openOsintWorkspaceForm" class="primary" type="button">+ New case workspace</button>
+    </div>
+    <p class="muted-copy">Structured research navigation with authorization, evidence, sources, timeline, analysis, findings, and Obsidian case memory.</p>
+  </article>
+
+  <div class="osint-workspace-tabs">
+    <button class="osint-workspace-tab active" data-osint-section="cases">Cases</button>
+    <button class="osint-workspace-tab" data-osint-section="evidence">Evidence</button>
+    <button class="osint-workspace-tab" data-osint-section="sources">Sources</button>
+    <button class="osint-workspace-tab" data-osint-section="timeline">Timeline</button>
+    <button class="osint-workspace-tab" data-osint-section="analysis">Analysis</button>
+    <button class="osint-workspace-tab" data-osint-section="reports">Reports</button>
+  </div>
+
+  <section id="osintWorkspaceContent" class="panel">
+    <div class="empty-approval">
+      <h3>Create or select an OSINT case</h3>
+      <p>Each case receives workspace folders and Obsidian notes for overview, questions, sources, timeline, findings, and final report.</p>
+    </div>
+  </section>
+
+  <form id="osintWorkspaceForm" class="panel hidden">
+    <p class="eyebrow">NEW CASE WORKSPACE</p>
+    <label>Case ID<input id="osintWorkspaceCaseId" required placeholder="CASE-2026-001"></label>
+    <label>Title<input id="osintWorkspaceTitle" required placeholder="Investigation title"></label>
+    <div class="dialog-actions">
+      <button id="cancelOsintWorkspaceForm" type="button">Cancel</button>
+      <button class="primary" type="submit">Create workspace</button>
+    </div>
+    <p id="osintWorkspaceStatus" class="brain-action-status">Ready.</p>
   </form>
 </section>
 
@@ -1605,7 +1688,7 @@
     <button type="button" data-view="budget">â‚± Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1h-mcp-runtime-3"></script>
+  <script src="/assets/app.js?v=phase1j-workspace-organizer-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
@@ -1639,6 +1722,7 @@
 
 </body>
 </html>
+
 
 
 
