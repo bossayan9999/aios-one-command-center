@@ -76,7 +76,7 @@ def test_successful_execution_creates_evidence_and_outputs(tmp_path: Path):
 
 def test_ollama_unavailable_fails_without_fabricated_output(tmp_path: Path):
     data, vault = tmp_path / "data", tmp_path / "vault"
-    task = create_task(data, vault)
+    create_task(data, vault)
     worker = AgentWorker(data, vault, executor=OfflineOllama())
     result = worker.run_once()
     assert result is not None

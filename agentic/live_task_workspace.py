@@ -188,7 +188,7 @@ class LiveTaskWorkspace:
         return self.transition(task_id, "QUEUED", "Queued by owner for worker execution")
 
     def retry(self, task_id: str) -> dict[str, Any]:
-        task = self.transition(task_id, "QUEUED", "Failed step queued for retry")
+        self.transition(task_id, "QUEUED", "Failed step queued for retry")
         tasks = self._tasks()
         stored = tasks[task_id]
         stored["retry_count"] = int(stored.get("retry_count", 0)) + 1

@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-
 REQUIRED_SECURITY_VARIABLES = (
     "AIOS_OWNER_USERNAME",
     "AIOS_OWNER_PASSWORD_SALT",

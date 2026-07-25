@@ -28,10 +28,6 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from security.env_loader import load_security_environment, missing_security_variables
-
-load_security_environment(Path(__file__).resolve().parents[1])
-
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
@@ -50,8 +46,8 @@ from agentic.pm_router import PMModelRouter
 from agentic.project_store import ProjectStore
 from agentic.reliability import DefectRegistry
 from agentic.settings_store import AIOSSettingsStore
-from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from agentic.task_worker import AgentWorker
+from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from agentic.unified_task_store import UnifiedTaskStore
 from api.brain_vault_tree_routes import router as brain_vault_tree_router
 from api.final_system_routes import router as final_system_router
@@ -72,6 +68,7 @@ from security.app_security import (
     require_session,
     verify_owner,
 )
+from security.env_loader import missing_security_variables
 from security.provider_credentials import (
     delete_provider_key,
     provider_key_source,
