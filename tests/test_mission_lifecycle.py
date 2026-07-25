@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 
 def test_mission_lifecycle_routes_and_guards_exist() -> None:

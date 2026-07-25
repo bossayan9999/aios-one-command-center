@@ -8,6 +8,8 @@ const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
   "command-center": "Command Center",
+  "file-explorer": "File Explorer",
+  "osint-workspace": "OSINT Research Desktop",
   settings: "Settings",
   connectors: "Tools and Connectors",
   projects: "Projects",
@@ -3603,4 +3605,123 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#refreshConnectorHealth")?.addEventListener("click", loadConnectors);
   document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", loadConnectors);
   if (location.hash === "#connectors") loadConnectors();
+});
+
+
+
+let workspaceItems = [];
+let workspaceBucket = "";
+
+function workspaceItemCard(item) {
+  const linked = item.case_id ? `CASE ${item.case_id}` : item.project_id ? `PROJECT ${item.project_id}` : "UNASSIGNED";
+  return `<button class="workspace-item-card" data-workspace-item="${item.item_id}">
+    <span class="workspace-item-kind">${(item.kind || "file").toUpperCase()}</span>
+    <strong>${item.name}</strong>
+    <small>${item.relative_path}</small>
+    <span>${linked}</span>
+  </button>`;
+}
+
+function renderWorkspaceItems(items) {
+  const target = $("#workspaceItemList");
+  if (!target) return;
+  workspaceItems = items;
+  target.innerHTML = items.length ? items.map(workspaceItemCard).join("") :
+    `<div class="empty-approval"><h3>No workspace items</h3><p>Add files to data/workspace/inbox, then register them for automatic organization.</p></div>`;
+  document.querySelectorAll("[data-workspace-item]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = workspaceItems.find(value => value.item_id === button.dataset.workspaceItem);
+      if (!item) return;
+      $("#workspacePreview").innerHTML = `
+        <p class="eyebrow">${(item.kind || "file").toUpperCase()}</p>
+        <h3>${item.name}</h3>
+        <p><code>${item.relative_path}</code></p>
+        <p>${item.case_id ? `Case: ${item.case_id}` : item.project_id ? `Project: ${item.project_id}` : "Not assigned"}</p>
+        <p>Size: ${item.size_bytes || 0} bytes</p>
+        <div class="dialog-actions">
+          <button data-workspace-organize="${item.item_id}" type="button">Auto organize</button>
+          <button data-workspace-archive="${item.item_id}" type="button">Archive</button>
+        </div>`;
+      const organize = document.querySelector(`[data-workspace-organize="${item.item_id}"]`);
+      const archive = document.querySelector(`[data-workspace-archive="${item.item_id}"]`);
+      organize?.addEventListener("click", async () => {
+        await api(`/api/workspace/items/${item.item_id}/organize`, {method:"POST", body:JSON.stringify({automatic:true})});
+        await loadWorkspaceExplorer();
+      });
+      archive?.addEventListener("click", async () => {
+        await api(`/api/workspace/items/${item.item_id}/archive`, {method:"POST"});
+        await loadWorkspaceExplorer();
+      });
+    });
+  });
+}
+
+async function loadWorkspaceExplorer() {
+  if (!$("#view-file-explorer")) return;
+  const query = encodeURIComponent($("#workspaceSearch")?.value || "");
+  const bucket = encodeURIComponent(workspaceBucket || "");
+  const [summary, folders, items] = await Promise.all([
+    api("/api/workspace/summary"),
+    api("/api/workspace/folders"),
+    api(`/api/workspace/items?bucket=${bucket}&query=${query}`)
+  ]);
+  $("#workspaceItemCount").textContent = summary.items;
+  $("#workspaceActiveCount").textContent = summary.active;
+  $("#workspaceArchivedCount").textContent = summary.archived;
+  $("#workspaceFolderCount").textContent = folders.folders.length;
+  $("#workspaceFolderList").innerHTML = folders.folders.map(folder =>
+    `<button class="workspace-folder" data-workspace-bucket="${folder.id}">${folder.name}<span>${folder.count}</span></button>`
+  ).join("");
+  document.querySelectorAll("[data-workspace-bucket]").forEach(button => {
+    button.addEventListener("click", async () => {
+      workspaceBucket = button.dataset.workspaceBucket || "";
+      await loadWorkspaceExplorer();
+    });
+  });
+  renderWorkspaceItems(items.items);
+}
+
+async function createOsintWorkspace(event) {
+  event.preventDefault();
+  const status = $("#osintWorkspaceStatus");
+  status.textContent = "Creating workspace...";
+  try {
+    const result = await api("/api/workspace/osint/cases", {
+      method: "POST",
+      body: JSON.stringify({
+        case_id: $("#osintWorkspaceCaseId").value.trim(),
+        title: $("#osintWorkspaceTitle").value.trim()
+      })
+    });
+    status.textContent = `Created ${result.case_id}. Obsidian: ${result.brain_vault_path}`;
+    $("#osintWorkspaceContent").innerHTML = `
+      <p class="eyebrow">ACTIVE CASE</p>
+      <h2>${result.title}</h2>
+      <p>Workspace: <code>${result.workspace_path}</code></p>
+      <p>Obsidian: <code>${result.brain_vault_path}</code></p>
+      <div class="osint-case-grid">
+        ${["Scope","Sources","Evidence","Timeline","Analysis","Reports"].map(name => `<article><strong>${name}</strong><span>Ready</span></article>`).join("")}
+      </div>`;
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
+$("#refreshWorkspace")?.addEventListener("click", loadWorkspaceExplorer);
+$("#workspaceSearchButton")?.addEventListener("click", loadWorkspaceExplorer);
+$("#workspaceSearch")?.addEventListener("keydown", event => {
+  if (event.key === "Enter") { event.preventDefault(); loadWorkspaceExplorer(); }
+});
+$("#undoWorkspaceAction")?.addEventListener("click", async () => {
+  await api("/api/workspace/undo", {method:"POST"});
+  await loadWorkspaceExplorer();
+});
+$("#openOsintWorkspaceForm")?.addEventListener("click", () => $("#osintWorkspaceForm")?.classList.remove("hidden"));
+$("#cancelOsintWorkspaceForm")?.addEventListener("click", () => $("#osintWorkspaceForm")?.classList.add("hidden"));
+$("#osintWorkspaceForm")?.addEventListener("submit", createOsintWorkspace);
+document.querySelectorAll(".osint-workspace-tab").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".osint-workspace-tab").forEach(item => item.classList.remove("active"));
+    button.classList.add("active");
+  });
 });

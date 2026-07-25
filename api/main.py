@@ -28,6 +28,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from api.workspace_routes import router as workspace_router
+
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
@@ -134,9 +136,11 @@ PAIRING_FILE = DATA_DIR / "mobile_pairing.json"
 COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
 COPILOT_CHAT_FILE = DATA_DIR / "copilot_chat.json"
+app.include_router(workspace_router)
 app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
 SPECIALISTS = [
+    {"id": "workspace-organizer", "name": "Workspace Organizer Specialist", "role": "Classifies, files, indexes, archives, and links workspace artifacts", "status": "ready", "mode": "local", "model": "router:auto", "reports_to": "Copilot Manager"},
     {"id": "copilot", "name": "Copilot Manager", "role": "Mission orchestration", "status": "online", "mode": "hybrid", "model": "router:auto"},
     {"id": "architect", "name": "Software Architect", "role": "Architecture and impact analysis", "status": "ready", "mode": "cloud", "model": "gpt-4.1"},
     {"id": "frontend", "name": "Frontend Engineer", "role": "Responsive web and PWA", "status": "ready", "mode": "local", "model": "qwen2.5-coder"},
