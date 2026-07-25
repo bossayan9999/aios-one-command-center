@@ -14,7 +14,7 @@ class RuntimeConfig:
     backups_dir: Path
 
     @classmethod
-    def from_env(cls) -> "RuntimeConfig":
+    def from_env(cls) -> RuntimeConfig:
         root = Path(__file__).resolve().parents[1]
         data_dir = Path(
             os.getenv("AIOS_DATA_DIR", str(root / "data"))
