@@ -46,6 +46,7 @@ from agentic.pm_router import PMModelRouter
 from agentic.project_store import ProjectStore
 from agentic.reliability import DefectRegistry
 from agentic.settings_store import AIOSSettingsStore
+from agentic.task_worker import AgentWorker
 from agentic.tool_registry import MCPServerDefinition, ToolPermission, ToolRegistry
 from agentic.unified_task_store import UnifiedTaskStore
 from api.brain_vault_tree_routes import router as brain_vault_tree_router
@@ -67,6 +68,7 @@ from security.app_security import (
     require_session,
     verify_owner,
 )
+from security.env_loader import missing_security_variables
 from security.provider_credentials import (
     delete_provider_key,
     provider_key_source,
@@ -110,6 +112,7 @@ BRAIN_MEMORY = BrainMemoryRetriever(BRAIN_VAULT)
 PROJECT_STORE = ProjectStore(DATA_DIR)
 OSINT_CASES = OSINTCaseStore(DATA_DIR, BRAIN_VAULT_ROOT)
 UNIFIED_TASKS = UnifiedTaskStore(DATA_DIR, BRAIN_VAULT_ROOT)
+TASK_WORKER = AgentWorker(DATA_DIR, BRAIN_VAULT_ROOT)
 AIOS_SETTINGS = AIOSSettingsStore(DATA_DIR)
 CONNECTOR_REGISTRY = ConnectorRegistry(DATA_DIR)
 MCP_RUNTIME = MCPRuntime()
@@ -817,6 +820,25 @@ def build_workflow(mission_id: str, request: MissionRequest) -> list[dict]:
 SECURITY_STORE = SecurityStore(DATA_DIR)
 TOOL_REGISTRY = ToolRegistry(DATA_DIR, WEB_DIR.parent)
 GOVERNANCE_ENGINE = GovernanceEngine(DATA_DIR)
+
+
+@app.on_event("startup")
+def start_task_worker() -> None:
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    if os.getenv("AIOS_WORKER_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
+        missing = missing_security_variables()
+        if missing or not owner_is_configured():
+            raise RuntimeError(
+                "Security preflight failed. Missing required variables: "
+                + ", ".join(missing or ["AIOS_OWNER_PASSWORD_HASH", "AIOS_OWNER_PASSWORD_SALT"])
+            )
+        TASK_WORKER.start()
+
+
+@app.on_event("shutdown")
+def stop_task_worker() -> None:
+    TASK_WORKER.stop()
 
 
 

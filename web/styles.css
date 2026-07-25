@@ -1497,6 +1497,8 @@ button,
 .live-task-selector-row{display:flex;gap:10px;align-items:center;margin:12px 0}
 .live-task-selector-row select{min-width:280px;max-width:100%;flex:1}
 .live-task-actions{display:flex;gap:8px;flex-wrap:wrap}
+.live-task-execution-details{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0;font-size:.85rem}
+.live-task-execution-details span{padding:6px 9px;border:1px solid var(--border);border-radius:8px}
 .live-task-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .live-task-group{border:1px solid var(--border);border-radius:12px;padding:10px;min-width:0}
 .live-task-group h3{display:flex;justify-content:space-between;gap:8px}

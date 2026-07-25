@@ -24,6 +24,12 @@ def dashboard(request: Request):
     return workspace.dashboard()
 
 
+@router.get("/worker/health")
+def worker_health(request: Request):
+    require_owner(request, security_store)
+    return workspace.dashboard().get("worker", {})
+
+
 @router.get("/{task_id}")
 def read_task(task_id: str, request: Request):
     require_owner(request, security_store)

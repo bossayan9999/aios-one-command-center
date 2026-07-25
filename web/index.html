@@ -1,12 +1,29 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1o-live-task-execution-1">
+  <meta name="aios-build" content="phase1p-real-worker-webapp-1">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1o-live-task-execution-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1p-real-worker-webapp-1" />
+  <style>
+    /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
+    :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--critical-bg);color:var(--critical-text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .hidden{display:none!important}
+    .security-login{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 70% 15%,rgba(255,181,71,.12),transparent 30%),linear-gradient(145deg,#040b0a,#091714 60%,#07100f)}
+    .security-login-card{width:min(440px,100%);padding:32px;border:1px solid var(--critical-line);border-radius:20px;background:rgba(13,28,25,.96);box-shadow:0 28px 90px rgba(0,0,0,.48)}
+    .security-login-card h1{margin:5px 0 10px;font-size:clamp(2rem,6vw,2.8rem);letter-spacing:-.04em}
+    .security-login-card .eyebrow{margin:0;color:var(--critical-accent);font-size:.7rem;font-weight:800;letter-spacing:.16em}
+    .security-login-card .muted-copy{margin:0 0 24px;color:var(--critical-muted);line-height:1.6}
+    .security-login-card label{display:grid;gap:7px;margin-top:14px;color:var(--critical-muted);font-size:.78rem;font-weight:700}
+    .security-login-card input{width:100%;padding:13px 14px;border:1px solid var(--critical-line);border-radius:10px;background:#071310;color:var(--critical-text);font:inherit;outline:none}
+    .security-login-card input:focus{border-color:var(--critical-accent);box-shadow:0 0 0 3px rgba(255,181,71,.12)}
+    .security-login-card button{width:100%;margin-top:20px;padding:13px 16px;border:0;border-radius:10px;background:linear-gradient(135deg,#ffc267,#ed8625);color:#1b1208;font:inherit;font-weight:900;cursor:pointer}
+    .security-login-error{min-height:20px;margin:12px 0 0;color:#ff9c98;font-size:.85rem}
+  </style>
 </head>
 <body>
 
@@ -316,6 +333,7 @@
       <p class="eyebrow">CONNECTED TASK RUNTIME</p>
       <h2>Live Task Control Center</h2>
       <p id="liveTaskLastRefreshed" class="muted-copy">Not refreshed yet</p>
+      <p id="liveTaskWorkerState" class="muted-copy">Worker status unknown</p>
     </div>
     <div class="live-task-actions">
       <button id="liveTaskRefresh" type="button">Refresh</button>
@@ -327,6 +345,7 @@
     <select id="liveTaskSelector" aria-label="Select live task"></select>
     <span id="liveTaskRuntimeState" class="status-pill">No task selected</span>
   </div>
+  <div id="liveTaskExecutionDetails" class="live-task-execution-details"></div>
 
   <div id="liveTaskGroups" class="live-task-groups"></div>
 
@@ -1855,7 +1874,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1o-live-task-execution-1"></script>
+  <script src="/assets/app.js?v=phase1p-real-worker-webapp-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

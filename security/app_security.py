@@ -12,6 +12,10 @@ from typing import Any
 
 from fastapi import HTTPException, Request
 
+from security.env_loader import load_security_environment
+
+load_security_environment(Path(__file__).resolve().parents[1])
+
 SESSION_COOKIE = "aios_session"
 CSRF_COOKIE = "aios_csrf"
 SESSION_SECONDS = int(os.getenv("AIOS_SESSION_SECONDS", "28800"))

@@ -12,7 +12,10 @@ from typing import Any
 from agentic.output_manager import OutputManager
 
 TERMINAL_STATES = {"COMPLETED", "FAILED", "CANCELLED", "ARCHIVED"}
-ACTIVE_STATES = {"QUEUED", "RUNNING", "VALIDATING", "WAITING_APPROVAL", "BLOCKED"}
+ACTIVE_STATES = {
+    "QUEUED", "CLAIMED", "PLANNING", "WORKING", "RUNNING", "VALIDATING",
+    "RETRYING", "WAITING_APPROVAL", "BLOCKED",
+}
 ALLOWED_STATES = TERMINAL_STATES | ACTIVE_STATES
 
 
@@ -137,11 +140,13 @@ class LiveTaskWorkspace:
                 groups["cancelled"].append(task)
             else:
                 groups["active"].append(task)
+        worker = self._load_json(self.data_dir / "worker_runtime.json", {})
         return {
             "generated_at": self._now(),
             "groups": groups,
             "counts": {name: len(items) for name, items in groups.items()},
             "backend_online": True,
+            "worker": worker if isinstance(worker, dict) else {},
         }
 
     def get(self, task_id: str) -> dict[str, Any]:
@@ -180,10 +185,10 @@ class LiveTaskWorkspace:
         return self.get(task_id)
 
     def resume(self, task_id: str) -> dict[str, Any]:
-        return self.transition(task_id, "RUNNING", "Resumed by owner")
+        return self.transition(task_id, "QUEUED", "Queued by owner for worker execution")
 
     def retry(self, task_id: str) -> dict[str, Any]:
-        task = self.transition(task_id, "QUEUED", "Failed step queued for retry")
+        self.transition(task_id, "QUEUED", "Failed step queued for retry")
         tasks = self._tasks()
         stored = tasks[task_id]
         stored["retry_count"] = int(stored.get("retry_count", 0)) + 1
@@ -195,7 +200,11 @@ class LiveTaskWorkspace:
         return self.get(task_id)
 
     def cancel(self, task_id: str) -> dict[str, Any]:
-        return self.transition(task_id, "CANCELLED", "Cancelled by owner")
+        self.transition(task_id, "CANCELLED", "Cancelled by owner")
+        tasks = self._tasks()
+        tasks[task_id]["cancel_requested"] = True
+        self._save_tasks(tasks)
+        return self.get(task_id)
 
     def archive(self, task_id: str) -> dict[str, Any]:
         return self.transition(task_id, "ARCHIVED", "Archived by owner")
@@ -221,6 +230,9 @@ class LiveTaskWorkspace:
         summary: str = "",
         confidence: int = 0,
         validation_status: str = "passed",
+        provider: str = "",
+        model: str = "",
+        validation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if validation_status.lower() != "passed":
             raise ValueError("Task cannot complete until validation passes")
@@ -237,6 +249,9 @@ class LiveTaskWorkspace:
             validation_status="passed",
             evidence=list(task.get("evidence", [])),
             files=[str(item) for item in task.get("attachments", [])],
+            provider=provider,
+            model=model,
+            validation=validation,
         )
         task.setdefault("outputs", []).append(output)
         task["status"] = "COMPLETED"

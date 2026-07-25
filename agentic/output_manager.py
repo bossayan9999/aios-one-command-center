@@ -47,6 +47,9 @@ class OutputManager:
         validation_status: str = "pending",
         evidence: list[dict[str, Any]] | None = None,
         files: list[str] | None = None,
+        provider: str = "",
+        model: str = "",
+        validation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         output_id = f"OUT-{uuid4().hex[:10].upper()}"
         task_id = str(task["task_id"])
@@ -70,6 +73,9 @@ class OutputManager:
             "confidence": confidence,
             "validation_status": validation_status,
             "evidence": evidence or [],
+            "provider": provider,
+            "model": model,
+            "validation": validation or {"status": validation_status},
             "files": files or [],
             "created_at": datetime.now(UTC).isoformat(),
             "brain_vault_path": report_path.relative_to(self.vault_root).as_posix(),
