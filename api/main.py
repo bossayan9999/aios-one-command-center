@@ -28,6 +28,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from api.knowledge_routes import router as knowledge_router
+
 from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
@@ -142,6 +144,7 @@ app.include_router(workspace_router)
 app.include_router(brain_vault_tree_router)
 app.include_router(quantum_solver_router)
 app.include_router(final_system_router)
+app.include_router(knowledge_router)
 app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
 SPECIALISTS = [

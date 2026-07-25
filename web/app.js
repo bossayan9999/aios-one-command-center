@@ -3920,3 +3920,52 @@ $("#refreshSystemModel")?.addEventListener("click", loadFinalSystemModel);
 window.addEventListener("hashchange", () => {
   if (location.hash === "#system-model") loadFinalSystemModel();
 });
+
+
+
+async function loadTaskOutputs() {
+  const payload = await api("/api/knowledge/outputs");
+  $("#taskOutputsList").innerHTML = payload.outputs.length
+    ? payload.outputs.map(item => `<article class="panel">
+        <p class="eyebrow">${item.validation_status.toUpperCase()}</p>
+        <h3>${item.title}</h3>
+        <p>${escapeHtml(item.summary || item.final_answer || "")}</p>
+        <p><code>${item.brain_vault_path}</code></p>
+      </article>`).join("")
+    : `<div class="empty-approval"><h3>No completed outputs yet</h3><p>Validated task results will appear here.</p></div>`;
+}
+
+async function loadSkillsLibrary() {
+  const q = encodeURIComponent($("#skillsSearch")?.value || "");
+  const payload = await api(`/api/knowledge/skills?q=${q}`);
+  $("#skillsLibraryList").innerHTML = payload.skills.length
+    ? payload.skills.map(item => `<article class="panel">
+        <p class="eyebrow">SKILL</p><h3>${item.name}</h3>
+        <p>${escapeHtml(item.purpose || "")}</p>
+        <p><code>${item.path}</code></p>
+      </article>`).join("")
+    : `<div class="empty-approval"><p>No matching skills.</p></div>`;
+}
+
+async function searchLlmWiki() {
+  const q = ($("#llmWikiSearch")?.value || "").trim();
+  if (!q) return;
+  const payload = await api(`/api/knowledge/wiki/search?q=${encodeURIComponent(q)}`);
+  $("#llmWikiResults").innerHTML = payload.results.length
+    ? payload.results.map(item => `<article class="panel">
+        <h3>${item.title}</h3><p>${escapeHtml(item.snippet)}</p><code>${item.path}</code>
+      </article>`).join("")
+    : `<div class="empty-approval"><p>No matching wiki pages.</p></div>`;
+}
+
+$("#refreshTaskOutputs")?.addEventListener("click", loadTaskOutputs);
+$("#skillsSearchButton")?.addEventListener("click", loadSkillsLibrary);
+$("#seedDefaultSkills")?.addEventListener("click", async () => {
+  await api("/api/knowledge/skills/seed", {method:"POST"});
+  await loadSkillsLibrary();
+});
+$("#llmWikiSearchButton")?.addEventListener("click", searchLlmWiki);
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#outputs") loadTaskOutputs();
+  if (location.hash === "#skills-library") loadSkillsLibrary();
+});
