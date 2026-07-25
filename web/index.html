@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1l-final-system-model-1">
+  <meta name="aios-build" content="phase1n-llm-wiki-skills-1">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1l-final-system-model-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase1n-llm-wiki-skills-1" />
 </head>
 <body>
 
@@ -44,6 +44,9 @@
     <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
 
     <button class="nav-item" data-view="brain-vault">Brain Vault</button>
+    <button class="nav-item" data-view="outputs">Outputs</button>
+    <button class="nav-item" data-view="skills-library">Skills Library</button>
+    <button class="nav-item" data-view="llm-wiki">LLM Wiki</button>
 
   </details>
   <details class="nav-group" open>
@@ -264,6 +267,45 @@
     <p class="eyebrow">MEMORY BACKENDS</p>
     <div id="systemModelMemory" class="system-model-memory"></div>
   </article>
+</section>
+
+
+<section id="view-outputs" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">TASK RESULTS</p><h2>Outputs</h2></div>
+      <button id="refreshTaskOutputs" type="button">Refresh</button>
+    </div>
+    <p class="muted-copy">Every validated completed task appears here and is linked to its Brain Vault report.</p>
+  </article>
+  <section id="taskOutputsList" class="workspace-item-list"></section>
+</section>
+
+<section id="view-skills-library" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">REUSABLE PROCEDURES</p><h2>Skills Library</h2></div>
+      <button id="seedDefaultSkills" type="button">Install default skills</button>
+    </div>
+    <div class="workspace-toolbar">
+      <input id="skillsSearch" placeholder="Search skills">
+      <button id="skillsSearchButton" type="button">Search</button>
+    </div>
+  </article>
+  <section id="skillsLibraryList" class="workspace-item-list"></section>
+</section>
+
+<section id="view-llm-wiki" class="app-view">
+  <article class="panel">
+    <div class="panel-title">
+      <div><p class="eyebrow">LINKED COPILOT KNOWLEDGE</p><h2>LLM Wiki</h2></div>
+    </div>
+    <div class="workspace-toolbar">
+      <input id="llmWikiSearch" placeholder="Search systems, problems, solutions, decisions, or errors">
+      <button id="llmWikiSearchButton" type="button">Search</button>
+    </div>
+  </article>
+  <section id="llmWikiResults" class="workspace-item-list"></section>
 </section>
 
 <section id="view-command-center" class="app-view">
@@ -1781,7 +1823,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1l-final-system-model-1"></script>
+  <script src="/assets/app.js?v=phase1n-llm-wiki-skills-1"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
