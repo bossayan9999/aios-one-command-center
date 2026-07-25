@@ -24,6 +24,7 @@ const viewTitles = {
   "network-health": "Network & Desktop Health",
   "brain-vault": "Obsidian Brain Vault",
   "roadmap": "Roadmap & Progress",
+  "system-model": "Final AIOS System Model",
   approvals: "Approval Center",
   mobile: "Mobile Control",
 };
@@ -3897,4 +3898,25 @@ $("#saveQuantumResultToVault")?.addEventListener("click", () => {
   if (!latestQuantumResult) return;
   switchView("brain-vault");
   $("#openBrainVaultTree")?.click();
+});
+
+
+
+async function loadFinalSystemModel() {
+  if (!$("#view-system-model")) return;
+  const model = await api("/api/copilot/system/model");
+  $("#systemModelModes").innerHTML = model.execution_modes.map(mode =>
+    `<span class="status-chip">${mode.replaceAll("_"," ").toUpperCase()}</span>`
+  ).join("");
+  $("#systemModelLoop").innerHTML = model.engineering_loop.map((stage,index) =>
+    `<span><b>${index + 1}</b>${stage.replaceAll("_"," ")}</span>`
+  ).join("");
+  $("#systemModelMemory").innerHTML = model.memory_backends.map(backend =>
+    `<span>${backend.replaceAll("_"," ")}</span>`
+  ).join("");
+}
+
+$("#refreshSystemModel")?.addEventListener("click", loadFinalSystemModel);
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#system-model") loadFinalSystemModel();
 });
