@@ -144,6 +144,10 @@ def test_critical_browser_flow() -> None:
             )
             assert page.locator("#copilotSearchResults").is_visible()
             assert page.locator(".compact-copilot-avatar").is_visible()
+            avatar_box = page.locator(".compact-copilot-avatar").bounding_box()
+            assert avatar_box is not None
+            assert avatar_box["width"] <= 80
+            assert avatar_box["height"] <= 80
             assert page.locator("#copilotQuickMessageForm").is_visible()
 
             page.locator('.nav-item[data-view="health-operations"]').click()
@@ -162,6 +166,7 @@ def test_critical_browser_flow() -> None:
                 '#view-operations-terminal [data-operations-module="network-health"]'
             ).click()
             assert page.locator("#runNetworkHealth").is_visible()
+            assert page.locator("#runCcnaAnalysis").is_visible()
             page.locator(
                 '#view-network-health [data-operations-module="reliability"]'
             ).click()
@@ -188,6 +193,10 @@ def test_critical_browser_flow() -> None:
             mobile.locator('#mobileMoreMenu [data-view="copilot-search"]').click()
             assert mobile.locator("#copilotSearchForm").is_visible()
             assert mobile.locator(".compact-copilot-avatar").is_visible()
+            mobile_avatar_box = mobile.locator(".compact-copilot-avatar").bounding_box()
+            assert mobile_avatar_box is not None
+            assert mobile_avatar_box["width"] <= 54
+            assert mobile_avatar_box["height"] <= 54
             assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
             mobile.close()
 

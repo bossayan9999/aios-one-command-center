@@ -32,6 +32,7 @@ from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
 from agentic.brain_vault import BrainVault
+from agentic.ccna_specialist import build_ccna_analysis
 from agentic.connector_registry import ConnectorRegistry
 from agentic.governance import GovernanceEngine, ValidationDecision
 from agentic.mcp_runtime import MCPRuntime
@@ -570,6 +571,14 @@ def network_health(request: Request):
     require_owner(request, SECURITY_STORE)
     public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
     return run_network_health(Path(__file__).resolve().parents[1], public_url)
+
+
+@app.get("/api/network-health/ccna-analysis")
+def network_health_ccna_analysis(request: Request):
+    require_owner(request, SECURITY_STORE)
+    public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
+    health = run_network_health(Path(__file__).resolve().parents[1], public_url)
+    return build_ccna_analysis(health)
 
 
 @app.get("/api/reliability")
@@ -1296,6 +1305,10 @@ async def security_boundary(request: Request, call_next):
         "style-src 'self' 'unsafe-inline'; script-src 'self'; "
         "connect-src 'self'; frame-ancestors 'none'"
     )
+    if request.url.path == "/":
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    elif request.url.path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
     return response
 
 

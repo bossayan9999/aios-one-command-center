@@ -3120,6 +3120,89 @@ async function loadNetworkHealth() {
 
 $("#runNetworkHealth")?.addEventListener("click", loadNetworkHealth);
 
+let latestCcnaAnalysis = null;
+
+function renderCcnaAnalysis(result) {
+  const host = $("#ccnaAnalysisResult");
+  const findings = result.findings || [];
+  const proposals = result.repair_proposals || [];
+  $("#ccnaSpecialistStatus").textContent =
+    String(result.status || "unknown").replaceAll("_", " ").toUpperCase();
+  $("#createCcnaRepairTask").disabled = findings.length === 0;
+  host.innerHTML = `
+    <div class="ccna-approval-note">
+      ${escapeHtml(result.summary || "Analysis complete.")}
+      No changes were executed; every repair remains approval-controlled.
+    </div>
+    ${findings.map((finding, index) => `
+      <article class="ccna-finding">
+        <p class="eyebrow">${escapeHtml(String(finding.status || "unknown").toUpperCase())}</p>
+        <h3>${escapeHtml(finding.name || finding.id)}</h3>
+        <p><strong>Evidence:</strong> ${escapeHtml(finding.evidence || "")}</p>
+        ${finding.likely_cause
+          ? `<p><strong>Likely cause:</strong> ${escapeHtml(finding.likely_cause)}</p>`
+          : ""}
+        ${proposals[index]
+          ? `<code>Proposed: ${escapeHtml(proposals[index].title)} · OWNER APPROVAL REQUIRED</code>`
+          : ""}
+      </article>`).join("") ||
+      '<article class="ccna-finding"><h3>Network evidence is healthy</h3><p>No repair task is needed.</p></article>'}`;
+}
+
+async function runCcnaAnalysis() {
+  const host = $("#ccnaAnalysisResult");
+  host.innerHTML = '<p class="muted-copy">CCNA specialist is collecting live evidence…</p>';
+  $("#runCcnaAnalysis").disabled = true;
+  try {
+    latestCcnaAnalysis = await api("/api/network-health/ccna-analysis");
+    renderCcnaAnalysis(latestCcnaAnalysis);
+  } catch (error) {
+    host.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  } finally {
+    $("#runCcnaAnalysis").disabled = false;
+  }
+}
+
+$("#runCcnaAnalysis")?.addEventListener("click", runCcnaAnalysis);
+$("#createCcnaRepairTask")?.addEventListener("click", async () => {
+  if (!latestCcnaAnalysis?.findings?.length) return;
+  const button = $("#createCcnaRepairTask");
+  button.disabled = true;
+  try {
+    const task = await api("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        message: latestCcnaAnalysis.task_message,
+        project_id: "",
+        priority: "high",
+        output_type: "technical_report",
+        deadline: "",
+        voice_transcript: "",
+        urls: [],
+        input_type: "message",
+        budget_mode: "balanced",
+        memory_mode: "standard",
+      }),
+    });
+    $("#ccnaAnalysisResult").insertAdjacentHTML(
+      "afterbegin",
+      `<div class="ccna-approval-note">Governed repair task ${escapeHtml(task.task_id)} created. Open Command Center to review its plan and approvals.</div>`
+    );
+    showAiosToast?.({
+      title: "CCNA repair task created",
+      message: "Copilot will diagnose first and request approval before changes.",
+      type: "success",
+    });
+  } catch (error) {
+    $("#ccnaAnalysisResult").insertAdjacentHTML(
+      "afterbegin",
+      `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`
+    );
+  } finally {
+    button.disabled = false;
+  }
+});
+
 
 
 let latestNetworkDiagnosticReport = null;

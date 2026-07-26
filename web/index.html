@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1p-real-worker-webapp-1">
+  <meta name="aios-build" content="phase-jarvis-network-3">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1p-real-worker-webapp-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-network-3" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -172,7 +172,8 @@
 <section id="view-copilot-search" class="app-view">
   <article class="panel compact-copilot-manager">
     <div class="compact-copilot-avatar" aria-hidden="true">
-      <svg viewBox="0 0 120 120">
+      <svg viewBox="0 0 120 120" width="78" height="78"
+        style="display:block;width:78px;height:78px;max-width:78px;max-height:78px;overflow:hidden">
         <circle cx="60" cy="60" r="48"></circle>
         <circle cx="60" cy="60" r="31"></circle>
         <path d="M20 62 C34 34 43 88 56 52 S78 82 99 52"></path>
@@ -999,6 +1000,26 @@
           <div id="networkRootCause" class="network-root-cause hidden"></div>
           <div id="networkHealthCards">
             <p class="muted-copy">Run health checks to inspect the system.</p>
+          </div>
+        </article>
+        <article class="panel ccna-specialist-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">NETWORK SPECIALIST</p>
+              <h2>CCNA diagnosis &amp; governed repair</h2>
+            </div>
+            <span id="ccnaSpecialistStatus" class="status-chip">READY</span>
+          </div>
+          <p class="muted-copy">
+            Uses live health evidence to identify network faults. Repairs are proposed
+            first and require approval before changing services, DNS, routes, or devices.
+          </p>
+          <div class="network-health-toolbar">
+            <button id="runCcnaAnalysis" class="primary" type="button">Ask CCNA specialist</button>
+            <button id="createCcnaRepairTask" type="button" disabled>Create governed repair task</button>
+          </div>
+          <div id="ccnaAnalysisResult" class="ccna-analysis-result">
+            <p class="muted-copy">Run the specialist to inspect current network evidence.</p>
           </div>
         </article>
       </section>
@@ -2095,7 +2116,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1p-real-worker-webapp-1"></script>
+  <script src="/assets/app.js?v=phase-jarvis-network-3"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
