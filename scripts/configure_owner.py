@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import getpass
 import secrets
+import sys
 from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
 
 from security.app_security import hash_password
 
-root = Path(__file__).resolve().parents[1]
 env_path = root / ".env.security"
 
 username = input("Owner username [owner]: ").strip() or "owner"
