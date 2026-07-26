@@ -1,4 +1,4 @@
-const LEGACY_VIEW_REDIRECTS={"mission-control":"command-center",copilot:"command-center","workflow-map":"command-center",osint:"command-center",specialists:"command-center",validation:"command-center",approvals:"command-center"};
+const LEGACY_VIEW_REDIRECTS={"mission-control":"command-center","workflow-map":"command-center",osint:"command-center",specialists:"command-center",validation:"command-center",approvals:"command-center"};
 const $ = (selector) => document.querySelector(selector);
 const dialog = $("#missionDialog");
 let dashboard = null;
@@ -8,6 +8,7 @@ const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
   "command-center": "Command Center",
+  "copilot-search": "Copilot Search",
   "file-explorer": "File Explorer",
   "osint-workspace": "OSINT Research Desktop",
   settings: "Settings",
@@ -22,6 +23,8 @@ const viewTitles = {
   "system-health": "System Health",
   reliability: "Reliability Center",
   "network-health": "Network & Desktop Health",
+  "health-operations": "Health Operations Center",
+  "operations-terminal": "Operations Terminal",
   "brain-vault": "Obsidian Brain Vault",
   "roadmap": "Roadmap & Progress",
   "system-model": "Final AIOS System Model",
@@ -75,19 +78,45 @@ async function api(path, options = {}) {
 
 function switchView(view) {
   view = LEGACY_VIEW_REDIRECTS[view] || view;
-  document.querySelectorAll(".app-view").forEach(section => section.classList.remove("active"));
+  const commandCenterModule = ["command-center", "copilot", "projects"].includes(view);
+  const operationsModule = [
+    "reliability", "network-health", "health-operations", "operations-terminal"
+  ].includes(view);
+  document.querySelectorAll(".app-view, .view").forEach(section => section.classList.remove("active"));
   document.querySelectorAll(".nav-item, .mobile-nav-item").forEach(button => button.classList.remove("active"));
 
   const section = document.querySelector(`#view-${view}`);
-  const button = document.querySelector(`.nav-item[data-view="${view}"]`);
-  const mobileButton = document.querySelector(`.mobile-nav-item[data-view="${view}"]`);
+  const navigationView = commandCenterModule
+    ? "command-center"
+    : operationsModule ? "health-operations" : view;
+  const button = document.querySelector(`.nav-item[data-view="${navigationView}"]`);
+  const mobileButton = document.querySelector(`.mobile-nav-item[data-view="${navigationView}"]`);
   if (!section) return;
 
   section.classList.add("active");
   if (button) button.classList.add("active");
   if (mobileButton) mobileButton.classList.add("active");
-  $("#pageTitle").textContent = viewTitles[view] || "AIOS ONE";
-  window.location.hash = view;
+  document.querySelectorAll("[data-command-module]").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.commandModule === view);
+  });
+  document.querySelectorAll("[data-operations-module]").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.operationsModule === view);
+  });
+  $("#pageTitle").textContent = commandCenterModule
+    ? "Command Center"
+    : operationsModule ? "Operations Center" : (viewTitles[view] || "AIOS ONE");
+  window.location.hash = commandCenterModule && view !== "command-center"
+    ? `command-center/${view}`
+    : operationsModule ? `operations/${view}` : view;
+
+  if (view === "reliability") loadReliability();
+  if (view === "network-health") loadNetworkHealth();
+  if (view === "health-operations") loadHealthOperations();
+  if (view === "operations-terminal") loadOperationsTerminal();
+  if (view === "connectors") {
+    loadConnectors();
+    loadIoTDevices();
+  }
 }
 
 function renderSpecialists(items) {
@@ -356,6 +385,30 @@ document.querySelectorAll(".nav-item").forEach(button => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
+document.querySelectorAll("[data-command-module]").forEach(button => {
+  button.addEventListener("click", () => {
+    switchView(button.dataset.commandModule);
+    if (button.dataset.commandModule === "projects") loadProjects();
+    if (button.dataset.commandModule === "copilot") {
+      loadManagerControlPlane();
+      runCopilotConnectivityChecks();
+    }
+  });
+});
+
+const operationsTabs = `
+  <nav class="command-center-tabs operations-center-tabs" aria-label="Operations Center">
+    <button type="button" data-operations-module="reliability">Reliability</button>
+    <button type="button" data-operations-module="network-health">Network</button>
+    <button type="button" data-operations-module="health-operations">Health</button>
+    <button type="button" data-operations-module="operations-terminal">Terminal</button>
+  </nav>`;
+["reliability", "network-health", "health-operations", "operations-terminal"].forEach(view => {
+  document.querySelector(`#view-${view}`)?.insertAdjacentHTML("afterbegin", operationsTabs);
+});
+document.querySelectorAll("[data-operations-module]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.operationsModule));
+});
 
 document.querySelectorAll(".mobile-nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => {
@@ -545,6 +598,138 @@ let copilotConversationId =
   localStorage.getItem(COPILOT_CONVERSATION_KEY) ||
   (crypto.randomUUID ? crypto.randomUUID() : `chat-${Date.now()}`);
 localStorage.setItem(COPILOT_CONVERSATION_KEY, copilotConversationId);
+let copilotAbortController = null;
+let latestCopilotMessages = [];
+let lastCopilotUserMessage = "";
+let copilotVoiceMuted = false;
+let copilotCameraImageData = null;
+let copilotDesktopCameraStream = null;
+
+function clearCopilotCameraPhoto() {
+  copilotCameraImageData = null;
+  const input = $("#copilotCameraInput");
+  if (input) input.value = "";
+  $("#copilotCameraPreview")?.classList.add("hidden");
+  $("#copilotCameraPreviewImage")?.removeAttribute("src");
+}
+
+async function prepareCopilotCameraPhoto(file) {
+  if (!file?.type?.startsWith("image/")) {
+    throw new Error("Choose a JPEG, PNG, or WebP image.");
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    throw new Error("The selected photo is larger than 12 MB.");
+  }
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = sourceUrl;
+    await image.decode();
+    const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+    if (dataUrl.length > 2_400_000) {
+      throw new Error("The compressed photo is still too large. Try a lower-resolution photo.");
+    }
+    copilotCameraImageData = dataUrl;
+    $("#copilotCameraPreviewImage").src = dataUrl;
+    $("#copilotCameraPreview").classList.remove("hidden");
+    $("#copilotQuickVoiceStatus").textContent =
+      "Photo ready. Add a message describing what Copilot should inspect.";
+    if ($("#copilotChatStatus")) {
+      $("#copilotChatStatus").textContent =
+        "Camera photo ready. It will be sent only with your next Copilot message.";
+    }
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+function stopCopilotDesktopCamera() {
+  copilotDesktopCameraStream?.getTracks().forEach(track => track.stop());
+  copilotDesktopCameraStream = null;
+  const video = $("#copilotDesktopCameraVideo");
+  if (video) video.srcObject = null;
+  $(".desktop-camera-stage")?.removeAttribute("data-active");
+  $("#captureCopilotDesktopCamera").disabled = true;
+  $("#copilotDesktopCameraStatus").textContent = "Camera is off.";
+}
+
+function openCopilotCameraCapture() {
+  const desktopCameraAvailable =
+    window.matchMedia("(pointer:fine)").matches && navigator.mediaDevices?.getUserMedia;
+  if (!desktopCameraAvailable) {
+    $("#copilotCameraInput")?.click();
+    return;
+  }
+  $("#copilotDesktopCameraDialog")?.showModal();
+}
+
+async function startCopilotDesktopCamera() {
+  const status = $("#copilotDesktopCameraStatus");
+  try {
+    stopCopilotDesktopCamera();
+    status.textContent = "Requesting camera permission…";
+    copilotDesktopCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {width: {ideal: 1280}, height: {ideal: 720}},
+      audio: false,
+    });
+    const video = $("#copilotDesktopCameraVideo");
+    video.srcObject = copilotDesktopCameraStream;
+    await video.play();
+    $(".desktop-camera-stage").dataset.active = "true";
+    $("#captureCopilotDesktopCamera").disabled = false;
+    status.textContent = "Camera is live. Capture one frame or cancel.";
+  } catch (error) {
+    stopCopilotDesktopCamera();
+    status.textContent = error.name === "NotAllowedError"
+      ? "Camera permission was denied. You can continue using text, voice, or a file."
+      : `Camera unavailable: ${error.message}`;
+  }
+}
+
+function captureCopilotDesktopPhoto() {
+  const video = $("#copilotDesktopCameraVideo");
+  if (!video?.videoWidth || !video?.videoHeight) return;
+  const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  copilotCameraImageData = canvas.toDataURL("image/jpeg", 0.72);
+  $("#copilotCameraPreviewImage").src = copilotCameraImageData;
+  $("#copilotCameraPreview").classList.remove("hidden");
+  $("#copilotQuickVoiceStatus").textContent =
+    "Desktop camera photo ready. It will be sent only with your next message.";
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+}
+
+$("#openCopilotQuickCamera")?.addEventListener("click", openCopilotCameraCapture);
+$("#openCopilotCamera")?.addEventListener("click", openCopilotCameraCapture);
+$("#startCopilotDesktopCamera")?.addEventListener("click", startCopilotDesktopCamera);
+$("#captureCopilotDesktopCamera")?.addEventListener("click", captureCopilotDesktopPhoto);
+$("#closeCopilotDesktopCamera")?.addEventListener("click", () => {
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+});
+$("#cancelCopilotDesktopCamera")?.addEventListener("click", () => {
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+});
+$("#copilotDesktopCameraDialog")?.addEventListener("close", stopCopilotDesktopCamera);
+$("#clearCopilotCamera")?.addEventListener("click", clearCopilotCameraPhoto);
+$("#copilotCameraInput")?.addEventListener("change", async event => {
+  try {
+    await prepareCopilotCameraPhoto(event.currentTarget.files?.[0]);
+  } catch (error) {
+    clearCopilotCameraPhoto();
+    $("#copilotQuickVoiceStatus").textContent = `Camera photo unavailable: ${error.message}`;
+  }
+});
 
 function escapeChatHtml(value) {
   return String(value ?? "")
@@ -555,9 +740,55 @@ function escapeChatHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function renderCopilotText(value) {
+  return escapeChatHtml(value)
+    .replace(
+      /(https:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+    )
+    .replaceAll("\n", "<br>");
+}
+
+function safeResearchUrl(value, imageOnly = false) {
+  try {
+    const url = new URL(String(value || ""));
+    if (url.protocol !== "https:" && (!imageOnly && url.protocol !== "http:")) return "";
+    return escapeChatHtml(url.href);
+  } catch {
+    return "";
+  }
+}
+
+function renderResearchMedia(research) {
+  if (!research) return "";
+  const sources = (research.sources || []).filter(item => safeResearchUrl(item.url));
+  const cards = sources.slice(0, 12).map(item => {
+    const href = safeResearchUrl(item.url);
+    const thumbnail = safeResearchUrl(item.thumbnail_url, true);
+    return `<a class="copilot-research-source" data-kind="${escapeChatHtml(item.kind || "source")}"
+      href="${href}" target="_blank" rel="noopener noreferrer">
+      ${thumbnail
+        ? `<img src="${thumbnail}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+        : ""}
+      <div>
+        <strong>${escapeChatHtml(item.kind === "video" ? `▶ ${item.title}` : item.title)}</strong>
+        <small>${escapeChatHtml(item.source || "Source")}${item.published_at ? ` · ${escapeChatHtml(item.published_at)}` : ""}</small>
+      </div>
+    </a>`;
+  }).join("");
+  const links = (research.navigation_links || [])
+    .filter(item => safeResearchUrl(item.url))
+    .map(item => `<a href="${safeResearchUrl(item.url)}" target="_blank"
+      rel="noopener noreferrer">${escapeChatHtml(item.label)}</a>`).join("");
+  return `
+    ${cards ? `<div class="copilot-research-gallery">${cards}</div>` : ""}
+    ${links ? `<div class="copilot-research-links">${links}</div>` : ""}`;
+}
+
 function renderCopilotMessages(messages) {
   const container = $("#copilotMessages");
   if (!container) return;
+  latestCopilotMessages = messages || [];
   if (!messages?.length) {
     container.innerHTML = `
       <div class="copilot-empty">
@@ -575,7 +806,8 @@ function renderCopilotMessages(messages) {
         <small>${message.created_at ? new Date(message.created_at).toLocaleString() : ""}</small>
       </div>
       ${message.image_url ? `<img class="copilot-input-image" src="${escapeChatHtml(message.image_url)}" alt="Submitted image">` : ""}
-      <div class="copilot-message-content">${escapeChatHtml(message.content).replaceAll("\n", "<br>")}</div>
+      <div class="copilot-message-content">${renderCopilotText(message.content)}</div>
+      ${message.live_research ? renderResearchMedia(message.live_research) : ""}
       ${message.role === "assistant" ? `
         <div class="copilot-message-meta">
           <span>${escapeChatHtml(message.provider || "")}</span>
@@ -583,6 +815,13 @@ function renderCopilotMessages(messages) {
           <span>${Number(message.input_tokens || 0)} in</span>
           <span>${Number(message.output_tokens || 0)} out</span>
           <span>$${Number(message.estimated_cost_usd || 0).toFixed(6)}</span>
+          ${message.live_research
+            ? `<span>LIVE · ${Number(message.live_research.source_count || 0)} SOURCES</span>`
+            : ""}
+        </div>
+        <div class="copilot-response-actions">
+          <button type="button" data-copy-copilot="${escapeChatHtml(message.content)}">Copy</button>
+          <button type="button" data-save-copilot="${escapeChatHtml(message.content)}">Propose memory</button>
         </div>
         ${message.gateway_error ? `<details><summary>Gateway fallback detail</summary><p>${escapeChatHtml(message.gateway_error)}</p></details>` : ""}
       ` : ""}
@@ -614,16 +853,20 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   const send = $("#sendCopilotMessage");
   const message = input.value.trim();
   if (!message) return;
+  lastCopilotUserMessage = message;
 
+  const selectedImage = copilotCameraImageData || image.value.trim() || null;
   const pending = {
     role: "user",
     content: message,
-    image_url: image.value.trim() || null,
+    image_url: selectedImage,
     created_at: new Date().toISOString(),
   };
   const existing = await api(`/api/copilot/conversations/${copilotConversationId}`);
   renderCopilotMessages([...(existing.messages || []), pending]);
 
+  copilotAbortController = new AbortController();
+  $("#stopCopilotGeneration").disabled = false;
   send.disabled = true;
   send.textContent = "Thinking…";
   $("#copilotChatStatus").textContent = "Copilot is using the live model gateway.";
@@ -634,13 +877,15 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
       body: JSON.stringify({
         conversation_id: copilotConversationId,
         message,
-        image_url: image.value.trim() || null,
+        image_url: selectedImage,
         model: $("#copilotModel").value,
         preferred_provider: $("#copilotProvider").value || null,
       }),
+      signal: copilotAbortController.signal,
     });
     input.value = "";
     image.value = "";
+    clearCopilotCameraPhoto();
     await loadCopilotConversation();
     await loadCopilotStatus();
     await loadBudget();
@@ -648,8 +893,12 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
       ? `Live response completed with ${result.provider_status.model}.`
       : "Fallback response returned. Open gateway details in the message.";
   } catch (error) {
-    $("#copilotChatStatus").textContent = `Copilot error: ${error.message}`;
+    $("#copilotChatStatus").textContent = error.name === "AbortError"
+      ? "Generation stopped by owner."
+      : `Copilot error: ${error.message}`;
   } finally {
+    copilotAbortController = null;
+    $("#stopCopilotGeneration").disabled = true;
     send.disabled = false;
     send.textContent = "Send";
   }
@@ -2657,7 +2906,10 @@ if (mobileToken()) {
 }
 
 loadDashboard().then(() => {
-  const startView = window.location.hash.replace("#", "");
+  const hashView = window.location.hash.replace("#", "");
+  const startView = hashView.startsWith("command-center/")
+    ? hashView.split("/", 2)[1]
+    : hashView.startsWith("operations/") ? hashView.split("/", 2)[1] : hashView;
   switchView(viewTitles[startView] ? startView : "mission");
 }).catch(error => {
   console.error(error);
@@ -3050,6 +3302,89 @@ async function loadNetworkHealth() {
 }
 
 $("#runNetworkHealth")?.addEventListener("click", loadNetworkHealth);
+
+let latestCcnaAnalysis = null;
+
+function renderCcnaAnalysis(result) {
+  const host = $("#ccnaAnalysisResult");
+  const findings = result.findings || [];
+  const proposals = result.repair_proposals || [];
+  $("#ccnaSpecialistStatus").textContent =
+    String(result.status || "unknown").replaceAll("_", " ").toUpperCase();
+  $("#createCcnaRepairTask").disabled = findings.length === 0;
+  host.innerHTML = `
+    <div class="ccna-approval-note">
+      ${escapeHtml(result.summary || "Analysis complete.")}
+      No changes were executed; every repair remains approval-controlled.
+    </div>
+    ${findings.map((finding, index) => `
+      <article class="ccna-finding">
+        <p class="eyebrow">${escapeHtml(String(finding.status || "unknown").toUpperCase())}</p>
+        <h3>${escapeHtml(finding.name || finding.id)}</h3>
+        <p><strong>Evidence:</strong> ${escapeHtml(finding.evidence || "")}</p>
+        ${finding.likely_cause
+          ? `<p><strong>Likely cause:</strong> ${escapeHtml(finding.likely_cause)}</p>`
+          : ""}
+        ${proposals[index]
+          ? `<code>Proposed: ${escapeHtml(proposals[index].title)} · OWNER APPROVAL REQUIRED</code>`
+          : ""}
+      </article>`).join("") ||
+      '<article class="ccna-finding"><h3>Network evidence is healthy</h3><p>No repair task is needed.</p></article>'}`;
+}
+
+async function runCcnaAnalysis() {
+  const host = $("#ccnaAnalysisResult");
+  host.innerHTML = '<p class="muted-copy">CCNA specialist is collecting live evidence…</p>';
+  $("#runCcnaAnalysis").disabled = true;
+  try {
+    latestCcnaAnalysis = await api("/api/network-health/ccna-analysis");
+    renderCcnaAnalysis(latestCcnaAnalysis);
+  } catch (error) {
+    host.innerHTML = `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`;
+  } finally {
+    $("#runCcnaAnalysis").disabled = false;
+  }
+}
+
+$("#runCcnaAnalysis")?.addEventListener("click", runCcnaAnalysis);
+$("#createCcnaRepairTask")?.addEventListener("click", async () => {
+  if (!latestCcnaAnalysis?.findings?.length) return;
+  const button = $("#createCcnaRepairTask");
+  button.disabled = true;
+  try {
+    const task = await api("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        message: latestCcnaAnalysis.task_message,
+        project_id: "",
+        priority: "high",
+        output_type: "technical_report",
+        deadline: "",
+        voice_transcript: "",
+        urls: [],
+        input_type: "message",
+        budget_mode: "balanced",
+        memory_mode: "standard",
+      }),
+    });
+    $("#ccnaAnalysisResult").insertAdjacentHTML(
+      "afterbegin",
+      `<div class="ccna-approval-note">Governed repair task ${escapeHtml(task.task_id)} created. Open Command Center to review its plan and approvals.</div>`
+    );
+    showAiosToast?.({
+      title: "CCNA repair task created",
+      message: "Copilot will diagnose first and request approval before changes.",
+      type: "success",
+    });
+  } catch (error) {
+    $("#ccnaAnalysisResult").insertAdjacentHTML(
+      "afterbegin",
+      `<p class="security-login-error">${escapeHtml(reliabilityErrorMessage(error))}</p>`
+    );
+  } finally {
+    button.disabled = false;
+  }
+});
 
 
 
@@ -3602,10 +3937,109 @@ async function loadConnectors() {
   }
 }
 
+function renderIoTDevice(device) {
+  return `<article class="iot-device-card">
+    <p class="eyebrow">${escapeHtml(device.protocol || "unknown")}</p>
+    <h3>${escapeHtml(device.name)}</h3>
+    <small>${escapeHtml(device.endpoint || "Endpoint not configured")}</small>
+    <small>${escapeHtml(device.location || "Location not assigned")}</small>
+    <p>${(device.capabilities || []).map(item =>
+      `<span class="status-chip">${escapeHtml(item)}</span>`).join(" ") || "No capabilities"}</p>
+    <div class="iot-policy-row">
+      <span>${device.enabled ? "ENABLED" : "DISABLED"}</span>
+      <span>${device.read_only ? "READ ONLY" : "WRITE GATED"}</span>
+      <span>${escapeHtml(String(device.status || "unverified").toUpperCase())}</span>
+    </div>
+  </article>`;
+}
+
+function renderIoTProposals(proposals) {
+  const host = $("#iotCommandProposals");
+  host.innerHTML = (proposals || []).slice(0, 10).map(item => `
+    <article class="iot-command-proposal">
+      <strong>${escapeHtml(item.device_name)} · ${escapeHtml(item.capability)}</strong>
+      <p>${escapeHtml(item.command)}</p>
+      <small>${escapeHtml(String(item.status).replaceAll("_", " ").toUpperCase())}
+        · NOT EXECUTED</small>
+    </article>`).join("") || '<p class="muted-copy">No hardware commands proposed.</p>';
+}
+
+async function loadIoTDevices() {
+  if (!$("#iotDeviceGrid")) return;
+  try {
+    const [registry, commands] = await Promise.all([
+      api("/api/iot/devices"),
+      api("/api/iot/command-proposals"),
+    ]);
+    const devices = registry.devices || [];
+    $("#iotDeviceCount").textContent = `${devices.length} DEVICE${devices.length === 1 ? "" : "S"}`;
+    $("#iotDeviceGrid").innerHTML = devices.map(renderIoTDevice).join("") ||
+      '<p class="muted-copy">No IoT devices registered yet.</p>';
+    $("#iotCommandDevice").innerHTML =
+      '<option value="">Select device</option>' +
+      devices.map(item => `<option value="${escapeHtml(item.device_id)}">${escapeHtml(item.name)}</option>`).join("");
+    renderIoTProposals(commands.proposals || []);
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `IoT registry unavailable: ${error.message}`;
+  }
+}
+
+$("#iotDeviceForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const capabilities = $("#iotDeviceCapabilities").value
+    .split(",").map(item => item.trim()).filter(Boolean);
+  try {
+    const device = await api("/api/iot/devices", {
+      method: "POST",
+      body: JSON.stringify({
+        name: $("#iotDeviceName").value.trim(),
+        protocol: $("#iotDeviceProtocol").value,
+        endpoint: $("#iotDeviceEndpoint").value.trim(),
+        location: $("#iotDeviceLocation").value.trim(),
+        capabilities,
+        credential_source: $("#iotCredentialSource").value.trim(),
+      }),
+    });
+    $("#iotAutomationStatus").textContent =
+      `${device.name} registered disabled and read-only. Verify its connector before enabling it.`;
+    event.currentTarget.reset();
+    await loadIoTDevices();
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `Registration failed: ${error.message}`;
+  }
+});
+
+$("#iotCommandForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const proposal = await api("/api/iot/command-proposals", {
+      method: "POST",
+      body: JSON.stringify({
+        device_id: $("#iotCommandDevice").value,
+        capability: $("#iotCommandCapability").value.trim(),
+        command: $("#iotCommandValue").value.trim(),
+        reason: $("#iotCommandReason").value.trim(),
+      }),
+    });
+    $("#iotAutomationStatus").textContent =
+      `${proposal.proposal_id} created. Nothing was sent to the hardware.`;
+    event.currentTarget.reset();
+    await loadIoTDevices();
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `Command proposal failed: ${error.message}`;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   $("#refreshConnectorHealth")?.addEventListener("click", loadConnectors);
-  document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", loadConnectors);
-  if (location.hash === "#connectors") loadConnectors();
+  document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", () => {
+    loadConnectors();
+    loadIoTDevices();
+  });
+  if (location.hash === "#connectors") {
+    loadConnectors();
+    loadIoTDevices();
+  }
 });
 
 
@@ -3936,15 +4370,7 @@ async function loadTaskOutputs() {
 }
 
 async function loadSkillsLibrary() {
-  const q = encodeURIComponent($("#skillsSearch")?.value || "");
-  const payload = await api(`/api/knowledge/skills?q=${q}`);
-  $("#skillsLibraryList").innerHTML = payload.skills.length
-    ? payload.skills.map(item => `<article class="panel">
-        <p class="eyebrow">SKILL</p><h3>${item.name}</h3>
-        <p>${escapeHtml(item.purpose || "")}</p>
-        <p><code>${item.path}</code></p>
-      </article>`).join("")
-    : `<div class="empty-approval"><p>No matching skills.</p></div>`;
+  return loadTrustedSkills();
 }
 
 async function searchLlmWiki() {
@@ -3961,8 +4387,7 @@ async function searchLlmWiki() {
 $("#refreshTaskOutputs")?.addEventListener("click", loadTaskOutputs);
 $("#skillsSearchButton")?.addEventListener("click", loadSkillsLibrary);
 $("#seedDefaultSkills")?.addEventListener("click", async () => {
-  await api("/api/knowledge/skills/seed", {method:"POST"});
-  await loadSkillsLibrary();
+  await loadTrustedSkills();
 });
 $("#llmWikiSearchButton")?.addEventListener("click", searchLlmWiki);
 window.addEventListener("hashchange", () => {
@@ -4156,3 +4581,797 @@ window.addEventListener("hashchange", () => {
     loadLiveTaskWorkspace();
   }
 });
+
+function latestAssistantMessage() {
+  return [...latestCopilotMessages].reverse().find(message => message.role === "assistant");
+}
+
+function normalizeCopilotSearchItem(source, item, index, sourceView) {
+  const title = item.title || item.name || item.label || item.case_id
+    || item.task_id || item.id || `${source} result ${index + 1}`;
+  const path = item.path || item.brain_vault_path || item.workspace_path
+    || item.output_path || item.source || "";
+  const description = item.snippet || item.summary || item.description
+    || item.objective || item.purpose || item.content_preview || item.final_answer
+    || item.status || path || "Matching AIOS record.";
+  return {source, title, path, description, sourceView};
+}
+
+async function searchCopilotKnowledge(event) {
+  event?.preventDefault();
+  const query = ($("#copilotSearchInput")?.value || "").trim();
+  if (!query) return;
+  const selected = new Set(
+    [...document.querySelectorAll('.copilot-search-sources input:checked')]
+      .map(input => input.value)
+  );
+  const status = $("#copilotSearchStatus");
+  const resultsHost = $("#copilotSearchResults");
+  status.textContent = `Searching ${selected.size} AIOS source(s)…`;
+  resultsHost.innerHTML = '<article class="panel"><p>Searching connected knowledge sources…</p></article>';
+
+  const sourceSearches = {
+    files: async () => {
+      const payload = await api(`/api/workspace/items?bucket=&query=${encodeURIComponent(query)}`);
+      return (payload.items || []).map((item, index) =>
+        normalizeCopilotSearchItem("Files", item, index, "file-explorer"));
+    },
+    osint: async () => {
+      const payload = await api("/api/osint/cases");
+      const cases = payload.cases || payload.items || payload || [];
+      const needle = query.toLowerCase();
+      return cases.filter(item => JSON.stringify(item).toLowerCase().includes(needle))
+        .map((item, index) => normalizeCopilotSearchItem("OSINT", item, index, "osint-workspace"));
+    },
+    "brain-vault": async () => {
+      const payload = await api(`/api/brain-vault/tree/search?q=${encodeURIComponent(query)}`);
+      return (payload.results || []).map((item, index) =>
+        normalizeCopilotSearchItem("Brain Vault", item, index, "brain-vault"));
+    },
+    outputs: async () => {
+      const payload = await api("/api/knowledge/outputs");
+      const needle = query.toLowerCase();
+      return (payload.outputs || [])
+        .filter(item => JSON.stringify(item).toLowerCase().includes(needle))
+        .map((item, index) => normalizeCopilotSearchItem("Outputs", item, index, "outputs"));
+    },
+    skills: async () => {
+      const payload = await api(`/api/skills/trusted?query=${encodeURIComponent(query)}`);
+      return (payload.items || []).map((item, index) =>
+        normalizeCopilotSearchItem("Skills", item, index, "skills-library"));
+    },
+    wiki: async () => {
+      const payload = await api(`/api/knowledge/wiki/search?q=${encodeURIComponent(query)}`);
+      return (payload.results || []).map((item, index) =>
+        normalizeCopilotSearchItem("LLM Wiki", item, index, "llm-wiki"));
+    },
+  };
+  const names = [...selected];
+  const settled = await Promise.allSettled(names.map(name => sourceSearches[name]()));
+  const items = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  const failures = settled
+    .map((result, index) => result.status === "rejected"
+      ? {source:names[index], message:result.reason?.message || "Unavailable"}
+      : null)
+    .filter(Boolean);
+
+  resultsHost.innerHTML = [
+    ...items.slice(0, 120).map(item => `
+      <article class="panel copilot-search-result">
+        <div><span>${escapeHtml(item.source)}</span><h3>${escapeHtml(item.title)}</h3></div>
+        <p>${escapeHtml(String(item.description).slice(0, 500))}</p>
+        ${item.path ? `<code>${escapeHtml(item.path)}</code>` : ""}
+        <button type="button" data-search-result-view="${item.sourceView}">Open source</button>
+      </article>`),
+    ...failures.map(item => `
+      <article class="panel copilot-search-result source-error">
+        <div><span>${escapeHtml(item.source)}</span><h3>Source unavailable</h3></div>
+        <p>${escapeHtml(item.message)}</p>
+      </article>`),
+  ].join("") || '<article class="panel"><h3>No matches</h3><p>Try a broader search or another source.</p></article>';
+  $("#copilotSearchSummary").textContent = `${items.length} RESULTS · ${failures.length} ERRORS`;
+  status.textContent = failures.length
+    ? `Search completed with ${failures.length} unavailable source(s).`
+    : `Search completed across ${selected.size} source(s).`;
+}
+
+$("#copilotSearchForm")?.addEventListener("submit", searchCopilotKnowledge);
+$("#copilotSearchResults")?.addEventListener("click", event => {
+  const button = event.target.closest("[data-search-result-view]");
+  if (button) switchView(button.dataset.searchResultView);
+});
+document.querySelectorAll("[data-search-workspace]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.searchWorkspace));
+});
+
+async function loadResearchProviders() {
+  const host = $("#copilotResearchProviderStatus");
+  if (!host) return;
+  try {
+    const result = await api("/api/research/providers");
+    host.innerHTML = [
+      ...(result.providers || []).map(provider => `
+        <span>
+          ${escapeHtml(provider.name)} · ${provider.connected ? "CONNECTED" : "NOT CONNECTED"}
+          ${provider.connected
+            ? `<button type="button" data-disconnect-research="${escapeHtml(provider.id)}">Disconnect</button>`
+            : ""}
+        </span>`),
+      ...(result.fallbacks || []).map(provider =>
+        `<span>${escapeHtml(provider.name)} · BUILT IN</span>`),
+    ].join("");
+    $("#researchProviderMessage").textContent =
+      result.active_web_provider === "not-configured"
+        ? "Connect Brave Search or Tavily for broad web research. News and market fallbacks are active."
+        : `Copilot broad web search is connected through ${result.active_web_provider}.`;
+  } catch (error) {
+    host.textContent = `Research provider status unavailable: ${error.message}`;
+  }
+}
+
+$("#researchProviderKeyForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const key = $("#researchProviderKey");
+  try {
+    const result = await api("/api/research/providers/key", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: $("#researchProvider").value,
+        api_key: key.value,
+      }),
+    });
+    key.value = "";
+    $("#researchProviderMessage").textContent =
+      `${result.provider} is connected to Copilot research.`;
+    await loadResearchProviders();
+  } catch (error) {
+    $("#researchProviderMessage").textContent = `Connection failed: ${error.message}`;
+  }
+});
+
+$("#copilotResearchProviderStatus")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-disconnect-research]");
+  if (!button) return;
+  await api(`/api/research/providers/${button.dataset.disconnectResearch}`, {
+    method: "DELETE",
+  });
+  await loadResearchProviders();
+});
+
+$(".copilot-research-sources")?.addEventListener("toggle", event => {
+  if (event.currentTarget.open) loadResearchProviders();
+});
+
+$("#openFullCopilot")?.addEventListener("click", () => switchView("copilot"));
+$("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const input = $("#copilotQuickMessage");
+  const output = $("#copilotQuickResponse");
+  const button = event.submitter || event.currentTarget.querySelector('button[type="submit"]');
+  const message = input.value.trim();
+  if (!message) return;
+  button.disabled = true;
+  output.textContent = "AIOS Copilot is thinking…";
+  $("#compactCopilotAvatar").dataset.state = "thinking";
+  $("#copilotQuickVoiceStatus").textContent = "Copilot is preparing a response.";
+  try {
+    const result = await api("/api/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation_id: copilotConversationId,
+        message,
+        image_url: copilotCameraImageData,
+        model: $("#copilotModel")?.value || "claude-sonnet-5",
+        preferred_provider: $("#copilotProvider")?.value || null,
+      }),
+    });
+    const response = result.message || {};
+    output.innerHTML = `
+      <strong>AIOS Copilot · ${escapeHtml(response.provider || "deterministic")} / ${escapeHtml(response.model || "fallback")}</strong>
+      ${response.live_research
+        ? `<small>LIVE RESEARCH · ${Number(response.live_research.source_count || 0)} SOURCES · ${escapeHtml(response.live_research.collected_at || "")}</small>`
+        : ""}
+      <p>${renderCopilotText(response.content || "No response content was returned.")}</p>
+      ${renderResearchMedia(response.live_research)}`;
+    input.value = "";
+    clearCopilotCameraPhoto();
+    if ($("#copilotQuickAutoSpeak")?.checked) {
+      speakCopilotText(response.content, "#copilotQuickVoiceStatus");
+    } else {
+      $("#compactCopilotAvatar").dataset.state = "idle";
+      $("#copilotQuickVoiceStatus").textContent = "Response ready. Sound is available when enabled.";
+    }
+    await loadCopilotConversation();
+  } catch (error) {
+    $("#compactCopilotAvatar").dataset.state = "offline";
+    output.innerHTML = `<strong>Copilot unavailable</strong><p>${escapeHtml(error.message)}</p>`;
+    $("#copilotQuickVoiceStatus").textContent = `Voice response unavailable: ${error.message}`;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+function operationsTerminalLine(label, payload) {
+  return `[${label.toUpperCase()}]\n${JSON.stringify(payload, null, 2)}`;
+}
+
+async function loadOperationsTerminal() {
+  const output = $("#operationsTerminalOutput");
+  if (!output) return;
+  output.textContent = `${new Date().toISOString()}  Running authenticated read-only diagnostics…`;
+  const checks = [
+    ["liveness", "/api/health/live"],
+    ["readiness", "/api/health/ready"],
+    ["network", "/api/health/network"],
+    ["worker", "/api/health/worker"],
+    ["models", "/api/health/models"],
+    ["connectors", "/api/health/connectors"],
+    ["security", "/api/health/security"],
+  ];
+  const settled = await Promise.allSettled(checks.map(([, endpoint]) => api(endpoint)));
+  const sections = settled.map((result, index) => {
+    const [label, endpoint] = checks[index];
+    return result.status === "fulfilled"
+      ? operationsTerminalLine(label, result.value)
+      : operationsTerminalLine(label, {
+          status: "unavailable",
+          endpoint,
+          detail: result.reason?.message || "Request failed",
+        });
+  });
+  output.textContent = [
+    `AIOS OPERATIONS TERMINAL · ${new Date().toISOString()}`,
+    "MODE: READ ONLY · arbitrary shell execution blocked",
+    ...sections,
+  ].join("\n\n");
+}
+
+$("#refreshOperationsTerminal")?.addEventListener("click", loadOperationsTerminal);
+$("#copyOperationsTerminal")?.addEventListener("click", async () => {
+  await navigator.clipboard.writeText($("#operationsTerminalOutput")?.textContent || "");
+});
+
+async function saveCopilotMemory(content) {
+  if (!content) return;
+  const result = await api("/api/copilot/save-memory", {
+    method: "POST",
+    body: JSON.stringify({
+      content,
+      conversation_id: copilotConversationId,
+      evidence: [],
+    }),
+  });
+  $("#copilotChatStatus").textContent =
+    `Memory proposal ${result.proposal.id} is waiting for human review.`;
+}
+
+$("#copilotMessages")?.addEventListener("click", async event => {
+  const copyButton = event.target.closest("[data-copy-copilot]");
+  const saveButton = event.target.closest("[data-save-copilot]");
+  if (copyButton) {
+    await navigator.clipboard.writeText(copyButton.dataset.copyCopilot || "");
+    $("#copilotChatStatus").textContent = "Response copied.";
+  }
+  if (saveButton) {
+    await saveCopilotMemory(saveButton.dataset.saveCopilot || "");
+  }
+});
+
+$("#stopCopilotGeneration")?.addEventListener("click", () => copilotAbortController?.abort());
+$("#retryCopilotMessage")?.addEventListener("click", () => {
+  if (!lastCopilotUserMessage) {
+    $("#copilotChatStatus").textContent = "No prior message is available to retry.";
+    return;
+  }
+  $("#copilotMessageInput").value = lastCopilotUserMessage;
+  $("#copilotChatForm").requestSubmit();
+});
+$("#copyLatestCopilotResponse")?.addEventListener("click", async () => {
+  const message = latestAssistantMessage();
+  if (!message) return;
+  await navigator.clipboard.writeText(message.content || "");
+  $("#copilotChatStatus").textContent = "Latest response copied.";
+});
+$("#saveLatestCopilotMemory")?.addEventListener("click", async () => {
+  await saveCopilotMemory(latestAssistantMessage()?.content || "");
+});
+$("#openCopilotEvidence")?.addEventListener("click", () => {
+  const message = latestAssistantMessage();
+  const drawer = $("#copilotEvidenceDrawer");
+  $("#copilotEvidenceContent").textContent = message
+    ? JSON.stringify({
+        citations: message.citations || [],
+        tool_calls: message.tool_calls || [],
+        evidence: message.evidence || [],
+        provider: message.provider || "unknown",
+        model: message.model || "unknown",
+        specialist: message.specialist || "copilot-manager",
+        gateway_error: message.gateway_error || "",
+      }, null, 2)
+    : "No response evidence yet.";
+  drawer.open = true;
+});
+
+async function loadCopilotRuntimeState() {
+  if (!$("#copilotAvatar")) return;
+  try {
+    const payload = await api("/api/copilot/runtime-state");
+    const avatar = $("#copilotAvatar");
+    avatar.dataset.state = payload.state;
+    avatar.setAttribute("aria-label", `AIOS Copilot is ${payload.state.replaceAll("_", " ")}`);
+    $("#copilotAvatarState").textContent = payload.state.replaceAll("_", " ").toUpperCase();
+    $("#copilotTaskStatus").textContent = payload.task
+      ? `${payload.task.task_id}: ${payload.task.current_execution_step || payload.task.status}`
+      : "Waiting for an authorized task.";
+    $("#copilotWorkerIndicator").textContent =
+      `Worker: ${payload.worker.status} · ${payload.worker.evidence.worker_id || "unassigned"}`;
+    $("#copilotMemoryIndicator").textContent =
+      `Memory: ${payload.memory.connected ? "connected" : "unavailable"}`;
+  } catch (error) {
+    $("#copilotAvatar").dataset.state = "offline";
+    $("#copilotAvatarState").textContent = "OFFLINE";
+    $("#copilotTaskStatus").textContent = error.message;
+  }
+}
+
+function setManagerControlStatus(selector, status, text) {
+  const control = $(selector);
+  if (!control) return;
+  control.dataset.status = status;
+  control.textContent = text;
+}
+
+async function loadManagerControlPlane() {
+  const [tools, desktop, network, devices] = await Promise.allSettled([
+    api("/api/tools/registry"),
+    api("/api/desktop-companion/status"),
+    api("/api/health/network"),
+    api("/api/mobile/devices"),
+  ]);
+  if (tools.status === "fulfilled") {
+    const enabled = (tools.value.tools || []).filter(tool => tool.enabled).length;
+    setManagerControlStatus("#managerToolsStatus", "healthy", `Tools: ${enabled} enabled`);
+    setManagerControlStatus(
+      "#managerTerminalStatus",
+      tools.value.policy?.raw_terminal === "blocked" ? "warning" : "healthy",
+      tools.value.policy?.raw_terminal === "blocked"
+        ? "Terminal: scoped actions"
+        : "Terminal: policy controlled",
+    );
+  } else {
+    setManagerControlStatus("#managerToolsStatus", "offline", "Tools: unavailable");
+    setManagerControlStatus("#managerTerminalStatus", "offline", "Terminal: unavailable");
+  }
+  if (desktop.status === "fulfilled") {
+    setManagerControlStatus(
+      "#managerDesktopStatus",
+      desktop.value.connected ? "healthy" : "offline",
+      `Desktop: ${desktop.value.connected ? "connected" : "offline"} · ${desktop.value.pending_approvals || 0} approvals`,
+    );
+  } else {
+    setManagerControlStatus("#managerDesktopStatus", "offline", "Desktop: unavailable");
+  }
+  if (network.status === "fulfilled" && devices.status === "fulfilled") {
+    const tunnel = (network.value.components || [])
+      .find(component => component.id === "cloudflare-tunnel");
+    const paired = devices.value.length;
+    const tunnelReady = tunnel?.status === "healthy";
+    setManagerControlStatus(
+      "#managerRemoteStatus",
+      tunnelReady && paired ? "healthy" : "warning",
+      `Remote: ${tunnelReady ? "tunnel ready" : "check tunnel"} · ${paired} phone(s)`,
+    );
+  } else {
+    setManagerControlStatus("#managerRemoteStatus", "unknown", "Remote: status unavailable");
+  }
+}
+
+document.querySelectorAll("[data-manager-view]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.managerView));
+});
+
+const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+let copilotRecognition = null;
+let copilotRecognitionTarget = "full";
+let copilotRecognitionHasFinalResult = false;
+
+function setCopilotVoiceState(state, status) {
+  const fullAvatar = $("#copilotAvatar");
+  const compactAvatar = $("#compactCopilotAvatar");
+  if (fullAvatar) fullAvatar.dataset.state = state;
+  if (compactAvatar) {
+    compactAvatar.dataset.state = state;
+    compactAvatar.setAttribute("aria-label", `AIOS Copilot voice is ${state}`);
+  }
+  if (status) {
+    if ($("#copilotVoiceStatus")) $("#copilotVoiceStatus").textContent = status;
+    if ($("#copilotQuickVoiceStatus")) $("#copilotQuickVoiceStatus").textContent = status;
+  }
+}
+
+function speakCopilotText(content, statusSelector = "#copilotVoiceStatus") {
+  const status = $(statusSelector);
+  if (!content || copilotVoiceMuted || !("speechSynthesis" in window)) {
+    if (status) status.textContent =
+      "Speech is unavailable, muted, or there is no assistant response.";
+    setCopilotVoiceState("idle");
+    return false;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(content);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.onstart = () => {
+    setCopilotVoiceState("speaking", "AIOS Copilot is speaking.");
+  };
+  utterance.onend = () => {
+    setCopilotVoiceState("idle", "Voice response complete. Audio was not stored.");
+    loadCopilotRuntimeState();
+  };
+  utterance.onerror = event => {
+    setCopilotVoiceState("idle", `Speech failed: ${event.error}. Text response remains available.`);
+  };
+  speechSynthesis.speak(utterance);
+  return true;
+}
+
+if (SpeechRecognitionApi) {
+  copilotRecognition = new SpeechRecognitionApi();
+  copilotRecognition.continuous = false;
+  copilotRecognition.interimResults = true;
+  copilotRecognition.onstart = () => {
+    copilotRecognitionHasFinalResult = false;
+    setCopilotVoiceState(
+      "listening",
+      "Listening now. Stop speaking to review the transcript before sending.",
+    );
+    $("#startCopilotListening").disabled = true;
+    $("#stopCopilotListening").disabled = false;
+    $("#startCopilotQuickListening").disabled = true;
+    $("#stopCopilotQuickListening").disabled = false;
+  };
+  copilotRecognition.onresult = event => {
+    const transcript = [...event.results].map(result => result[0].transcript).join(" ");
+    copilotRecognitionHasFinalResult = [...event.results].some(result => result.isFinal);
+    const target = copilotRecognitionTarget === "quick"
+      ? $("#copilotQuickMessage")
+      : $("#copilotMessageInput");
+    target.value = transcript;
+    setCopilotVoiceState(
+      "listening",
+      copilotRecognitionHasFinalResult
+        ? "Transcript ready. Review it or send it to Copilot."
+        : `Listening: ${transcript}`,
+    );
+  };
+  copilotRecognition.onerror = event => {
+    setCopilotVoiceState("idle",
+      event.error === "not-allowed"
+        ? "Microphone permission was denied. Voice remains off; text input is available."
+        : `Voice recognition unavailable: ${event.error}.`);
+  };
+  copilotRecognition.onend = () => {
+    $("#startCopilotListening").disabled = false;
+    $("#stopCopilotListening").disabled = true;
+    $("#startCopilotQuickListening").disabled = false;
+    $("#stopCopilotQuickListening").disabled = true;
+    if (
+      copilotRecognitionTarget === "quick"
+      && copilotRecognitionHasFinalResult
+      && $("#copilotQuickAutoSend")?.checked
+      && $("#copilotQuickMessage")?.value.trim()
+    ) {
+      $("#copilotQuickMessageForm").requestSubmit();
+    } else {
+      setCopilotVoiceState("idle", "Transcript ready. Review it, then press Send.");
+    }
+    loadCopilotRuntimeState();
+  };
+} else if ($("#copilotVoiceStatus")) {
+  $("#copilotVoiceStatus").textContent =
+    "Voice recognition is unavailable in this browser. Text input remains available.";
+  $("#startCopilotListening").disabled = true;
+  $("#startCopilotQuickListening").disabled = true;
+}
+
+$("#startCopilotListening")?.addEventListener("click", () => {
+  copilotRecognitionTarget = "full";
+  $("#copilotVoiceStatus").textContent =
+    "Requesting microphone permission. Recording only begins after browser approval.";
+  copilotRecognition?.start();
+});
+$("#stopCopilotListening")?.addEventListener("click", () => copilotRecognition?.stop());
+$("#startCopilotQuickListening")?.addEventListener("click", () => {
+  copilotRecognitionTarget = "quick";
+  setCopilotVoiceState(
+    "idle",
+    "Requesting microphone permission. Recording begins only after browser approval.",
+  );
+  copilotRecognition?.start();
+});
+$("#stopCopilotQuickListening")?.addEventListener("click", () => copilotRecognition?.stop());
+$("#muteCopilotVoice")?.addEventListener("click", event => {
+  copilotVoiceMuted = !copilotVoiceMuted;
+  event.currentTarget.setAttribute("aria-pressed", String(copilotVoiceMuted));
+  event.currentTarget.textContent = copilotVoiceMuted ? "Unmute" : "Mute";
+  if (copilotVoiceMuted) speechSynthesis.cancel();
+});
+$("#muteCopilotQuickVoice")?.addEventListener("click", event => {
+  copilotVoiceMuted = !copilotVoiceMuted;
+  event.currentTarget.setAttribute("aria-pressed", String(copilotVoiceMuted));
+  event.currentTarget.textContent = copilotVoiceMuted ? "🔇 Sound off" : "🔊 Sound on";
+  const fullMute = $("#muteCopilotVoice");
+  if (fullMute) {
+    fullMute.setAttribute("aria-pressed", String(copilotVoiceMuted));
+    fullMute.textContent = copilotVoiceMuted ? "Unmute" : "Mute";
+  }
+  if (copilotVoiceMuted) speechSynthesis.cancel();
+  setCopilotVoiceState("idle", copilotVoiceMuted ? "Sound is muted." : "Sound is enabled.");
+});
+$("#speakCopilotResponse")?.addEventListener("click", () => {
+  const content = latestAssistantMessage()?.content;
+  speakCopilotText(content);
+});
+
+function setCopilotConnectivityCheck(name, status, detail) {
+  const card = document.querySelector(`#copilotConnectivityGrid [data-check="${name}"]`);
+  if (!card) return;
+  card.dataset.status = status;
+  card.querySelector("span").textContent = detail;
+}
+
+async function runCopilotConnectivityChecks() {
+  const status = $("#copilotConnectivityStatus");
+  status.textContent = "Checking backend, network, model catalog, routing, and browser speech…";
+  ["backend", "network", "models"].forEach(name =>
+    setCopilotConnectivityCheck(name, "unknown", "Checking…"));
+
+  const [backend, network, models, providers, catalog] = await Promise.allSettled([
+    api("/health"),
+    api("/api/health/network"),
+    api("/api/health/models"),
+    api("/api/copilot/status"),
+    api("/api/models/catalog?query=&provider="),
+  ]);
+
+  if (backend.status === "fulfilled") {
+    setCopilotConnectivityCheck("backend", "healthy", "FastAPI responded successfully.");
+  } else {
+    setCopilotConnectivityCheck("backend", "offline", backend.reason.message);
+  }
+
+  if (network.status === "fulfilled") {
+    const searchCount = catalog.status === "fulfilled" ? Number(catalog.value.count || 0) : 0;
+    setCopilotConnectivityCheck(
+      "network",
+      network.value.status || "unknown",
+      `${network.value.status || "unknown"} · model auto-search returned ${searchCount} result(s).`,
+    );
+  } else {
+    setCopilotConnectivityCheck("network", "offline", network.reason.message);
+  }
+
+  if (models.status === "fulfilled" && providers.status === "fulfilled") {
+    const connected = Object.entries(providers.value.providers || {})
+      .filter(([, available]) => available)
+      .map(([name]) => name);
+    setCopilotConnectivityCheck(
+      "models",
+      models.value.status || "unknown",
+      `${models.value.status || "unknown"} · route: ${providers.value.provider} · connected: ${connected.join(", ") || "fallback only"}.`,
+    );
+  } else {
+    const reason = models.status === "rejected" ? models.reason : providers.reason;
+    setCopilotConnectivityCheck("models", "offline", reason?.message || "Model routing unavailable.");
+  }
+
+  const speechAvailable = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  setCopilotConnectivityCheck(
+    "speech",
+    speechAvailable ? "healthy" : "unknown",
+    speechAvailable
+      ? "Browser speech synthesis is available; use Test speak response."
+      : "This browser does not provide speech synthesis.",
+  );
+  const summary = $("#copilotConnectivitySummary");
+  if (summary) {
+    const failed = document.querySelectorAll(
+      '#copilotConnectivityGrid [data-status="offline"], #copilotConnectivityGrid [data-status="critical"]'
+    ).length;
+    summary.textContent = failed
+      ? `${failed} connection problem(s) — expand`
+      : "Core connections checked — expand";
+  }
+  status.textContent = "Connectivity check finished. Open Health Operations for full evidence.";
+}
+
+$("#runCopilotConnectivity")?.addEventListener("click", runCopilotConnectivityChecks);
+$("#testCopilotAssistantResponse")?.addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  setCopilotConnectivityCheck("assistant", "unknown", "Waiting for a routed response…");
+  try {
+    const result = await api("/api/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation_id: `connectivity-${Date.now()}`,
+        message: "Connectivity test: reply briefly that the AIOS Copilot response channel is working.",
+        image_url: null,
+        model: $("#copilotModel")?.value || "claude-sonnet-5",
+        preferred_provider: $("#copilotProvider")?.value || null,
+      }),
+    });
+    const live = Boolean(result.provider_status?.live);
+    setCopilotConnectivityCheck(
+      "assistant",
+      live ? "healthy" : "warning",
+      `${live ? "Live" : "Fallback"} response received from ${result.provider_status?.provider || "deterministic"} / ${result.provider_status?.model || "unknown"}.`,
+    );
+  } catch (error) {
+    setCopilotConnectivityCheck("assistant", "offline", error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("#testCopilotSpeech")?.addEventListener("click", () => {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+    setCopilotConnectivityCheck("speech", "unknown", "Speech synthesis is unavailable in this browser.");
+    return;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance("AIOS Copilot speech response is connected.");
+  utterance.onstart = () =>
+    setCopilotConnectivityCheck("speech", "healthy", "Speaking the test response now.");
+  utterance.onend = () =>
+    setCopilotConnectivityCheck("speech", "healthy", "Speech response completed.");
+  utterance.onerror = event =>
+    setCopilotConnectivityCheck("speech", "warning", `Speech failed: ${event.error}.`);
+  speechSynthesis.speak(utterance);
+});
+
+$("#staticAvatarMode")?.addEventListener("change", event => {
+  document.body.classList.toggle("static-avatar", event.currentTarget.checked);
+  localStorage.setItem("aios-static-avatar", String(event.currentTarget.checked));
+});
+if (localStorage.getItem("aios-static-avatar") === "true" || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  document.body.classList.add("static-avatar");
+  if ($("#staticAvatarMode")) $("#staticAvatarMode").checked = true;
+}
+
+function healthComponentMarkup(item) {
+  return `<div class="health-component" data-status="${escapeHtml(item.status)}">
+    <span aria-hidden="true"></span><div><strong>${escapeHtml(item.name)}</strong>
+    <small>${escapeHtml(item.status.toUpperCase())} · ${escapeHtml(item.detail)}</small></div>
+  </div>`;
+}
+
+async function loadHealthOperations(run = false) {
+  if (!$("#healthDomainGrid")) return;
+  $("#healthDomainGrid").innerHTML = `<article class="panel"><p>Running truthful checks…</p></article>`;
+  try {
+    const payload = await api(run ? "/api/health/check" : "/api/health/full", {
+      method: run ? "POST" : "GET",
+      body: run ? "{}" : undefined,
+    });
+    const score = $("#healthScore");
+    score.dataset.status = payload.status;
+    score.innerHTML = `<strong>${Number(payload.score)}</strong><span>${escapeHtml(payload.status.toUpperCase())}</span>`;
+    $("#healthDomainGrid").innerHTML = Object.entries(payload.domains).map(([name, domain]) => `
+      <article class="panel health-domain-card">
+        <p class="eyebrow">${escapeHtml(domain.status.toUpperCase())}</p>
+        <h3>${escapeHtml(name)}</h3>
+        ${(domain.components || []).map(healthComponentMarkup).join("")}
+      </article>`).join("");
+    const pathMap = [
+      ["Browser", payload.domains.frontend.status],
+      ["Cloudflare", payload.domains.network.components.find(item => item.id === "cloudflare-tunnel")?.status || "unknown"],
+      ["Tunnel", payload.domains.network.components.find(item => item.id === "public-route")?.status || "unknown"],
+      ["FastAPI", payload.domains.backend.status],
+      ["Worker", payload.domains.worker.status],
+      ["Model", payload.domains.models.status],
+      ["Output", payload.domains.storage.status],
+      ["Brain Vault", payload.domains.storage.components.find(item => item.id === "brain-vault")?.status || "unknown"],
+    ];
+    $("#healthDependencyPath").innerHTML = pathMap.map(([name, status]) =>
+      `<div class="health-path-node" data-status="${escapeHtml(status)}"><strong>${name}</strong><br><small>${escapeHtml(status)}</small></div>`
+    ).join("");
+    $("#healthRecommendations").innerHTML = payload.recommendations.length
+      ? payload.recommendations.map(item => `<div class="health-recommendation">
+          <strong>${escapeHtml(item.severity.toUpperCase())}: ${escapeHtml(item.component)}</strong>
+          <p>${escapeHtml(item.evidence)}</p><small>${escapeHtml(item.next_step)} · Approval required</small>
+        </div>`).join("")
+      : "<p>No evidence-based recommendations.</p>";
+    const history = await api("/api/health/history?limit=20");
+    $("#healthHistory").innerHTML = history.items.length
+      ? history.items.map(item => `<div class="health-history-item"><strong>${escapeHtml(item.status.toUpperCase())} · ${item.score}</strong><small>${escapeHtml(item.checked_at)}</small></div>`).join("")
+      : "<p>No snapshots recorded yet.</p>";
+    window.latestHealthReport = payload;
+  } catch (error) {
+    $("#healthDomainGrid").innerHTML = `<article class="panel"><h3>Health check unavailable</h3><p>${escapeHtml(error.message)}</p></article>`;
+  }
+}
+
+$("#runFullHealthCheck")?.addEventListener("click", () => loadHealthOperations(true));
+$("#runSolidConnectionGate")?.addEventListener("click", async () => {
+  const gate = await api("/api/health/solid-connection-gate");
+  $("#solidConnectionGateResults").innerHTML = gate.checks.map(item =>
+    `<div class="health-gate-item" data-passed="${item.passed}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.status.toUpperCase())}</span></div>`
+  ).join("");
+});
+$("#exportHealthReport")?.addEventListener("click", () => {
+  if (!window.latestHealthReport) return;
+  const blob = new Blob([JSON.stringify(window.latestHealthReport, null, 2)], {type: "application/json"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `aios-health-${new Date().toISOString().replaceAll(":", "-")}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+
+async function loadTrustedSkills() {
+  const query = encodeURIComponent($("#skillsSearch")?.value || "");
+  const [payload, legacy] = await Promise.all([
+    api(`/api/skills/trusted?query=${query}`),
+    api(`/api/knowledge/skills?q=${query}`),
+  ]);
+  const items = [
+    ...payload.items,
+    ...(legacy.skills || []).map(item => ({
+      ...item,
+      status:"legacy_reference",
+      source_repository:"local/brain-vault",
+      commit_sha:"unversioned",
+      permissions:{},
+      scripts:[],
+      scan_findings:[],
+      checksums:{},
+      enabled:false,
+      approved:false,
+      purpose:item.purpose || "Brain Vault skill reference; review before trusted import.",
+    })),
+  ];
+  $("#skillsLibraryList").innerHTML = items.length
+    ? items.map(item => `<article class="panel">
+        <p class="eyebrow">${escapeHtml(item.status.toUpperCase())}</p>
+        <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.purpose)}</p>
+        <p><code>${escapeHtml(item.source_repository)} @ ${escapeHtml(item.commit_sha)}</code></p>
+        <details><summary>Permissions and scan</summary><pre>${escapeHtml(JSON.stringify({
+          permissions:item.permissions,
+          scripts:item.scripts,
+          findings:item.scan_findings,
+          checksums:item.checksums
+        }, null, 2))}</pre></details>
+        <div class="dialog-actions">
+          ${item.enabled
+            ? `<button data-disable-skill="${item.id}">Disable</button>`
+            : item.approved && item.sandbox_test === "passed"
+              ? `<button data-enable-skill="${item.id}" class="primary">Enable</button>`
+              : "<span>Human approval and a real sandbox pass are required before enablement.</span>"}
+          ${item.history?.length ? `<button data-rollback-skill="${item.id}">Rollback for review</button>` : ""}
+        </div>
+      </article>`).join("")
+    : `<div class="empty-approval"><p>No matching trusted skills.</p></div>`;
+}
+
+$("#skillsLibraryList")?.addEventListener("click", async event => {
+  const action = event.target.closest("[data-enable-skill],[data-disable-skill],[data-rollback-skill]");
+  if (!action) return;
+  const pair = action.dataset.enableSkill
+    ? [action.dataset.enableSkill, "enable"]
+    : action.dataset.disableSkill
+      ? [action.dataset.disableSkill, "disable"]
+      : [action.dataset.rollbackSkill, "rollback"];
+  await api(`/api/skills/trusted/${encodeURIComponent(pair[0])}/${pair[1]}`, {method:"POST",body:"{}"});
+  await loadTrustedSkills();
+});
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#copilot") {
+    loadCopilotRuntimeState();
+    loadCopilotConversation();
+  }
+  if (location.hash === "#health-operations") loadHealthOperations();
+});
+setInterval(() => {
+  if (location.hash === "#copilot") loadCopilotRuntimeState();
+}, 5000);

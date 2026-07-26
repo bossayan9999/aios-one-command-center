@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import getpass
 import secrets
+import sys
 from pathlib import Path
 
-from security.app_security import hash_password
-
 root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root))
+
+from security.app_security import hash_password  # noqa: E402
+
 env_path = root / ".env.security"
 
 username = input("Owner username [owner]: ").strip() or "owner"
@@ -31,5 +34,12 @@ env_path.write_text(
     ]),
     encoding="utf-8",
 )
+for session_file in (
+    root / "data" / "security_sessions.json",
+    root / "data" / "security_login_attempts.json",
+):
+    if session_file.exists():
+        session_file.replace(session_file.with_suffix(f"{session_file.suffix}.pre-reset"))
 print(f"Created {env_path}")
+print("Revoked existing sessions and cleared failed-login counters.")
 print("Do not commit this file.")

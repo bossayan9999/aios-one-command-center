@@ -10,7 +10,7 @@ import time
 import urllib.request
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from uuid import uuid4
 
 from agentic.brain_memory import BrainMemoryRetriever
@@ -25,6 +25,15 @@ def utc_now() -> str:
 
 class OllamaUnavailable(RuntimeError):
     pass
+
+
+class WorkerExecutor(Protocol):
+    base_url: str
+    model: str
+
+    def preflight(self) -> dict[str, Any]: ...
+
+    def chat(self, system: str, prompt: str) -> dict[str, Any]: ...
 
 
 class OllamaExecutor:
@@ -92,7 +101,7 @@ class AgentWorker:
         data_dir: Path,
         vault_root: Path,
         *,
-        executor: OllamaExecutor | None = None,
+        executor: WorkerExecutor | None = None,
         worker_id: str | None = None,
     ):
         self.data_dir = Path(data_dir)

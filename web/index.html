@@ -1,12 +1,19 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase1p-real-worker-webapp-1">
+  <meta name="aios-build" content="phase-rich-research-10">
   <meta charset="utf-8" />
+  <script>
+    // AIOS is a server application. Redirect accidental Explorer/file launches so
+    // styles, authentication, and protected APIs are loaded from FastAPI.
+    if (window.location.protocol === "file:") {
+      window.location.replace("http://127.0.0.1:8000/");
+    }
+  </script>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase1p-real-worker-webapp-1" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-rich-research-10" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -56,21 +63,13 @@
     <summary>Workspace</summary>
 
     <button class="nav-item" data-view="command-center">Command Center</button>
-    <button class="nav-item" data-view="projects">Projects</button>
-    <button class="nav-item" data-view="file-explorer">File Explorer</button>
-    <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
-
-    <button class="nav-item" data-view="brain-vault">Brain Vault</button>
-    <button class="nav-item" data-view="outputs">Outputs</button>
-    <button class="nav-item" data-view="skills-library">Skills Library</button>
-    <button class="nav-item" data-view="llm-wiki">LLM Wiki</button>
+    <button class="nav-item" data-view="copilot-search">Copilot Search</button>
 
   </details>
   <details class="nav-group" open>
     <summary>Operations</summary>
 
-    <button class="nav-item" data-view="reliability">Reliability</button>
-    <button class="nav-item" data-view="network-health">Network Health</button>
+    <button class="nav-item" data-view="health-operations">Operations Center</button>
 
   </details>
   <details class="nav-group" open>
@@ -169,6 +168,150 @@
   </form>
 </section>
 
+
+<section id="view-copilot-search" class="app-view">
+  <article class="panel compact-copilot-manager">
+    <div id="compactCopilotAvatar" class="compact-copilot-avatar" data-state="idle"
+      role="img" aria-label="AIOS Copilot voice is idle">
+      <svg viewBox="0 0 120 120" width="78" height="78"
+        style="display:block;width:78px;height:78px;max-width:78px;max-height:78px;overflow:hidden">
+        <circle class="compact-ring compact-ring-outer" cx="60" cy="60" r="48"></circle>
+        <circle class="compact-ring compact-ring-inner" cx="60" cy="60" r="31"></circle>
+        <path class="compact-wave" d="M20 62 C34 34 43 88 56 52 S78 82 99 52"></path>
+        <g class="compact-network">
+          <line x1="39" y1="39" x2="60" y2="27"></line>
+          <line x1="60" y1="27" x2="82" y2="41"></line>
+          <line x1="39" y1="39" x2="34" y2="68"></line>
+          <line x1="82" y1="41" x2="86" y2="69"></line>
+        </g>
+        <circle class="compact-copilot-core" cx="60" cy="57" r="9"></circle>
+      </svg>
+    </div>
+    <div class="compact-copilot-copy">
+      <p class="eyebrow">AIOS COPILOT MANAGER</p>
+      <h2>Ask, search, and delegate</h2>
+      <p class="muted-copy">Message Copilot here or open the full voice and task workspace.</p>
+      <span class="live-research-capability">LIVE NEWS · MARKETS · BUSINESS · TECHNOLOGY</span>
+    </div>
+    <form id="copilotQuickMessageForm" class="copilot-quick-message">
+      <input id="copilotQuickMessage" required placeholder="Message your AIOS Copilot…" />
+      <button class="primary" type="submit">Send</button>
+      <button id="openFullCopilot" type="button">Open full Copilot</button>
+    </form>
+    <div class="compact-voice-controls" aria-label="Compact Copilot voice controls">
+      <button id="startCopilotQuickListening" type="button" aria-label="Start voice input">🎙 Voice</button>
+      <button id="stopCopilotQuickListening" type="button" disabled>Stop</button>
+      <button id="muteCopilotQuickVoice" type="button" aria-pressed="false">🔊 Sound on</button>
+      <button id="openCopilotQuickCamera" type="button">📷 Camera</button>
+      <label><input id="copilotQuickAutoSend" type="checkbox"> Send after voice</label>
+      <label><input id="copilotQuickAutoSpeak" type="checkbox" checked> Speak replies</label>
+    </div>
+    <p id="copilotQuickVoiceStatus" class="compact-voice-status" aria-live="polite">
+      Voice ready. Audio stays in this browser and is never stored.
+    </p>
+    <div id="copilotCameraPreview" class="copilot-camera-preview hidden">
+      <img id="copilotCameraPreviewImage" alt="Photo ready for Copilot">
+      <div>
+        <strong>Photo ready</strong>
+        <small>It will be sent only with your next Copilot message.</small>
+        <button id="clearCopilotCamera" type="button">Remove photo</button>
+      </div>
+    </div>
+    <input id="copilotCameraInput" type="file" hidden
+      accept="image/jpeg,image/png,image/webp" capture="environment">
+    <details class="copilot-research-sources">
+      <summary>Research sources &amp; search-engine connection</summary>
+      <div id="copilotResearchProviderStatus" class="research-provider-status">
+        Checking search providers…
+      </div>
+      <div class="research-provider-links">
+        <a href="https://brave.com/search/api/" target="_blank" rel="noopener noreferrer">
+          Get Brave Search API key
+        </a>
+        <a href="https://app.tavily.com/" target="_blank" rel="noopener noreferrer">
+          Get Tavily API key
+        </a>
+        <a href="https://news.google.com/" target="_blank" rel="noopener noreferrer">
+          Open Google News
+        </a>
+        <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">
+          Open Yahoo Finance
+        </a>
+      </div>
+      <form id="researchProviderKeyForm" class="research-provider-key-form">
+        <select id="researchProvider">
+          <option value="brave-search">Brave Search</option>
+          <option value="tavily">Tavily</option>
+        </select>
+        <input id="researchProviderKey" type="password" required minlength="12"
+          autocomplete="new-password" placeholder="Paste API key securely">
+        <button type="submit">Connect to Copilot</button>
+      </form>
+      <p id="researchProviderMessage" class="muted-copy">
+        Keys are stored in Windows Credential Manager and never returned to the browser.
+      </p>
+    </details>
+    <div id="copilotQuickResponse" class="copilot-quick-response" aria-live="polite">
+      Ready for your message.
+    </div>
+  </article>
+  <article class="panel copilot-search-shell">
+    <div class="panel-title">
+      <div>
+        <p class="eyebrow">UNIFIED COPILOT KNOWLEDGE</p>
+        <h2>Search everything AIOS knows</h2>
+      </div>
+      <span id="copilotSearchSummary" class="status-chip">6 SOURCES</span>
+    </div>
+    <form id="copilotSearchForm" class="copilot-search-form">
+      <input id="copilotSearchInput" type="search" required
+        placeholder="Search files, research, memory, outputs, skills, and wiki…" />
+      <button class="primary" type="submit">Search</button>
+    </form>
+    <div class="copilot-search-sources" aria-label="Search sources">
+      <label><input type="checkbox" value="files" checked> Files</label>
+      <label><input type="checkbox" value="osint" checked> OSINT</label>
+      <label><input type="checkbox" value="brain-vault" checked> Brain Vault</label>
+      <label><input type="checkbox" value="outputs" checked> Outputs</label>
+      <label><input type="checkbox" value="skills" checked> Skills</label>
+      <label><input type="checkbox" value="wiki" checked> LLM Wiki</label>
+    </div>
+    <p id="copilotSearchStatus" class="brain-action-status">
+      Results stay inside AIOS and include their source and path.
+    </p>
+  </article>
+  <section id="copilotSearchResults" class="copilot-search-results"></section>
+  <details class="panel copilot-search-tools">
+    <summary>Open a specialist workspace</summary>
+    <div class="copilot-search-workspaces">
+      <button type="button" data-search-workspace="file-explorer">File Explorer</button>
+      <button type="button" data-search-workspace="osint-workspace">OSINT Workspace</button>
+      <button type="button" data-search-workspace="brain-vault">Brain Vault</button>
+      <button type="button" data-search-workspace="outputs">Outputs</button>
+      <button type="button" data-search-workspace="skills-library">Skills Library</button>
+      <button type="button" data-search-workspace="llm-wiki">LLM Wiki</button>
+    </div>
+  </details>
+</section>
+
+<section id="view-operations-terminal" class="app-view">
+  <article class="panel operations-terminal">
+    <div class="panel-title">
+      <div>
+        <p class="eyebrow">READ-ONLY OPERATIONS TERMINAL</p>
+        <h2>Connection and runtime details</h2>
+      </div>
+      <div class="dialog-actions">
+        <button id="copyOperationsTerminal" type="button">Copy</button>
+        <button id="refreshOperationsTerminal" class="primary" type="button">Refresh</button>
+      </div>
+    </div>
+    <p class="muted-copy">
+      This terminal displays authenticated diagnostics. It does not accept arbitrary shell commands.
+    </p>
+    <pre id="operationsTerminalOutput" tabindex="0">Select Refresh to inspect AIOS operations.</pre>
+  </article>
+</section>
 
 <section id="view-file-explorer" class="app-view">
   <article class="panel">
@@ -301,8 +444,8 @@
 <section id="view-skills-library" class="app-view">
   <article class="panel">
     <div class="panel-title">
-      <div><p class="eyebrow">REUSABLE PROCEDURES</p><h2>Skills Library</h2></div>
-      <button id="seedDefaultSkills" type="button">Install default skills</button>
+      <div><p class="eyebrow">TRUSTED PROCEDURES</p><h2>Skills Library</h2></div>
+      <button id="seedDefaultSkills" type="button">Review local defaults</button>
     </div>
     <div class="workspace-toolbar">
       <input id="skillsSearch" placeholder="Search skills">
@@ -310,6 +453,43 @@
     </div>
   </article>
   <section id="skillsLibraryList" class="workspace-item-list"></section>
+</section>
+
+<section id="view-health-operations" class="app-view">
+  <article class="panel health-hero">
+    <div>
+      <p class="eyebrow">TRUTHFUL SYSTEM OBSERVABILITY</p>
+      <h2>Health Operations Center</h2>
+      <p class="muted-copy">Unavailable checks remain unknown. Repairs always require owner review.</p>
+    </div>
+    <div class="health-score" id="healthScore" data-status="unknown">
+      <strong>—</strong><span>UNKNOWN</span>
+    </div>
+    <div class="health-actions">
+      <button id="runFullHealthCheck" class="primary" type="button">Run full check</button>
+      <button id="runSolidConnectionGate" type="button">Solid Connection Gate</button>
+      <button id="exportHealthReport" type="button">Export report</button>
+    </div>
+  </article>
+  <article class="panel">
+    <p class="eyebrow">DEPENDENCY PATH</p>
+    <div id="healthDependencyPath" class="health-dependency-path" aria-label="System dependency path"></div>
+  </article>
+  <section id="healthDomainGrid" class="health-domain-grid" aria-live="polite"></section>
+  <div class="health-lower-grid">
+    <article class="panel">
+      <div class="panel-title"><div><p class="eyebrow">INCIDENT TIMELINE</p><h2>History</h2></div></div>
+      <div id="healthHistory" class="health-history"></div>
+    </article>
+    <article class="panel">
+      <div class="panel-title"><div><p class="eyebrow">EVIDENCE-BASED</p><h2>Recommendations</h2></div></div>
+      <div id="healthRecommendations" class="health-recommendations"></div>
+    </article>
+  </div>
+  <article class="panel">
+    <div class="panel-title"><div><p class="eyebrow">RELEASE EVIDENCE</p><h2>AIOS Solid Connection Gate</h2></div></div>
+    <div id="solidConnectionGateResults" class="health-gate-results"></div>
+  </article>
 </section>
 
 <section id="view-llm-wiki" class="app-view">
@@ -326,6 +506,11 @@
 </section>
 
 <section id="view-command-center" class="app-view">
+  <nav class="command-center-tabs" aria-label="Command Center workspace">
+    <button class="active" type="button" data-command-module="command-center">Operations</button>
+    <button type="button" data-command-module="copilot">AIOS Copilot</button>
+    <button type="button" data-command-module="projects">Projects</button>
+  </nav>
 
 <section id="liveTaskControlCenter" class="panel live-task-control-center">
   <div class="panel-title">
@@ -438,6 +623,11 @@
 </section>
 
 <section id="view-projects" class="app-view">
+  <nav class="command-center-tabs" aria-label="Command Center workspace">
+    <button type="button" data-command-module="command-center">Operations</button>
+    <button type="button" data-command-module="copilot">AIOS Copilot</button>
+    <button class="active" type="button" data-command-module="projects">Projects</button>
+  </nav>
   <article class="panel project-hero">
     <div class="panel-title">
       <div>
@@ -486,17 +676,50 @@
 </section>
 
       <section id="view-copilot" class="app-view">
+        <nav class="command-center-tabs" aria-label="Command Center workspace">
+          <button type="button" data-command-module="command-center">Operations</button>
+          <button class="active" type="button" data-command-module="copilot">AIOS Copilot</button>
+          <button type="button" data-command-module="projects">Projects</button>
+        </nav>
 
-          <article id="copilotReminderCenter" class="panel copilot-reminder-center">
-            <div class="panel-title">
+          <details id="copilotReminderCenter" class="panel copilot-reminder-center">
+            <summary class="panel-title">
               <div>
                 <p class="eyebrow">COPILOT REMINDERS</p>
-                <h2>Needs your attention</h2>
+                <h2>Needs your attention <small>— expand</small></h2>
               </div>
               <span id="copilotReminderCount" class="status-chip">0</span>
-            </div>
+            </summary>
             <div id="copilotReminderList"></div>
-          </article>
+          </details>
+
+          <details class="panel copilot-connectivity-center">
+            <summary>
+              <strong>Connection diagnostics</strong>
+              <span id="copilotConnectivitySummary">Not checked — expand</span>
+            </summary>
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">LIVE CONNECTION DIAGNOSTICS</p>
+                <h2>Copilot connectivity and responses</h2>
+              </div>
+              <button id="runCopilotConnectivity" class="primary" type="button">Check connections</button>
+            </div>
+            <div id="copilotConnectivityGrid" class="copilot-connectivity-grid" aria-live="polite">
+              <div data-check="backend"><strong>Backend</strong><span>Not checked</span></div>
+              <div data-check="network"><strong>Network &amp; search</strong><span>Not checked</span></div>
+              <div data-check="models"><strong>AI model routing</strong><span>Not checked</span></div>
+              <div data-check="speech"><strong>Speak response</strong><span>Not checked</span></div>
+              <div data-check="assistant"><strong>Assistant response</strong><span>Use the test button</span></div>
+            </div>
+            <div class="dialog-actions">
+              <button id="testCopilotAssistantResponse" type="button">Test assistant response</button>
+              <button id="testCopilotSpeech" type="button">Test speak response</button>
+            </div>
+            <p id="copilotConnectivityStatus" class="brain-action-status">
+              Checks report actual availability; unavailable services are never marked connected.
+            </p>
+          </details>
 
         <div class="copilot-chat-layout">
           <article class="panel copilot-chat-panel">
@@ -511,6 +734,54 @@
               </div>
             </div>
 
+            <section class="hologram-console" aria-labelledby="copilotAvatarTitle">
+              <div id="copilotAvatar" class="aios-hologram" data-state="idle" role="img" aria-label="AIOS Copilot is idle">
+                <svg viewBox="0 0 240 240" aria-hidden="true">
+                  <circle class="holo-ring ring-outer" cx="120" cy="120" r="98"></circle>
+                  <circle class="holo-ring ring-mid" cx="120" cy="120" r="73"></circle>
+                  <path class="holo-wave" d="M42 126 C62 82 78 170 96 112 S132 156 151 104 S181 154 199 116"></path>
+                  <g class="holo-network">
+                    <line x1="80" y1="78" x2="120" y2="54"></line>
+                    <line x1="120" y1="54" x2="163" y2="82"></line>
+                    <line x1="80" y1="78" x2="71" y2="132"></line>
+                    <line x1="163" y1="82" x2="171" y2="134"></line>
+                    <line x1="71" y1="132" x2="119" y2="174"></line>
+                    <line x1="171" y1="134" x2="119" y2="174"></line>
+                    <circle cx="80" cy="78" r="5"></circle><circle cx="120" cy="54" r="5"></circle>
+                    <circle cx="163" cy="82" r="5"></circle><circle cx="71" cy="132" r="5"></circle>
+                    <circle cx="171" cy="134" r="5"></circle><circle cx="119" cy="174" r="5"></circle>
+                  </g>
+                  <circle class="holo-core" cx="120" cy="116" r="25"></circle>
+                  <circle class="holo-eye" cx="120" cy="116" r="7"></circle>
+                </svg>
+              </div>
+              <div class="hologram-status">
+                <p class="eyebrow">CONNECTED OPERATING STATE</p>
+                <h2 id="copilotAvatarTitle">AIOS Copilot</h2>
+                <strong id="copilotAvatarState">IDLE</strong>
+                <p id="copilotTaskStatus" class="muted-copy">Waiting for an authorized task.</p>
+                <div class="copilot-indicators">
+                  <span id="copilotWorkerIndicator">Worker: unknown</span>
+                  <span id="copilotMemoryIndicator">Memory: checking</span>
+                  <span>Privacy: local-first</span>
+                </div>
+                <div class="manager-control-plane" aria-label="Copilot manager control plane">
+                  <button id="managerToolsStatus" type="button" data-manager-view="tools-skills">Tools: checking</button>
+                  <button id="managerDesktopStatus" type="button" data-manager-view="connectors">Desktop: checking</button>
+                  <button id="managerTerminalStatus" type="button" data-manager-view="connectors">Terminal: scoped</button>
+                  <button id="managerRemoteStatus" type="button" data-manager-view="mobile">Remote: checking</button>
+                </div>
+              </div>
+              <div class="voice-controls" aria-label="Voice controls">
+                <button id="startCopilotListening" type="button" aria-label="Start microphone listening">Listen</button>
+                <button id="stopCopilotListening" type="button" disabled>Stop listening</button>
+                <button id="speakCopilotResponse" type="button">Speak response</button>
+                <button id="muteCopilotVoice" type="button" aria-pressed="false">Mute</button>
+                <label><input id="staticAvatarMode" type="checkbox"> Static avatar</label>
+              </div>
+              <p id="copilotVoiceStatus" class="brain-action-status" aria-live="polite">Voice is off. Audio is never stored.</p>
+            </section>
+
             <div id="copilotMessages" class="copilot-messages">
               <div class="copilot-empty">
                 <div class="orb">C</div>
@@ -524,6 +795,7 @@
               <textarea id="copilotMessageInput" rows="3" placeholder="Message Copilot…" required></textarea>
               <div class="copilot-composer-options">
                 <input id="copilotImageUrl" type="url" placeholder="Optional public image URL for analysis">
+                <button id="openCopilotCamera" type="button">📷 Take photo</button>
                 <select id="copilotProvider">
                   <option value="">Automatic provider</option>
                   <option value="openrouter">OpenRouter</option>
@@ -540,6 +812,8 @@
                   <option value="gpt-5.4">GPT-5.4</option>
                 </select>
                 <button id="sendCopilotMessage" class="primary" type="submit">Send</button>
+                <button id="stopCopilotGeneration" type="button" disabled>Stop</button>
+                <button id="retryCopilotMessage" type="button">Retry</button>
               </div>
             </form>
           </article>
@@ -548,7 +822,14 @@
             <div class="panel-title"><div><p class="eyebrow">SESSION</p><h2>Controls</h2></div></div>
             <button id="newCopilotConversation">New conversation</button>
             <button id="createMissionFromChat" class="primary">Create mission from message</button>
+            <button id="copyLatestCopilotResponse" type="button">Copy latest response</button>
+            <button id="saveLatestCopilotMemory" type="button">Propose as memory</button>
+            <button id="openCopilotEvidence" type="button">View evidence &amp; tools</button>
             <div class="brain-action-status" id="copilotChatStatus">Ready.</div>
+            <details id="copilotEvidenceDrawer">
+              <summary>Evidence, citations, tools, and routing</summary>
+              <pre id="copilotEvidenceContent">No response evidence yet.</pre>
+            </details>
             
             <div class="pm-router-card">
               <h3>PM Model Router</h3>
@@ -781,6 +1062,26 @@
           <div id="networkRootCause" class="network-root-cause hidden"></div>
           <div id="networkHealthCards">
             <p class="muted-copy">Run health checks to inspect the system.</p>
+          </div>
+        </article>
+        <article class="panel ccna-specialist-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">NETWORK SPECIALIST</p>
+              <h2>CCNA diagnosis &amp; governed repair</h2>
+            </div>
+            <span id="ccnaSpecialistStatus" class="status-chip">READY</span>
+          </div>
+          <p class="muted-copy">
+            Uses live health evidence to identify network faults. Repairs are proposed
+            first and require approval before changing services, DNS, routes, or devices.
+          </p>
+          <div class="network-health-toolbar">
+            <button id="runCcnaAnalysis" class="primary" type="button">Ask CCNA specialist</button>
+            <button id="createCcnaRepairTask" type="button" disabled>Create governed repair task</button>
+          </div>
+          <div id="ccnaAnalysisResult" class="ccna-analysis-result">
+            <p class="muted-copy">Run the specialist to inspect current network evidence.</p>
           </div>
         </article>
       </section>
@@ -1373,6 +1674,53 @@
 
       <section id="view-connectors" class="app-view"><button id="refreshConnectorHealth" type="button">Refresh health</button>
 
+        <article class="panel iot-automation-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">HARDWARE AUTOMATION</p>
+              <h2>IoT Automation Center</h2>
+              <p class="muted-copy">
+                Prepare MQTT, HTTP, webhook, Home Assistant, Matter bridge, and
+                Modbus TCP devices. New hardware is disabled and read-only by default.
+              </p>
+            </div>
+            <span id="iotDeviceCount" class="status-chip">0 DEVICES</span>
+          </div>
+          <form id="iotDeviceForm" class="iot-device-form">
+            <input id="iotDeviceName" required placeholder="Device name">
+            <select id="iotDeviceProtocol">
+              <option value="mqtt">MQTT</option>
+              <option value="http">HTTP API</option>
+              <option value="webhook">Webhook</option>
+              <option value="home-assistant">Home Assistant</option>
+              <option value="matter-bridge">Matter bridge</option>
+              <option value="modbus-tcp">Modbus TCP</option>
+            </select>
+            <input id="iotDeviceEndpoint" placeholder="Endpoint or broker address">
+            <input id="iotDeviceLocation" placeholder="Location">
+            <input id="iotDeviceCapabilities" required
+              placeholder="Capabilities: temperature, switch, camera">
+            <input id="iotCredentialSource"
+              placeholder="Credential env name (secret is not stored)">
+            <button class="primary" type="submit">Register safely</button>
+          </form>
+          <p id="iotAutomationStatus" class="brain-action-status">
+            No command can execute until the device is verified, enabled, allowlisted, and approved.
+          </p>
+          <div id="iotDeviceGrid" class="iot-device-grid"></div>
+          <details class="iot-command-builder">
+            <summary>Prepare an approval-controlled device command</summary>
+            <form id="iotCommandForm">
+              <select id="iotCommandDevice" required><option value="">Select device</option></select>
+              <input id="iotCommandCapability" required placeholder="Declared capability">
+              <input id="iotCommandValue" required placeholder="Requested command or value">
+              <input id="iotCommandReason" required minlength="5" placeholder="Why this hardware action is needed">
+              <button type="submit">Create approval proposal</button>
+            </form>
+            <div id="iotCommandProposals"></div>
+          </details>
+        </article>
+
         <article class="panel desktop-companion-panel">
           <div class="panel-title">
             <div>
@@ -1868,15 +2216,43 @@
   </nav>
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
-    <button type="button" data-view="copilot">✦ Copilot Chat</button>
+    <button type="button" data-view="copilot-search">Copilot Search</button>
+    <button type="button" data-view="health-operations">Operations Center</button>
+    <button type="button" data-view="skills-library">Trusted Skills</button>
+    <button type="button" data-view="command-center">Command Center</button>
     <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>
     <button type="button" data-view="approvals">✓ Approval Center</button>
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase1p-real-worker-webapp-1"></script>
-
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
+
+  <dialog id="copilotDesktopCameraDialog" class="copilot-camera-dialog">
+    <form method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">DESKTOP CAMERA</p>
+          <h2>Attach a webcam photo</h2>
+        </div>
+        <button id="closeCopilotDesktopCamera" type="button" aria-label="Close camera">×</button>
+      </div>
+      <p class="muted-copy">
+        The camera starts only after permission. Capture one frame or cancel; no video is stored.
+      </p>
+      <div class="desktop-camera-stage">
+        <video id="copilotDesktopCameraVideo" autoplay playsinline muted></video>
+        <div id="copilotDesktopCameraPlaceholder">Press Start camera to begin.</div>
+      </div>
+      <p id="copilotDesktopCameraStatus" class="brain-action-status" aria-live="polite">
+        Camera is off.
+      </p>
+      <div class="dialog-actions">
+        <button id="startCopilotDesktopCamera" type="button">Start camera</button>
+        <button id="cancelCopilotDesktopCamera" type="button">Cancel</button>
+        <button id="captureCopilotDesktopCamera" class="primary" type="button" disabled>Capture photo</button>
+      </div>
+    </form>
+  </dialog>
 
 
   <dialog id="missionLifecycleDialog" class="mission-lifecycle-dialog">
@@ -1906,6 +2282,7 @@
     </form>
   </dialog>
 
+  <script src="/assets/app.js?v=phase-rich-research-10"></script>
 </body>
 </html>
 

@@ -10,6 +10,8 @@ ENV_NAMES = {
     "openrouter": "OPENROUTER_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
     "openai": "OPENAI_API_KEY",
+    "brave-search": "BRAVE_SEARCH_API_KEY",
+    "tavily": "TAVILY_API_KEY",
 }
 
 def _keyring():

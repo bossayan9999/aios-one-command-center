@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 import traceback
+import urllib.parse
 import urllib.request
 import zipfile
 from datetime import UTC, date, datetime
@@ -32,8 +33,16 @@ from agentic import CopilotOrchestrator
 from agentic import list_specialists as list_brain_specialists
 from agentic.brain_memory import BrainMemoryRetriever
 from agentic.brain_vault import BrainVault
+from agentic.ccna_specialist import build_ccna_analysis
 from agentic.connector_registry import ConnectorRegistry
 from agentic.governance import GovernanceEngine, ValidationDecision
+from agentic.iot_registry import SUPPORTED_PROTOCOLS, IoTRegistry
+from agentic.live_research import (
+    collect_live_research,
+    deterministic_research_answer,
+    requires_live_research,
+    research_context,
+)
 from agentic.mcp_runtime import MCPRuntime
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
@@ -53,6 +62,7 @@ from api.brain_vault_tree_routes import router as brain_vault_tree_router
 from api.final_system_routes import router as final_system_router
 from api.knowledge_routes import router as knowledge_router
 from api.live_task_routes import router as live_task_router
+from api.operations_routes import router as operations_router
 from api.quantum_solver_routes import router as quantum_solver_router
 from api.workspace_routes import router as workspace_router
 from security.app_security import (
@@ -71,6 +81,7 @@ from security.app_security import (
 from security.env_loader import missing_security_variables
 from security.provider_credentials import (
     delete_provider_key,
+    get_provider_key,
     provider_key_source,
     save_provider_key,
 )
@@ -143,12 +154,14 @@ PAIRING_FILE = DATA_DIR / "mobile_pairing.json"
 COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
 COPILOT_CHAT_FILE = DATA_DIR / "copilot_chat.json"
+IOT_REGISTRY = IoTRegistry(DATA_DIR)
 app.include_router(workspace_router)
 app.include_router(brain_vault_tree_router)
 app.include_router(quantum_solver_router)
 app.include_router(final_system_router)
 app.include_router(knowledge_router)
 app.include_router(live_task_router)
+app.include_router(operations_router)
 app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
 SPECIALISTS = [
@@ -568,6 +581,14 @@ def network_health(request: Request):
     require_owner(request, SECURITY_STORE)
     public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
     return run_network_health(Path(__file__).resolve().parents[1], public_url)
+
+
+@app.get("/api/network-health/ccna-analysis")
+def network_health_ccna_analysis(request: Request):
+    require_owner(request, SECURITY_STORE)
+    public_url = os.getenv("AIOS_PUBLIC_URL", "https://aios.bossayan.com")
+    health = run_network_health(Path(__file__).resolve().parents[1], public_url)
+    return build_ccna_analysis(health)
 
 
 @app.get("/api/reliability")
@@ -1071,11 +1092,19 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
     token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
+    forwarded_scheme = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
+    client_host = request.client.host if request.client else ""
+    loopback_request = client_host in {"127.0.0.1", "::1", "testclient"}
+    cookie_secure = (
+        request.url.scheme == "https"
+        or forwarded_scheme.casefold() == "https"
+        or (SECURE_COOKIES and not loopback_request)
+    )
     response.set_cookie(
         SESSION_COOKIE,
         token,
         httponly=True,
-        secure=SECURE_COOKIES,
+        secure=cookie_secure,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",
@@ -1084,7 +1113,7 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         CSRF_COOKIE,
         csrf,
         httponly=False,
-        secure=SECURE_COOKIES,
+        secure=cookie_secure,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",
@@ -1240,6 +1269,7 @@ def auth_audit(request: Request, limit: int = 100):
 SECURITY_PUBLIC_PATHS = {
     "/",
     "/health",
+    "/api/health/live",
     "/api/auth/status",
     "/api/auth/login",
 }
@@ -1248,15 +1278,12 @@ SECURITY_PUBLIC_PREFIXES = ("/assets/",)
 
 @app.middleware("http")
 async def security_boundary(request: Request, call_next):
-    if os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1":
-        return await call_next(request)
-
     path = request.url.path
-    if path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES):
-        return await call_next(request)
+    bypassed = os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1"
+    public = path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES)
 
     # API reads need authentication. API writes also need CSRF.
-    if path.startswith("/api/") or path == "/chat":
+    if not bypassed and not public and (path.startswith("/api/") or path == "/chat"):
         try:
             require_session(request, SECURITY_STORE)
             if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -1279,12 +1306,16 @@ async def security_boundary(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "same-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: https:; "
         "style-src 'self' 'unsafe-inline'; script-src 'self'; "
         "connect-src 'self'; frame-ancestors 'none'"
     )
+    if request.url.path == "/":
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    elif request.url.path.startswith("/assets/"):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
     return response
 
 
@@ -2074,12 +2105,157 @@ def scan_budget_reminders():
 
 
 
+class IoTDeviceRegistration(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    protocol: str = Field(min_length=1, max_length=40)
+    endpoint: str = Field(default="", max_length=500)
+    location: str = Field(default="", max_length=100)
+    capabilities: list[str] = Field(default_factory=list, max_length=50)
+    credential_source: str = Field(default="", max_length=100)
+
+
+class IoTCommandProposal(BaseModel):
+    device_id: str = Field(min_length=1, max_length=80)
+    capability: str = Field(min_length=1, max_length=80)
+    command: str = Field(min_length=1, max_length=500)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+@app.get("/api/iot/devices")
+def list_iot_devices(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {
+        "devices": IOT_REGISTRY.list_devices(),
+        "supported_protocols": sorted(SUPPORTED_PROTOCOLS),
+        "policy": {
+            "default_enabled": False,
+            "default_read_only": True,
+            "credentials_stored": False,
+            "commands_require_approval": True,
+        },
+    }
+
+
+@app.post("/api/iot/devices")
+def register_iot_device(payload: IoTDeviceRegistration, request: Request):
+    require_owner(request, SECURITY_STORE)
+    try:
+        device = IOT_REGISTRY.register(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit(
+        "iot.device_registered",
+        request,
+        device_id=device["device_id"],
+        protocol=device["protocol"],
+    )
+    return device
+
+
+@app.get("/api/iot/command-proposals")
+def list_iot_command_proposals(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"proposals": IOT_REGISTRY.list_proposals()}
+
+
+@app.post("/api/iot/command-proposals")
+def create_iot_command_proposal(payload: IoTCommandProposal, request: Request):
+    require_owner(request, SECURITY_STORE)
+    try:
+        proposal = IOT_REGISTRY.propose_command(
+            payload.device_id,
+            payload.capability,
+            payload.command,
+            payload.reason,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="IoT device not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit(
+        "iot.command_proposed",
+        request,
+        proposal_id=proposal["proposal_id"],
+        device_id=proposal["device_id"],
+    )
+    return proposal
+
+
 class CopilotChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=20_000)
     conversation_id: str = Field(default="default", min_length=1, max_length=80)
-    image_url: str | None = Field(default=None, max_length=4000)
+    image_url: str | None = Field(default=None, max_length=2_500_000)
     model: str = Field(default="claude-sonnet-5", min_length=1, max_length=80)
     preferred_provider: str | None = Field(default=None, pattern="^(openrouter|anthropic|openai)$")
+
+
+RESEARCH_PROVIDER_LINKS = {
+    "brave-search": {
+        "name": "Brave Search API",
+        "api_key_url": "https://brave.com/search/api/",
+        "docs_url": "https://api-dashboard.search.brave.com/app/documentation",
+        "env_var": "BRAVE_SEARCH_API_KEY",
+    },
+    "tavily": {
+        "name": "Tavily Search",
+        "api_key_url": "https://app.tavily.com/",
+        "docs_url": "https://docs.tavily.com/",
+        "env_var": "TAVILY_API_KEY",
+    },
+}
+
+
+class ResearchProviderKeyRequest(BaseModel):
+    provider: str = Field(pattern="^(brave-search|tavily)$")
+    api_key: str = Field(min_length=12, max_length=500)
+
+
+@app.get("/api/research/providers")
+def research_provider_status(request: Request):
+    require_owner(request, SECURITY_STORE)
+    providers = []
+    for provider_id, metadata in RESEARCH_PROVIDER_LINKS.items():
+        source = provider_key_source(provider_id)
+        providers.append(
+            {
+                "id": provider_id,
+                **metadata,
+                "connected": source != "missing",
+                "credential_source": source,
+            }
+        )
+    return {
+        "providers": providers,
+        "fallbacks": [
+            {"name": "Google News RSS", "connected": True},
+            {"name": "Yahoo Finance market data", "connected": True},
+        ],
+        "active_web_provider": next(
+            (item["id"] for item in providers if item["connected"]), "not-configured"
+        ),
+    }
+
+
+@app.post("/api/research/providers/key")
+def save_research_provider_key(payload: ResearchProviderKeyRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    save_provider_key(payload.provider, payload.api_key)
+    SECURITY_STORE.audit("research.provider_connected", request, provider=payload.provider)
+    return {
+        "saved": True,
+        "provider": payload.provider,
+        "credential_source": provider_key_source(payload.provider),
+    }
+
+
+@app.delete("/api/research/providers/{provider}")
+def delete_research_provider_key(provider: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    if provider not in RESEARCH_PROVIDER_LINKS:
+        raise HTTPException(status_code=400, detail="Unsupported research provider")
+    delete_provider_key(provider)
+    SECURITY_STORE.audit("research.provider_disconnected", request, provider=provider)
+    return {"deleted": True, "provider": provider}
 
 
 def _copilot_chat_state() -> dict:
@@ -2146,18 +2322,32 @@ def live_copilot_chat(req: CopilotChatRequest):
         "You are AIOS ONE Copilot Manager. Help the user operate their agentic command center. "
         "Be explicit about what is verified versus inferred. Delegate conceptually to appropriate "
         "specialists, protect secrets, require approval before destructive or external write actions, "
-        "and never claim a device action occurred unless the backend confirms it."
+        "and never claim a device action occurred unless the backend confirms it. For live research, "
+        "explain the evidence in plain language, include its observation time, cite numbered sources, "
+        "distinguish reporting from analysis, and never invent a current price or event."
     )
+    live_research = None
+    gateway_prompt = req.message
+    if requires_live_research(req.message):
+        live_research = collect_live_research(
+            req.message,
+            brave_key=get_provider_key("brave-search"),
+            tavily_key=get_provider_key("tavily"),
+        )
+        gateway_prompt = f"{req.message}\n\n{research_context(live_research)}"
     gateway = ModelGateway()
     reply = gateway.call(
         system_prompt=system_prompt,
-        user_prompt=req.message,
+        user_prompt=gateway_prompt,
         preferred_model=req.model,
         specialist_id="copilot",
         image_url=req.image_url,
         previous_response_id=conversation.get("last_response_id"),
         preferred_provider=req.preferred_provider,
     )
+    if live_research is not None and reply.mode == "fallback":
+        reply.text = deterministic_research_answer(live_research)
+        reply.mode = "live-research" if live_research["is_live"] else "research-unavailable"
 
     timestamp = utc_now()
     conversation["messages"].append({
@@ -2177,6 +2367,55 @@ def live_copilot_chat(req: CopilotChatRequest):
         "estimated_cost_usd": reply.estimated_cost_usd,
         "response_id": reply.response_id,
         "gateway_error": reply.error,
+        "live_research": (
+            {
+                "collected_at": live_research["collected_at"],
+                "source_count": (
+                    len(live_research["quotes"])
+                    + len(live_research["news"])
+                    + len(live_research["web"])
+                    + len(live_research["videos"])
+                ),
+                "web_provider": live_research["web_provider"],
+                "errors": live_research["errors"],
+                "sources": [
+                    {
+                        "kind": item.get("kind", "source"),
+                        "title": item.get("title") or item.get("name") or item.get("source"),
+                        "url": item.get("url", ""),
+                        "source": item.get("source", ""),
+                        "thumbnail_url": item.get("thumbnail_url", ""),
+                        "published_at": item.get("published_at") or item.get("observed_at", ""),
+                    }
+                    for item in (
+                        live_research["quotes"]
+                        + live_research["news"]
+                        + live_research["web"]
+                        + live_research["videos"]
+                    )
+                ][:20],
+                "navigation_links": [
+                    {
+                        "label": "Google Search",
+                        "url": "https://www.google.com/search?q="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {
+                        "label": "Google News",
+                        "url": "https://news.google.com/search?q="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {
+                        "label": "YouTube",
+                        "url": "https://www.youtube.com/results?search_query="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {"label": "Yahoo Finance", "url": "https://finance.yahoo.com/"},
+                ],
+            }
+            if live_research is not None
+            else None
+        ),
         "created_at": utc_now(),
     }
     conversation["messages"].append(assistant_message)
@@ -2187,7 +2426,7 @@ def live_copilot_chat(req: CopilotChatRequest):
         "conversation_id": req.conversation_id,
         "message": assistant_message,
         "provider_status": {
-            "live": reply.mode == "live",
+            "live": reply.mode in {"live", "live-research"},
             "provider": reply.provider,
             "model": reply.model,
         },
