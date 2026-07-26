@@ -769,6 +769,9 @@ function renderCopilotMessages(messages) {
           <span>${Number(message.input_tokens || 0)} in</span>
           <span>${Number(message.output_tokens || 0)} out</span>
           <span>$${Number(message.estimated_cost_usd || 0).toFixed(6)}</span>
+          ${message.live_research
+            ? `<span>LIVE · ${Number(message.live_research.source_count || 0)} SOURCES</span>`
+            : ""}
         </div>
         <div class="copilot-response-actions">
           <button type="button" data-copy-copilot="${escapeChatHtml(message.content)}">Copy</button>
@@ -4661,6 +4664,9 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
     const response = result.message || {};
     output.innerHTML = `
       <strong>AIOS Copilot · ${escapeHtml(response.provider || "deterministic")} / ${escapeHtml(response.model || "fallback")}</strong>
+      ${response.live_research
+        ? `<small>LIVE RESEARCH · ${Number(response.live_research.source_count || 0)} SOURCES · ${escapeHtml(response.live_research.collected_at || "")}</small>`
+        : ""}
       <p>${escapeHtml(response.content || "No response content was returned.")}</p>`;
     input.value = "";
     clearCopilotCameraPhoto();

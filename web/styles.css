@@ -762,6 +762,10 @@ button,
 .compact-copilot-avatar[data-state="speaking"] .compact-copilot-core{fill:#65d9ff;animation:holo-pulse .65s ease-in-out infinite}
 .compact-copilot-avatar[data-state="offline"]{filter:grayscale(1);opacity:.6}
 .compact-copilot-copy h2,.compact-copilot-copy p{margin:3px 0}
+.live-research-capability{
+  display:inline-block;margin-top:5px;color:#65d9ff;font-size:.62rem;
+  font-weight:800;letter-spacing:.08em
+}
 .copilot-quick-message{display:grid;grid-template-columns:1fr auto auto;gap:7px}
 .copilot-quick-response{
   grid-column:2/-1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;

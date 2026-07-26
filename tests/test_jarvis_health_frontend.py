@@ -69,3 +69,13 @@ def test_reduced_motion_mobile_layout_and_connected_health_controls():
     ):
         assert f'id="{control}"' in html
         assert f'$("#{control}")' in script
+
+
+def test_copilot_surfaces_live_research_capability():
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+    backend = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    assert "LIVE NEWS · MARKETS · BUSINESS · TECHNOLOGY" in html
+    assert "LIVE RESEARCH" in script
+    assert "collect_live_research(req.message)" in backend
+    assert "deterministic_research_answer" in backend

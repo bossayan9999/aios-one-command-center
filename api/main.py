@@ -36,6 +36,12 @@ from agentic.ccna_specialist import build_ccna_analysis
 from agentic.connector_registry import ConnectorRegistry
 from agentic.governance import GovernanceEngine, ValidationDecision
 from agentic.iot_registry import SUPPORTED_PROTOCOLS, IoTRegistry
+from agentic.live_research import (
+    collect_live_research,
+    deterministic_research_answer,
+    requires_live_research,
+    research_context,
+)
 from agentic.mcp_runtime import MCPRuntime
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
@@ -2245,18 +2251,28 @@ def live_copilot_chat(req: CopilotChatRequest):
         "You are AIOS ONE Copilot Manager. Help the user operate their agentic command center. "
         "Be explicit about what is verified versus inferred. Delegate conceptually to appropriate "
         "specialists, protect secrets, require approval before destructive or external write actions, "
-        "and never claim a device action occurred unless the backend confirms it."
+        "and never claim a device action occurred unless the backend confirms it. For live research, "
+        "explain the evidence in plain language, include its observation time, cite numbered sources, "
+        "distinguish reporting from analysis, and never invent a current price or event."
     )
+    live_research = None
+    gateway_prompt = req.message
+    if requires_live_research(req.message):
+        live_research = collect_live_research(req.message)
+        gateway_prompt = f"{req.message}\n\n{research_context(live_research)}"
     gateway = ModelGateway()
     reply = gateway.call(
         system_prompt=system_prompt,
-        user_prompt=req.message,
+        user_prompt=gateway_prompt,
         preferred_model=req.model,
         specialist_id="copilot",
         image_url=req.image_url,
         previous_response_id=conversation.get("last_response_id"),
         preferred_provider=req.preferred_provider,
     )
+    if live_research is not None and reply.mode == "fallback":
+        reply.text = deterministic_research_answer(live_research)
+        reply.mode = "live-research" if live_research["is_live"] else "research-unavailable"
 
     timestamp = utc_now()
     conversation["messages"].append({
@@ -2276,6 +2292,15 @@ def live_copilot_chat(req: CopilotChatRequest):
         "estimated_cost_usd": reply.estimated_cost_usd,
         "response_id": reply.response_id,
         "gateway_error": reply.error,
+        "live_research": (
+            {
+                "collected_at": live_research["collected_at"],
+                "source_count": len(live_research["quotes"]) + len(live_research["news"]),
+                "errors": live_research["errors"],
+            }
+            if live_research is not None
+            else None
+        ),
         "created_at": utc_now(),
     }
     conversation["messages"].append(assistant_message)
@@ -2286,7 +2311,7 @@ def live_copilot_chat(req: CopilotChatRequest):
         "conversation_id": req.conversation_id,
         "message": assistant_message,
         "provider_status": {
-            "live": reply.mode == "live",
+            "live": reply.mode in {"live", "live-research"},
             "provider": reply.provider,
             "model": reply.model,
         },
