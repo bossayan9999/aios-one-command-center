@@ -740,6 +740,15 @@ function escapeChatHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function renderCopilotText(value) {
+  return escapeChatHtml(value)
+    .replace(
+      /(https:\/\/[^\s<]+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+    )
+    .replaceAll("\n", "<br>");
+}
+
 function renderCopilotMessages(messages) {
   const container = $("#copilotMessages");
   if (!container) return;
@@ -761,7 +770,7 @@ function renderCopilotMessages(messages) {
         <small>${message.created_at ? new Date(message.created_at).toLocaleString() : ""}</small>
       </div>
       ${message.image_url ? `<img class="copilot-input-image" src="${escapeChatHtml(message.image_url)}" alt="Submitted image">` : ""}
-      <div class="copilot-message-content">${escapeChatHtml(message.content).replaceAll("\n", "<br>")}</div>
+      <div class="copilot-message-content">${renderCopilotText(message.content)}</div>
       ${message.role === "assistant" ? `
         <div class="copilot-message-meta">
           <span>${escapeChatHtml(message.provider || "")}</span>
@@ -4638,6 +4647,64 @@ document.querySelectorAll("[data-search-workspace]").forEach(button => {
   button.addEventListener("click", () => switchView(button.dataset.searchWorkspace));
 });
 
+async function loadResearchProviders() {
+  const host = $("#copilotResearchProviderStatus");
+  if (!host) return;
+  try {
+    const result = await api("/api/research/providers");
+    host.innerHTML = [
+      ...(result.providers || []).map(provider => `
+        <span>
+          ${escapeHtml(provider.name)} · ${provider.connected ? "CONNECTED" : "NOT CONNECTED"}
+          ${provider.connected
+            ? `<button type="button" data-disconnect-research="${escapeHtml(provider.id)}">Disconnect</button>`
+            : ""}
+        </span>`),
+      ...(result.fallbacks || []).map(provider =>
+        `<span>${escapeHtml(provider.name)} · BUILT IN</span>`),
+    ].join("");
+    $("#researchProviderMessage").textContent =
+      result.active_web_provider === "not-configured"
+        ? "Connect Brave Search or Tavily for broad web research. News and market fallbacks are active."
+        : `Copilot broad web search is connected through ${result.active_web_provider}.`;
+  } catch (error) {
+    host.textContent = `Research provider status unavailable: ${error.message}`;
+  }
+}
+
+$("#researchProviderKeyForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const key = $("#researchProviderKey");
+  try {
+    const result = await api("/api/research/providers/key", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: $("#researchProvider").value,
+        api_key: key.value,
+      }),
+    });
+    key.value = "";
+    $("#researchProviderMessage").textContent =
+      `${result.provider} is connected to Copilot research.`;
+    await loadResearchProviders();
+  } catch (error) {
+    $("#researchProviderMessage").textContent = `Connection failed: ${error.message}`;
+  }
+});
+
+$("#copilotResearchProviderStatus")?.addEventListener("click", async event => {
+  const button = event.target.closest("[data-disconnect-research]");
+  if (!button) return;
+  await api(`/api/research/providers/${button.dataset.disconnectResearch}`, {
+    method: "DELETE",
+  });
+  await loadResearchProviders();
+});
+
+$(".copilot-research-sources")?.addEventListener("toggle", event => {
+  if (event.currentTarget.open) loadResearchProviders();
+});
+
 $("#openFullCopilot")?.addEventListener("click", () => switchView("copilot"));
 $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
   event.preventDefault();
@@ -4667,7 +4734,7 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
       ${response.live_research
         ? `<small>LIVE RESEARCH · ${Number(response.live_research.source_count || 0)} SOURCES · ${escapeHtml(response.live_research.collected_at || "")}</small>`
         : ""}
-      <p>${escapeHtml(response.content || "No response content was returned.")}</p>`;
+      <p>${renderCopilotText(response.content || "No response content was returned.")}</p>`;
     input.value = "";
     clearCopilotCameraPhoto();
     if ($("#copilotQuickAutoSpeak")?.checked) {

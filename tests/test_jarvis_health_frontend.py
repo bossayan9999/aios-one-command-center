@@ -77,5 +77,11 @@ def test_copilot_surfaces_live_research_capability():
     backend = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
     assert "LIVE NEWS · MARKETS · BUSINESS · TECHNOLOGY" in html
     assert "LIVE RESEARCH" in script
-    assert "collect_live_research(req.message)" in backend
+    assert "collect_live_research(" in backend
+    assert 'get_provider_key("brave-search")' in backend
     assert "deterministic_research_answer" in backend
+    assert 'id="researchProviderKeyForm"' in html
+    assert "Get Brave Search API key" in html
+    assert "Get Tavily API key" in html
+    assert "loadResearchProviders" in script
+    assert "renderCopilotText" in script

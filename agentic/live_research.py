@@ -23,6 +23,11 @@ LIVE_TERMS = {
     "gold",
     "bitcoin",
     "crypto",
+    "search",
+    "research",
+    "web",
+    "online",
+    "look up",
 }
 
 MARKETS = {
@@ -103,10 +108,77 @@ def fetch_news(query: str, limit: int = 6, timeout: float = 8) -> list[dict[str,
     return items
 
 
-def collect_live_research(query: str) -> dict[str, Any]:
+def fetch_brave_search(
+    query: str, api_key: str, limit: int = 8, timeout: float = 10
+) -> list[dict[str, Any]]:
+    url = (
+        "https://api.search.brave.com/res/v1/web/search?"
+        + urllib.parse.urlencode({"q": query, "count": min(limit, 20), "safesearch": "moderate"})
+    )
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "X-Subscription-Token": api_key,
+            "User-Agent": "AIOS-LiveResearch/1.0",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return [
+        {
+            "kind": "web",
+            "title": item.get("title", ""),
+            "url": item.get("url", ""),
+            "snippet": item.get("description", ""),
+            "published_at": item.get("age", ""),
+            "source": "Brave Search",
+        }
+        for item in payload.get("web", {}).get("results", [])[:limit]
+        if item.get("url")
+    ]
+
+
+def fetch_tavily_search(
+    query: str, api_key: str, limit: int = 8, timeout: float = 15
+) -> list[dict[str, Any]]:
+    body = {
+        "api_key": api_key,
+        "query": query,
+        "search_depth": "advanced",
+        "max_results": min(limit, 20),
+        "include_answer": False,
+        "include_raw_content": False,
+    }
+    request = urllib.request.Request(
+        "https://api.tavily.com/search",
+        data=json.dumps(body).encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "application/json", "User-Agent": "AIOS-LiveResearch/1.0"},
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return [
+        {
+            "kind": "web",
+            "title": item.get("title", ""),
+            "url": item.get("url", ""),
+            "snippet": item.get("content", ""),
+            "published_at": item.get("published_date", ""),
+            "source": "Tavily Search",
+        }
+        for item in payload.get("results", [])[:limit]
+        if item.get("url")
+    ]
+
+
+def collect_live_research(
+    query: str, *, brave_key: str = "", tavily_key: str = ""
+) -> dict[str, Any]:
     collected_at = datetime.now(UTC).isoformat()
     quotes: list[dict[str, Any]] = []
     news: list[dict[str, Any]] = []
+    web: list[dict[str, Any]] = []
     errors: list[str] = []
     for metadata in _market_matches(query):
         try:
@@ -117,13 +189,25 @@ def collect_live_research(query: str) -> dict[str, Any]:
         news = fetch_news(query)
     except Exception as exc:
         errors.append(f"News search unavailable: {type(exc).__name__}")
+    if brave_key:
+        try:
+            web = fetch_brave_search(query, brave_key)
+        except Exception as exc:
+            errors.append(f"Brave Search unavailable: {type(exc).__name__}")
+    elif tavily_key:
+        try:
+            web = fetch_tavily_search(query, tavily_key)
+        except Exception as exc:
+            errors.append(f"Tavily Search unavailable: {type(exc).__name__}")
     return {
         "query": query,
         "collected_at": collected_at,
         "quotes": quotes,
         "news": news,
+        "web": web,
+        "web_provider": "brave-search" if brave_key else "tavily" if tavily_key else "not-configured",
         "errors": errors,
-        "is_live": bool(quotes or news),
+        "is_live": bool(quotes or news or web),
     }
 
 
@@ -149,6 +233,13 @@ def research_context(result: dict[str, Any]) -> str:
         lines.append(
             f"[{source_number}] {item['title']} — {item['source']}; "
             f"published {item['published_at']}; URL {item['url']}"
+        )
+        source_number += 1
+    for item in result.get("web", []):
+        lines.append(
+            f"[{source_number}] {item['title']} — {item['source']}; "
+            f"published {item['published_at'] or 'not supplied'}; "
+            f"summary {item['snippet']}; URL {item['url']}"
         )
         source_number += 1
     for error in result["errors"]:
@@ -179,11 +270,19 @@ def deterministic_research_answer(result: dict[str, Any]) -> str:
             f"- {item['title']} — {item['source']} ({item['published_at']}) [{offset + index}]"
             for index, item in enumerate(result["news"], 1)
         )
+    web = result.get("web", [])
+    if web:
+        lines.append("Web research:")
+        web_offset = len(result["quotes"]) + len(result["news"])
+        lines.extend(
+            f"- {item['title']} — {item['source']} [{web_offset + index}]"
+            for index, item in enumerate(web, 1)
+        )
     if not result["is_live"]:
         lines.append("I could not retrieve a live source, so I will not guess the current value.")
     if result["errors"]:
         lines.append("Data warnings: " + "; ".join(result["errors"]))
-    sources = result["quotes"] + result["news"]
+    sources = result["quotes"] + result["news"] + web
     if sources:
         lines.append("Sources:")
         lines.extend(f"[{index}] {item['url']}" for index, item in enumerate(sources, 1))

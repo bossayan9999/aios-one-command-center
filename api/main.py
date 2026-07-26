@@ -80,6 +80,7 @@ from security.app_security import (
 from security.env_loader import missing_security_variables
 from security.provider_credentials import (
     delete_provider_key,
+    get_provider_key,
     provider_key_source,
     save_provider_key,
 )
@@ -2187,6 +2188,75 @@ class CopilotChatRequest(BaseModel):
     preferred_provider: str | None = Field(default=None, pattern="^(openrouter|anthropic|openai)$")
 
 
+RESEARCH_PROVIDER_LINKS = {
+    "brave-search": {
+        "name": "Brave Search API",
+        "api_key_url": "https://brave.com/search/api/",
+        "docs_url": "https://api-dashboard.search.brave.com/app/documentation",
+        "env_var": "BRAVE_SEARCH_API_KEY",
+    },
+    "tavily": {
+        "name": "Tavily Search",
+        "api_key_url": "https://app.tavily.com/",
+        "docs_url": "https://docs.tavily.com/",
+        "env_var": "TAVILY_API_KEY",
+    },
+}
+
+
+class ResearchProviderKeyRequest(BaseModel):
+    provider: str = Field(pattern="^(brave-search|tavily)$")
+    api_key: str = Field(min_length=12, max_length=500)
+
+
+@app.get("/api/research/providers")
+def research_provider_status(request: Request):
+    require_owner(request, SECURITY_STORE)
+    providers = []
+    for provider_id, metadata in RESEARCH_PROVIDER_LINKS.items():
+        source = provider_key_source(provider_id)
+        providers.append(
+            {
+                "id": provider_id,
+                **metadata,
+                "connected": source != "missing",
+                "credential_source": source,
+            }
+        )
+    return {
+        "providers": providers,
+        "fallbacks": [
+            {"name": "Google News RSS", "connected": True},
+            {"name": "Yahoo Finance market data", "connected": True},
+        ],
+        "active_web_provider": next(
+            (item["id"] for item in providers if item["connected"]), "not-configured"
+        ),
+    }
+
+
+@app.post("/api/research/providers/key")
+def save_research_provider_key(payload: ResearchProviderKeyRequest, request: Request):
+    require_owner(request, SECURITY_STORE)
+    save_provider_key(payload.provider, payload.api_key)
+    SECURITY_STORE.audit("research.provider_connected", request, provider=payload.provider)
+    return {
+        "saved": True,
+        "provider": payload.provider,
+        "credential_source": provider_key_source(payload.provider),
+    }
+
+
+@app.delete("/api/research/providers/{provider}")
+def delete_research_provider_key(provider: str, request: Request):
+    require_owner(request, SECURITY_STORE)
+    if provider not in RESEARCH_PROVIDER_LINKS:
+        raise HTTPException(status_code=400, detail="Unsupported research provider")
+    delete_provider_key(provider)
+    SECURITY_STORE.audit("research.provider_disconnected", request, provider=provider)
+    return {"deleted": True, "provider": provider}
+
+
 def _copilot_chat_state() -> dict:
     return _read_json(COPILOT_CHAT_FILE, {"conversations": {}})
 
@@ -2258,7 +2328,11 @@ def live_copilot_chat(req: CopilotChatRequest):
     live_research = None
     gateway_prompt = req.message
     if requires_live_research(req.message):
-        live_research = collect_live_research(req.message)
+        live_research = collect_live_research(
+            req.message,
+            brave_key=get_provider_key("brave-search"),
+            tavily_key=get_provider_key("tavily"),
+        )
         gateway_prompt = f"{req.message}\n\n{research_context(live_research)}"
     gateway = ModelGateway()
     reply = gateway.call(
@@ -2295,7 +2369,12 @@ def live_copilot_chat(req: CopilotChatRequest):
         "live_research": (
             {
                 "collected_at": live_research["collected_at"],
-                "source_count": len(live_research["quotes"]) + len(live_research["news"]),
+                "source_count": (
+                    len(live_research["quotes"])
+                    + len(live_research["news"])
+                    + len(live_research["web"])
+                ),
+                "web_provider": live_research["web_provider"],
                 "errors": live_research["errors"],
             }
             if live_research is not None

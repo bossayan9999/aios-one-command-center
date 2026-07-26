@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase-live-research-8">
+  <meta name="aios-build" content="phase-web-research-9">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase-live-research-8" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-web-research-9" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -219,6 +219,38 @@
     </div>
     <input id="copilotCameraInput" type="file" hidden
       accept="image/jpeg,image/png,image/webp" capture="environment">
+    <details class="copilot-research-sources">
+      <summary>Research sources &amp; search-engine connection</summary>
+      <div id="copilotResearchProviderStatus" class="research-provider-status">
+        Checking search providers…
+      </div>
+      <div class="research-provider-links">
+        <a href="https://brave.com/search/api/" target="_blank" rel="noopener noreferrer">
+          Get Brave Search API key
+        </a>
+        <a href="https://app.tavily.com/" target="_blank" rel="noopener noreferrer">
+          Get Tavily API key
+        </a>
+        <a href="https://news.google.com/" target="_blank" rel="noopener noreferrer">
+          Open Google News
+        </a>
+        <a href="https://finance.yahoo.com/" target="_blank" rel="noopener noreferrer">
+          Open Yahoo Finance
+        </a>
+      </div>
+      <form id="researchProviderKeyForm" class="research-provider-key-form">
+        <select id="researchProvider">
+          <option value="brave-search">Brave Search</option>
+          <option value="tavily">Tavily</option>
+        </select>
+        <input id="researchProviderKey" type="password" required minlength="12"
+          autocomplete="new-password" placeholder="Paste API key securely">
+        <button type="submit">Connect to Copilot</button>
+      </form>
+      <p id="researchProviderMessage" class="muted-copy">
+        Keys are stored in Windows Credential Manager and never returned to the browser.
+      </p>
+    </details>
     <div id="copilotQuickResponse" class="copilot-quick-response" aria-live="polite">
       Ready for your message.
     </div>
@@ -2250,7 +2282,7 @@
     </form>
   </dialog>
 
-  <script src="/assets/app.js?v=phase-live-research-8"></script>
+  <script src="/assets/app.js?v=phase-web-research-9"></script>
 </body>
 </html>
 

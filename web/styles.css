@@ -766,6 +766,19 @@ button,
   display:inline-block;margin-top:5px;color:#65d9ff;font-size:.62rem;
   font-weight:800;letter-spacing:.08em
 }
+.copilot-research-sources{grid-column:2/-1}
+.copilot-research-sources summary{cursor:pointer;font-weight:700}
+.research-provider-status,.research-provider-links{
+  display:flex;flex-wrap:wrap;gap:7px;margin-top:10px
+}
+.research-provider-status span,.research-provider-links a{
+  padding:6px 9px;border:1px solid var(--line);border-radius:999px;font-size:.7rem
+}
+.research-provider-links a{color:#65d9ff;text-decoration:none}
+.research-provider-key-form{
+  display:grid;grid-template-columns:160px minmax(220px,1fr) auto;
+  gap:8px;padding:10px 0 0
+}
 .copilot-quick-message{display:grid;grid-template-columns:1fr auto auto;gap:7px}
 .copilot-quick-response{
   grid-column:2/-1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
@@ -857,7 +870,8 @@ button,
   .copilot-search-results{grid-template-columns:1fr 1fr}
   .compact-copilot-manager{grid-template-columns:70px 1fr}
   .copilot-quick-message,.copilot-quick-response,
-  .compact-voice-controls,.compact-voice-status,.copilot-camera-preview{grid-column:1/-1}
+  .compact-voice-controls,.compact-voice-status,.copilot-camera-preview,
+  .copilot-research-sources{grid-column:1/-1}
   .command-center-tabs{top:4px}
 }
 @media(max-width:520px){
@@ -875,6 +889,7 @@ button,
   .copilot-quick-message{grid-template-columns:1fr}
   .command-center-tabs{overflow:auto}
   .command-center-tabs button{min-width:105px}
+  .research-provider-key-form{grid-template-columns:1fr}
 }
 
 .ccna-analysis-result{display:grid;gap:10px;margin-top:14px}

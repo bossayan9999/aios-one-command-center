@@ -1,5 +1,8 @@
+import json
+
 from agentic.live_research import (
     deterministic_research_answer,
+    fetch_brave_search,
     requires_live_research,
     research_context,
 )
@@ -10,6 +13,7 @@ def test_live_intent_detects_prices_news_business_and_technology():
         "What is the live price of gold?",
         "What happened in technology news today?",
         "Explain current business and market news",
+        "Search the web for battery technology research",
     ):
         assert requires_live_research(query) is True
     assert requires_live_research("Summarize my saved project") is False
@@ -60,3 +64,41 @@ def test_no_live_evidence_never_guesses():
     answer = deterministic_research_answer(result)
     assert "will not guess" in answer
     assert "TimeoutError" in answer
+
+
+def test_brave_search_normalizes_clickable_sources(monkeypatch):
+    payload = {
+        "web": {
+            "results": [
+                {
+                    "title": "Primary research",
+                    "url": "https://example.com/research",
+                    "description": "Evidence summary",
+                    "age": "2 hours ago",
+                }
+            ]
+        }
+    }
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self):
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: Response())
+    items = fetch_brave_search("battery research", "test-api-key-value")
+    assert items == [
+        {
+            "kind": "web",
+            "title": "Primary research",
+            "url": "https://example.com/research",
+            "snippet": "Evidence summary",
+            "published_at": "2 hours ago",
+            "source": "Brave Search",
+        }
+    ]
