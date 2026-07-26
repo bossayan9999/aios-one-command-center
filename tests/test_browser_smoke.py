@@ -84,7 +84,11 @@ def test_critical_browser_flow() -> None:
             file_launch.close()
 
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
-            page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle")
+            root_response = page.goto(
+                f"http://127.0.0.1:{port}/", wait_until="networkidle"
+            )
+            assert root_response is not None
+            assert root_response.headers["cache-control"] == "no-store, max-age=0"
 
             assert page.locator("body").is_visible()
             page.locator("#securityUsername").fill("owner")
@@ -138,10 +142,9 @@ def test_critical_browser_flow() -> None:
             page.locator('.nav-item[data-view="copilot-search"]').click()
             page.locator("#copilotSearchInput").fill("AIOS")
             page.locator("#copilotSearchForm button[type=submit]").click()
-            page.wait_for_function(
-                "document.querySelector('#copilotSearchSummary').textContent.includes('RESULTS')",
-                timeout=30_000,
-            )
+            page.locator("#copilotSearchSummary").filter(
+                has_text="RESULTS"
+            ).wait_for(timeout=30_000)
             assert page.locator("#copilotSearchResults").is_visible()
             assert page.locator(".compact-copilot-avatar").is_visible()
             avatar_box = page.locator(".compact-copilot-avatar").bounding_box()
@@ -158,10 +161,9 @@ def test_critical_browser_flow() -> None:
                 '#view-health-operations [data-operations-module="operations-terminal"]'
             ).click()
             page.locator("#operationsTerminalOutput").wait_for()
-            page.wait_for_function(
-                "document.querySelector('#operationsTerminalOutput').textContent.includes('[LIVENESS]')",
-                timeout=30_000,
-            )
+            page.locator("#operationsTerminalOutput").filter(
+                has_text="[LIVENESS]"
+            ).wait_for(timeout=30_000)
             page.locator(
                 '#view-operations-terminal [data-operations-module="network-health"]'
             ).click()

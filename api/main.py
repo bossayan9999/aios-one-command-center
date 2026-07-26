@@ -1268,15 +1268,12 @@ SECURITY_PUBLIC_PREFIXES = ("/assets/",)
 
 @app.middleware("http")
 async def security_boundary(request: Request, call_next):
-    if os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1":
-        return await call_next(request)
-
     path = request.url.path
-    if path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES):
-        return await call_next(request)
+    bypassed = os.getenv("AIOS_SECURITY_TEST_BYPASS", "0") == "1"
+    public = path in SECURITY_PUBLIC_PATHS or path.startswith(SECURITY_PUBLIC_PREFIXES)
 
     # API reads need authentication. API writes also need CSRF.
-    if path.startswith("/api/") or path == "/chat":
+    if not bypassed and not public and (path.startswith("/api/") or path == "/chat"):
         try:
             require_session(request, SECURITY_STORE)
             if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
