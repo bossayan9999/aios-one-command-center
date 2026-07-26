@@ -751,7 +751,16 @@ button,
 .compact-copilot-avatar circle,.compact-copilot-avatar path{
   fill:none;stroke:#44d6c2;stroke-width:2;filter:drop-shadow(0 0 5px rgba(68,214,194,.35))
 }
+.compact-copilot-avatar line{stroke:#44d6c2;stroke-width:1;opacity:.55}
+.compact-ring-outer{stroke-dasharray:8 6;animation:holo-spin 14s linear infinite;transform-origin:center}
+.compact-ring-inner{stroke-dasharray:2 6;animation:holo-spin 9s linear reverse infinite;transform-origin:center}
+.compact-wave{animation:holo-pulse 2s ease-in-out infinite}
 .compact-copilot-avatar .compact-copilot-core{fill:#44d6c2;stroke:#a6fff2}
+.compact-copilot-avatar[data-state="listening"]{filter:drop-shadow(0 0 10px #65d9ff)}
+.compact-copilot-avatar[data-state="listening"] .compact-wave{stroke:#65d9ff;animation-duration:.7s}
+.compact-copilot-avatar[data-state="thinking"] .compact-ring-inner{stroke:var(--accent);animation-duration:1.8s}
+.compact-copilot-avatar[data-state="speaking"] .compact-copilot-core{fill:#65d9ff;animation:holo-pulse .65s ease-in-out infinite}
+.compact-copilot-avatar[data-state="offline"]{filter:grayscale(1);opacity:.6}
 .compact-copilot-copy h2,.compact-copilot-copy p{margin:3px 0}
 .copilot-quick-message{display:grid;grid-template-columns:1fr auto auto;gap:7px}
 .copilot-quick-response{
@@ -760,6 +769,15 @@ button,
 }
 .copilot-quick-response strong{color:var(--text)}
 .copilot-quick-response p{margin:5px 0 0;line-height:1.5}
+.compact-voice-controls{
+  grid-column:2/-1;display:flex;align-items:center;flex-wrap:wrap;gap:7px
+}
+.compact-voice-controls label{
+  display:flex;align-items:center;gap:5px;margin:0;padding:6px 8px;
+  border:1px solid var(--line);border-radius:999px;font-size:.72rem;color:var(--muted)
+}
+.compact-voice-controls input{width:auto;margin:0}
+.compact-voice-status{grid-column:2/-1;margin:0;color:var(--muted);font-size:.72rem}
 .copilot-search-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .copilot-search-form input{min-height:46px}
 .copilot-search-sources{display:flex;gap:7px;flex-wrap:wrap}
@@ -801,7 +819,8 @@ button,
   .copilot-connectivity-grid{grid-template-columns:1fr 1fr}
   .copilot-search-results{grid-template-columns:1fr 1fr}
   .compact-copilot-manager{grid-template-columns:70px 1fr}
-  .copilot-quick-message,.copilot-quick-response{grid-column:1/-1}
+  .copilot-quick-message,.copilot-quick-response,
+  .compact-voice-controls,.compact-voice-status{grid-column:1/-1}
   .command-center-tabs{top:4px}
 }
 @media(max-width:520px){

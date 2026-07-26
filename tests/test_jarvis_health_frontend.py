@@ -22,6 +22,13 @@ def test_voice_fallback_permission_denial_and_no_background_recording():
     assert "Voice recognition is unavailable" in script
     assert "continuous = false" in script
     assert "Requesting microphone permission" in script
+    assert 'id="startCopilotQuickListening"' in html
+    assert 'id="copilotQuickAutoSpeak"' in html
+    assert 'id="copilotQuickAutoSend"' in html
+    assert 'id="muteCopilotQuickVoice"' in html
+    assert 'copilotRecognitionTarget = "quick"' in script
+    assert "speakCopilotText(response.content" in script
+    assert "Audio stays in this browser and is never stored" in html
 
 
 def test_reduced_motion_mobile_layout_and_connected_health_controls():

@@ -4407,11 +4407,13 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
   event.preventDefault();
   const input = $("#copilotQuickMessage");
   const output = $("#copilotQuickResponse");
-  const button = event.submitter;
+  const button = event.submitter || event.currentTarget.querySelector('button[type="submit"]');
   const message = input.value.trim();
   if (!message) return;
   button.disabled = true;
   output.textContent = "AIOS Copilot is thinking…";
+  $("#compactCopilotAvatar").dataset.state = "thinking";
+  $("#copilotQuickVoiceStatus").textContent = "Copilot is preparing a response.";
   try {
     const result = await api("/api/copilot/chat", {
       method: "POST",
@@ -4428,9 +4430,17 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
       <strong>AIOS Copilot · ${escapeHtml(response.provider || "deterministic")} / ${escapeHtml(response.model || "fallback")}</strong>
       <p>${escapeHtml(response.content || "No response content was returned.")}</p>`;
     input.value = "";
+    if ($("#copilotQuickAutoSpeak")?.checked) {
+      speakCopilotText(response.content, "#copilotQuickVoiceStatus");
+    } else {
+      $("#compactCopilotAvatar").dataset.state = "idle";
+      $("#copilotQuickVoiceStatus").textContent = "Response ready. Sound is available when enabled.";
+    }
     await loadCopilotConversation();
   } catch (error) {
+    $("#compactCopilotAvatar").dataset.state = "offline";
     output.innerHTML = `<strong>Copilot unavailable</strong><p>${escapeHtml(error.message)}</p>`;
+    $("#copilotQuickVoiceStatus").textContent = `Voice response unavailable: ${error.message}`;
   } finally {
     button.disabled = false;
   }
@@ -4617,62 +4627,145 @@ document.querySelectorAll("[data-manager-view]").forEach(button => {
 
 const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
 let copilotRecognition = null;
+let copilotRecognitionTarget = "full";
+let copilotRecognitionHasFinalResult = false;
+
+function setCopilotVoiceState(state, status) {
+  const fullAvatar = $("#copilotAvatar");
+  const compactAvatar = $("#compactCopilotAvatar");
+  if (fullAvatar) fullAvatar.dataset.state = state;
+  if (compactAvatar) {
+    compactAvatar.dataset.state = state;
+    compactAvatar.setAttribute("aria-label", `AIOS Copilot voice is ${state}`);
+  }
+  if (status) {
+    if ($("#copilotVoiceStatus")) $("#copilotVoiceStatus").textContent = status;
+    if ($("#copilotQuickVoiceStatus")) $("#copilotQuickVoiceStatus").textContent = status;
+  }
+}
+
+function speakCopilotText(content, statusSelector = "#copilotVoiceStatus") {
+  const status = $(statusSelector);
+  if (!content || copilotVoiceMuted || !("speechSynthesis" in window)) {
+    if (status) status.textContent =
+      "Speech is unavailable, muted, or there is no assistant response.";
+    setCopilotVoiceState("idle");
+    return false;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(content);
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.onstart = () => {
+    setCopilotVoiceState("speaking", "AIOS Copilot is speaking.");
+  };
+  utterance.onend = () => {
+    setCopilotVoiceState("idle", "Voice response complete. Audio was not stored.");
+    loadCopilotRuntimeState();
+  };
+  utterance.onerror = event => {
+    setCopilotVoiceState("idle", `Speech failed: ${event.error}. Text response remains available.`);
+  };
+  speechSynthesis.speak(utterance);
+  return true;
+}
+
 if (SpeechRecognitionApi) {
   copilotRecognition = new SpeechRecognitionApi();
   copilotRecognition.continuous = false;
   copilotRecognition.interimResults = true;
   copilotRecognition.onstart = () => {
-    $("#copilotAvatar").dataset.state = "listening";
+    copilotRecognitionHasFinalResult = false;
+    setCopilotVoiceState(
+      "listening",
+      "Listening now. Stop speaking to review the transcript before sending.",
+    );
     $("#startCopilotListening").disabled = true;
     $("#stopCopilotListening").disabled = false;
-    $("#copilotVoiceStatus").textContent = "Listening now. Stop to review before sending.";
+    $("#startCopilotQuickListening").disabled = true;
+    $("#stopCopilotQuickListening").disabled = false;
   };
   copilotRecognition.onresult = event => {
     const transcript = [...event.results].map(result => result[0].transcript).join(" ");
-    $("#copilotMessageInput").value = transcript;
-    $("#copilotVoiceStatus").textContent = "Transcript ready. Review it, then press Send.";
+    copilotRecognitionHasFinalResult = [...event.results].some(result => result.isFinal);
+    const target = copilotRecognitionTarget === "quick"
+      ? $("#copilotQuickMessage")
+      : $("#copilotMessageInput");
+    target.value = transcript;
+    setCopilotVoiceState(
+      "listening",
+      copilotRecognitionHasFinalResult
+        ? "Transcript ready. Review it or send it to Copilot."
+        : `Listening: ${transcript}`,
+    );
   };
   copilotRecognition.onerror = event => {
-    $("#copilotVoiceStatus").textContent =
+    setCopilotVoiceState("idle",
       event.error === "not-allowed"
         ? "Microphone permission was denied. Voice remains off; text input is available."
-        : `Voice recognition unavailable: ${event.error}.`;
+        : `Voice recognition unavailable: ${event.error}.`);
   };
   copilotRecognition.onend = () => {
     $("#startCopilotListening").disabled = false;
     $("#stopCopilotListening").disabled = true;
+    $("#startCopilotQuickListening").disabled = false;
+    $("#stopCopilotQuickListening").disabled = true;
+    if (
+      copilotRecognitionTarget === "quick"
+      && copilotRecognitionHasFinalResult
+      && $("#copilotQuickAutoSend")?.checked
+      && $("#copilotQuickMessage")?.value.trim()
+    ) {
+      $("#copilotQuickMessageForm").requestSubmit();
+    } else {
+      setCopilotVoiceState("idle", "Transcript ready. Review it, then press Send.");
+    }
     loadCopilotRuntimeState();
   };
 } else if ($("#copilotVoiceStatus")) {
   $("#copilotVoiceStatus").textContent =
     "Voice recognition is unavailable in this browser. Text input remains available.";
   $("#startCopilotListening").disabled = true;
+  $("#startCopilotQuickListening").disabled = true;
 }
 
 $("#startCopilotListening")?.addEventListener("click", () => {
+  copilotRecognitionTarget = "full";
   $("#copilotVoiceStatus").textContent =
     "Requesting microphone permission. Recording only begins after browser approval.";
   copilotRecognition?.start();
 });
 $("#stopCopilotListening")?.addEventListener("click", () => copilotRecognition?.stop());
+$("#startCopilotQuickListening")?.addEventListener("click", () => {
+  copilotRecognitionTarget = "quick";
+  setCopilotVoiceState(
+    "idle",
+    "Requesting microphone permission. Recording begins only after browser approval.",
+  );
+  copilotRecognition?.start();
+});
+$("#stopCopilotQuickListening")?.addEventListener("click", () => copilotRecognition?.stop());
 $("#muteCopilotVoice")?.addEventListener("click", event => {
   copilotVoiceMuted = !copilotVoiceMuted;
   event.currentTarget.setAttribute("aria-pressed", String(copilotVoiceMuted));
   event.currentTarget.textContent = copilotVoiceMuted ? "Unmute" : "Mute";
   if (copilotVoiceMuted) speechSynthesis.cancel();
 });
+$("#muteCopilotQuickVoice")?.addEventListener("click", event => {
+  copilotVoiceMuted = !copilotVoiceMuted;
+  event.currentTarget.setAttribute("aria-pressed", String(copilotVoiceMuted));
+  event.currentTarget.textContent = copilotVoiceMuted ? "🔇 Sound off" : "🔊 Sound on";
+  const fullMute = $("#muteCopilotVoice");
+  if (fullMute) {
+    fullMute.setAttribute("aria-pressed", String(copilotVoiceMuted));
+    fullMute.textContent = copilotVoiceMuted ? "Unmute" : "Mute";
+  }
+  if (copilotVoiceMuted) speechSynthesis.cancel();
+  setCopilotVoiceState("idle", copilotVoiceMuted ? "Sound is muted." : "Sound is enabled.");
+});
 $("#speakCopilotResponse")?.addEventListener("click", () => {
   const content = latestAssistantMessage()?.content;
-  if (!content || copilotVoiceMuted || !("speechSynthesis" in window)) {
-    $("#copilotVoiceStatus").textContent =
-      "Speech is unavailable, muted, or there is no assistant response.";
-    return;
-  }
-  speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(content);
-  utterance.onstart = () => { $("#copilotAvatar").dataset.state = "speaking"; };
-  utterance.onend = loadCopilotRuntimeState;
-  speechSynthesis.speak(utterance);
+  speakCopilotText(content);
 });
 
 function setCopilotConnectivityCheck(name, status, detail) {

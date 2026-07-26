@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase-jarvis-network-3">
+  <meta name="aios-build" content="phase-jarvis-voice-4">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-network-3" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-voice-4" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -171,12 +171,19 @@
 
 <section id="view-copilot-search" class="app-view">
   <article class="panel compact-copilot-manager">
-    <div class="compact-copilot-avatar" aria-hidden="true">
+    <div id="compactCopilotAvatar" class="compact-copilot-avatar" data-state="idle"
+      role="img" aria-label="AIOS Copilot voice is idle">
       <svg viewBox="0 0 120 120" width="78" height="78"
         style="display:block;width:78px;height:78px;max-width:78px;max-height:78px;overflow:hidden">
-        <circle cx="60" cy="60" r="48"></circle>
-        <circle cx="60" cy="60" r="31"></circle>
-        <path d="M20 62 C34 34 43 88 56 52 S78 82 99 52"></path>
+        <circle class="compact-ring compact-ring-outer" cx="60" cy="60" r="48"></circle>
+        <circle class="compact-ring compact-ring-inner" cx="60" cy="60" r="31"></circle>
+        <path class="compact-wave" d="M20 62 C34 34 43 88 56 52 S78 82 99 52"></path>
+        <g class="compact-network">
+          <line x1="39" y1="39" x2="60" y2="27"></line>
+          <line x1="60" y1="27" x2="82" y2="41"></line>
+          <line x1="39" y1="39" x2="34" y2="68"></line>
+          <line x1="82" y1="41" x2="86" y2="69"></line>
+        </g>
         <circle class="compact-copilot-core" cx="60" cy="57" r="9"></circle>
       </svg>
     </div>
@@ -190,6 +197,16 @@
       <button class="primary" type="submit">Send</button>
       <button id="openFullCopilot" type="button">Open full Copilot</button>
     </form>
+    <div class="compact-voice-controls" aria-label="Compact Copilot voice controls">
+      <button id="startCopilotQuickListening" type="button" aria-label="Start voice input">🎙 Voice</button>
+      <button id="stopCopilotQuickListening" type="button" disabled>Stop</button>
+      <button id="muteCopilotQuickVoice" type="button" aria-pressed="false">🔊 Sound on</button>
+      <label><input id="copilotQuickAutoSend" type="checkbox"> Send after voice</label>
+      <label><input id="copilotQuickAutoSpeak" type="checkbox" checked> Speak replies</label>
+    </div>
+    <p id="copilotQuickVoiceStatus" class="compact-voice-status" aria-live="polite">
+      Voice ready. Audio stays in this browser and is never stored.
+    </p>
     <div id="copilotQuickResponse" class="copilot-quick-response" aria-live="polite">
       Ready for your message.
     </div>
@@ -2116,7 +2133,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase-jarvis-network-3"></script>
+  <script src="/assets/app.js?v=phase-jarvis-voice-4"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 
