@@ -29,7 +29,7 @@ dialog{border:1px solid var(--line);background:#0b1715;color:var(--text);border-
 @media(max-width:1050px){.app-shell{grid-template-columns:78px 1fr}.brand div:last-child,.nav-item{font-size:0}.nav-item:first-letter{font-size:18px}.sidebar{padding:20px 10px}.brand{padding-left:4px}.hero-grid,.content-grid{grid-template-columns:1fr}.bottom-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.app-shell{display:block}.sidebar{display:none}main{padding:15px}.topbar{align-items:center}.topbar h1{font-size:24px}.mode-pill{display:none}.hero-grid{display:block}.system-card{margin-top:14px}.workflow.active{grid-template-columns:1fr}.node:after{content:"↓";right:50%;top:auto;bottom:-15px}.connector-list{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
 
-.app-view{display:none}.app-view.active{display:block}
+.app-view,.view{display:none}.app-view.active,.view.active{display:block}
 .specialist-grid{display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:14px}
 .agent-card,.connector-card,.approval-card{border:1px solid var(--line);background:#081310;border-radius:11px;padding:16px}
 .agent-card-head{display:flex;align-items:center;gap:12px}.avatar.large{width:48px;height:48px}.agent-card h3,.connector-card h3{margin:0 0 4px}.agent-card-head span,.connector-card p{color:var(--muted);font-size:11px;margin:0}
@@ -1108,6 +1108,31 @@ button,
 .roadmap-columns>div{border:1px solid var(--line);border-radius:9px;padding:10px}
 .roadmap-columns h4{margin:0 0 7px}.roadmap-columns ul{margin:0;padding-left:18px;color:var(--muted);line-height:1.6}
 .copilot-reminder-center{margin-bottom:14px}
+#view-copilot.active{display:flex;flex-direction:column;gap:12px}
+#view-copilot>.command-center-tabs{order:0;margin-bottom:0}
+#view-copilot>.copilot-chat-layout{order:1}
+#view-copilot>.copilot-connectivity-center{order:2}
+#view-copilot>.copilot-reminder-center{order:3;margin-bottom:0}
+.copilot-reminder-center>summary,
+.copilot-connectivity-center>summary{
+  cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;min-height:42px
+}
+.copilot-reminder-center>summary::-webkit-details-marker,
+.copilot-connectivity-center>summary::-webkit-details-marker{display:none}
+.copilot-reminder-center>summary h2{font-size:15px;margin:2px 0}
+.copilot-reminder-center>summary h2 small,
+.copilot-connectivity-center>summary span{color:var(--muted);font-size:10px;font-weight:500}
+.copilot-reminder-center[open]>summary,
+.copilot-connectivity-center[open]>summary{margin-bottom:12px}
+.manager-control-plane{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.manager-control-plane button{
+  min-height:28px;padding:5px 8px;border-radius:999px;font-size:9px;color:var(--muted)
+}
+.manager-control-plane button[data-status="healthy"]{border-color:#2ea98b;color:#7ee0c5}
+.manager-control-plane button[data-status="warning"],
+.manager-control-plane button[data-status="unknown"]{border-color:var(--accent);color:var(--accent)}
+.manager-control-plane button[data-status="offline"]{border-color:#d85c55;color:#ff9c98}
 #copilotReminderList{display:grid;gap:8px}
 .copilot-reminder-card{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px}
 .copilot-reminder-card.high{border-color:rgba(255,181,71,.55)}
@@ -1115,6 +1140,10 @@ button,
 .copilot-reminder-actions{display:flex;gap:7px;align-items:flex-start;flex-wrap:wrap}
 @media(max-width:850px){.roadmap-summary{grid-template-columns:1fr 1fr}.roadmap-columns{grid-template-columns:1fr}.roadmap-header{flex-direction:column}}
 @media(max-width:560px){.roadmap-summary{grid-template-columns:1fr}.copilot-reminder-card{grid-template-columns:1fr}}
+@media(max-width:560px){
+  .copilot-reminder-center>summary,.copilot-connectivity-center>summary{align-items:flex-start}
+  .manager-control-plane{display:grid;grid-template-columns:1fr 1fr}
+}
 
 
 .quality-gate-panel{display:grid;gap:10px}

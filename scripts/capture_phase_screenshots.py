@@ -81,7 +81,10 @@ def main() -> None:
 
             desktop = browser.new_page(viewport={"width": 1440, "height": 1000})
             sign_in(desktop, port)
-            desktop.locator('.nav-item[data-view="copilot"]').click()
+            desktop.locator('.nav-item[data-view="command-center"]').click()
+            desktop.locator(
+                '#view-command-center [data-command-module="copilot"]'
+            ).click()
             desktop.locator("#copilotAvatar").wait_for()
             desktop.screenshot(
                 path=SCREENSHOTS / "copilot-desktop.png",

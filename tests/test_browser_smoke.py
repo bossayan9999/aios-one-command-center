@@ -112,6 +112,15 @@ def test_critical_browser_flow() -> None:
             page.wait_for_timeout(300)
             assert page.locator("#copilotAvatar").is_visible()
             assert page.locator("#startCopilotListening").is_visible()
+            assert page.locator("#copilotConnectivityGrid").is_hidden()
+            assert not page.locator("#copilotReminderCenter").evaluate(
+                "element => element.open"
+            )
+            assert page.locator("#managerDesktopStatus").is_visible()
+            page.locator(
+                '#managerDesktopStatus[data-status="healthy"]'
+            ).wait_for(timeout=15_000)
+            page.locator(".copilot-connectivity-center > summary").click()
             assert page.locator("#copilotConnectivityGrid").is_visible()
             page.locator(
                 '#copilotConnectivityGrid [data-check="backend"][data-status="healthy"]'

@@ -77,7 +77,7 @@ async function api(path, options = {}) {
 function switchView(view) {
   view = LEGACY_VIEW_REDIRECTS[view] || view;
   const commandCenterModule = ["command-center", "copilot", "projects"].includes(view);
-  document.querySelectorAll(".app-view").forEach(section => section.classList.remove("active"));
+  document.querySelectorAll(".app-view, .view").forEach(section => section.classList.remove("active"));
   document.querySelectorAll(".nav-item, .mobile-nav-item").forEach(button => button.classList.remove("active"));
 
   const section = document.querySelector(`#view-${view}`);
@@ -368,7 +368,10 @@ document.querySelectorAll("[data-command-module]").forEach(button => {
   button.addEventListener("click", () => {
     switchView(button.dataset.commandModule);
     if (button.dataset.commandModule === "projects") loadProjects();
-    if (button.dataset.commandModule === "copilot") runCopilotConnectivityChecks();
+    if (button.dataset.commandModule === "copilot") {
+      loadManagerControlPlane();
+      runCopilotConnectivityChecks();
+    }
   });
 });
 
@@ -4270,6 +4273,62 @@ async function loadCopilotRuntimeState() {
   }
 }
 
+function setManagerControlStatus(selector, status, text) {
+  const control = $(selector);
+  if (!control) return;
+  control.dataset.status = status;
+  control.textContent = text;
+}
+
+async function loadManagerControlPlane() {
+  const [tools, desktop, network, devices] = await Promise.allSettled([
+    api("/api/tools/registry"),
+    api("/api/desktop-companion/status"),
+    api("/api/health/network"),
+    api("/api/mobile/devices"),
+  ]);
+  if (tools.status === "fulfilled") {
+    const enabled = (tools.value.tools || []).filter(tool => tool.enabled).length;
+    setManagerControlStatus("#managerToolsStatus", "healthy", `Tools: ${enabled} enabled`);
+    setManagerControlStatus(
+      "#managerTerminalStatus",
+      tools.value.policy?.raw_terminal === "blocked" ? "warning" : "healthy",
+      tools.value.policy?.raw_terminal === "blocked"
+        ? "Terminal: scoped actions"
+        : "Terminal: policy controlled",
+    );
+  } else {
+    setManagerControlStatus("#managerToolsStatus", "offline", "Tools: unavailable");
+    setManagerControlStatus("#managerTerminalStatus", "offline", "Terminal: unavailable");
+  }
+  if (desktop.status === "fulfilled") {
+    setManagerControlStatus(
+      "#managerDesktopStatus",
+      desktop.value.connected ? "healthy" : "offline",
+      `Desktop: ${desktop.value.connected ? "connected" : "offline"} · ${desktop.value.pending_approvals || 0} approvals`,
+    );
+  } else {
+    setManagerControlStatus("#managerDesktopStatus", "offline", "Desktop: unavailable");
+  }
+  if (network.status === "fulfilled" && devices.status === "fulfilled") {
+    const tunnel = (network.value.components || [])
+      .find(component => component.id === "cloudflare-tunnel");
+    const paired = devices.value.length;
+    const tunnelReady = tunnel?.status === "healthy";
+    setManagerControlStatus(
+      "#managerRemoteStatus",
+      tunnelReady && paired ? "healthy" : "warning",
+      `Remote: ${tunnelReady ? "tunnel ready" : "check tunnel"} · ${paired} phone(s)`,
+    );
+  } else {
+    setManagerControlStatus("#managerRemoteStatus", "unknown", "Remote: status unavailable");
+  }
+}
+
+document.querySelectorAll("[data-manager-view]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.managerView));
+});
+
 const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
 let copilotRecognition = null;
 if (SpeechRecognitionApi) {
@@ -4390,6 +4449,15 @@ async function runCopilotConnectivityChecks() {
       ? "Browser speech synthesis is available; use Test speak response."
       : "This browser does not provide speech synthesis.",
   );
+  const summary = $("#copilotConnectivitySummary");
+  if (summary) {
+    const failed = document.querySelectorAll(
+      '#copilotConnectivityGrid [data-status="offline"], #copilotConnectivityGrid [data-status="critical"]'
+    ).length;
+    summary.textContent = failed
+      ? `${failed} connection problem(s) — expand`
+      : "Core connections checked — expand";
+  }
   status.textContent = "Connectivity check finished. Open Health Operations for full evidence.";
 }
 

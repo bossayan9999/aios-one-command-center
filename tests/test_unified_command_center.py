@@ -31,3 +31,29 @@ def test_copilot_has_real_connectivity_and_response_checks() -> None:
     ):
         assert endpoint in script
     assert "SpeechSynthesisUtterance" in script
+
+
+def test_copilot_manager_is_first_and_secondary_panels_are_compact() -> None:
+    html = (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    styles = (ROOT / "web" / "styles.css").read_text(encoding="utf-8")
+    script = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+
+    assert '<details id="copilotReminderCenter"' in html
+    assert '<details class="panel copilot-connectivity-center">' in html
+    assert "#view-copilot>.copilot-chat-layout{order:1}" in styles
+    assert ".app-view,.view{display:none}" in styles
+    assert 'querySelectorAll(".app-view, .view")' in script
+    for control in (
+        "managerToolsStatus",
+        "managerDesktopStatus",
+        "managerTerminalStatus",
+        "managerRemoteStatus",
+    ):
+        assert f'id="{control}"' in html
+    for endpoint in (
+        "/api/tools/registry",
+        "/api/desktop-companion/status",
+        "/api/mobile/devices",
+    ):
+        assert endpoint in script
+    assert "raw_terminal" in script

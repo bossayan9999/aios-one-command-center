@@ -546,18 +546,22 @@
           <button type="button" data-command-module="projects">Projects</button>
         </nav>
 
-          <article id="copilotReminderCenter" class="panel copilot-reminder-center">
-            <div class="panel-title">
+          <details id="copilotReminderCenter" class="panel copilot-reminder-center">
+            <summary class="panel-title">
               <div>
                 <p class="eyebrow">COPILOT REMINDERS</p>
-                <h2>Needs your attention</h2>
+                <h2>Needs your attention <small>— expand</small></h2>
               </div>
               <span id="copilotReminderCount" class="status-chip">0</span>
-            </div>
+            </summary>
             <div id="copilotReminderList"></div>
-          </article>
+          </details>
 
-          <article class="panel copilot-connectivity-center">
+          <details class="panel copilot-connectivity-center">
+            <summary>
+              <strong>Connection diagnostics</strong>
+              <span id="copilotConnectivitySummary">Not checked — expand</span>
+            </summary>
             <div class="panel-title">
               <div>
                 <p class="eyebrow">LIVE CONNECTION DIAGNOSTICS</p>
@@ -579,7 +583,7 @@
             <p id="copilotConnectivityStatus" class="brain-action-status">
               Checks report actual availability; unavailable services are never marked connected.
             </p>
-          </article>
+          </details>
 
         <div class="copilot-chat-layout">
           <article class="panel copilot-chat-panel">
@@ -624,6 +628,12 @@
                   <span id="copilotWorkerIndicator">Worker: unknown</span>
                   <span id="copilotMemoryIndicator">Memory: checking</span>
                   <span>Privacy: local-first</span>
+                </div>
+                <div class="manager-control-plane" aria-label="Copilot manager control plane">
+                  <button id="managerToolsStatus" type="button" data-manager-view="tools-skills">Tools: checking</button>
+                  <button id="managerDesktopStatus" type="button" data-manager-view="connectors">Desktop: checking</button>
+                  <button id="managerTerminalStatus" type="button" data-manager-view="connectors">Terminal: scoped</button>
+                  <button id="managerRemoteStatus" type="button" data-manager-view="mobile">Remote: checking</button>
                 </div>
               </div>
               <div class="voice-controls" aria-label="Voice controls">
