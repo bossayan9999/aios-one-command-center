@@ -1,4 +1,4 @@
-const LEGACY_VIEW_REDIRECTS={"mission-control":"command-center",copilot:"command-center","workflow-map":"command-center",osint:"command-center",specialists:"command-center",validation:"command-center",approvals:"command-center"};
+const LEGACY_VIEW_REDIRECTS={"mission-control":"command-center","workflow-map":"command-center",osint:"command-center",specialists:"command-center",validation:"command-center",approvals:"command-center"};
 const $ = (selector) => document.querySelector(selector);
 const dialog = $("#missionDialog");
 let dashboard = null;
@@ -22,6 +22,7 @@ const viewTitles = {
   "system-health": "System Health",
   reliability: "Reliability Center",
   "network-health": "Network & Desktop Health",
+  "health-operations": "Health Operations Center",
   "brain-vault": "Obsidian Brain Vault",
   "roadmap": "Roadmap & Progress",
   "system-model": "Final AIOS System Model",
@@ -545,6 +546,10 @@ let copilotConversationId =
   localStorage.getItem(COPILOT_CONVERSATION_KEY) ||
   (crypto.randomUUID ? crypto.randomUUID() : `chat-${Date.now()}`);
 localStorage.setItem(COPILOT_CONVERSATION_KEY, copilotConversationId);
+let copilotAbortController = null;
+let latestCopilotMessages = [];
+let lastCopilotUserMessage = "";
+let copilotVoiceMuted = false;
 
 function escapeChatHtml(value) {
   return String(value ?? "")
@@ -558,6 +563,7 @@ function escapeChatHtml(value) {
 function renderCopilotMessages(messages) {
   const container = $("#copilotMessages");
   if (!container) return;
+  latestCopilotMessages = messages || [];
   if (!messages?.length) {
     container.innerHTML = `
       <div class="copilot-empty">
@@ -583,6 +589,10 @@ function renderCopilotMessages(messages) {
           <span>${Number(message.input_tokens || 0)} in</span>
           <span>${Number(message.output_tokens || 0)} out</span>
           <span>$${Number(message.estimated_cost_usd || 0).toFixed(6)}</span>
+        </div>
+        <div class="copilot-response-actions">
+          <button type="button" data-copy-copilot="${escapeChatHtml(message.content)}">Copy</button>
+          <button type="button" data-save-copilot="${escapeChatHtml(message.content)}">Propose memory</button>
         </div>
         ${message.gateway_error ? `<details><summary>Gateway fallback detail</summary><p>${escapeChatHtml(message.gateway_error)}</p></details>` : ""}
       ` : ""}
@@ -614,6 +624,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   const send = $("#sendCopilotMessage");
   const message = input.value.trim();
   if (!message) return;
+  lastCopilotUserMessage = message;
 
   const pending = {
     role: "user",
@@ -624,6 +635,8 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   const existing = await api(`/api/copilot/conversations/${copilotConversationId}`);
   renderCopilotMessages([...(existing.messages || []), pending]);
 
+  copilotAbortController = new AbortController();
+  $("#stopCopilotGeneration").disabled = false;
   send.disabled = true;
   send.textContent = "Thinking…";
   $("#copilotChatStatus").textContent = "Copilot is using the live model gateway.";
@@ -638,6 +651,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
         model: $("#copilotModel").value,
         preferred_provider: $("#copilotProvider").value || null,
       }),
+      signal: copilotAbortController.signal,
     });
     input.value = "";
     image.value = "";
@@ -648,8 +662,12 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
       ? `Live response completed with ${result.provider_status.model}.`
       : "Fallback response returned. Open gateway details in the message.";
   } catch (error) {
-    $("#copilotChatStatus").textContent = `Copilot error: ${error.message}`;
+    $("#copilotChatStatus").textContent = error.name === "AbortError"
+      ? "Generation stopped by owner."
+      : `Copilot error: ${error.message}`;
   } finally {
+    copilotAbortController = null;
+    $("#stopCopilotGeneration").disabled = true;
     send.disabled = false;
     send.textContent = "Send";
   }
@@ -3936,15 +3954,7 @@ async function loadTaskOutputs() {
 }
 
 async function loadSkillsLibrary() {
-  const q = encodeURIComponent($("#skillsSearch")?.value || "");
-  const payload = await api(`/api/knowledge/skills?q=${q}`);
-  $("#skillsLibraryList").innerHTML = payload.skills.length
-    ? payload.skills.map(item => `<article class="panel">
-        <p class="eyebrow">SKILL</p><h3>${item.name}</h3>
-        <p>${escapeHtml(item.purpose || "")}</p>
-        <p><code>${item.path}</code></p>
-      </article>`).join("")
-    : `<div class="empty-approval"><p>No matching skills.</p></div>`;
+  return loadTrustedSkills();
 }
 
 async function searchLlmWiki() {
@@ -3961,8 +3971,7 @@ async function searchLlmWiki() {
 $("#refreshTaskOutputs")?.addEventListener("click", loadTaskOutputs);
 $("#skillsSearchButton")?.addEventListener("click", loadSkillsLibrary);
 $("#seedDefaultSkills")?.addEventListener("click", async () => {
-  await api("/api/knowledge/skills/seed", {method:"POST"});
-  await loadSkillsLibrary();
+  await loadTrustedSkills();
 });
 $("#llmWikiSearchButton")?.addEventListener("click", searchLlmWiki);
 window.addEventListener("hashchange", () => {
@@ -4156,3 +4165,295 @@ window.addEventListener("hashchange", () => {
     loadLiveTaskWorkspace();
   }
 });
+
+function latestAssistantMessage() {
+  return [...latestCopilotMessages].reverse().find(message => message.role === "assistant");
+}
+
+async function saveCopilotMemory(content) {
+  if (!content) return;
+  const result = await api("/api/copilot/save-memory", {
+    method: "POST",
+    body: JSON.stringify({
+      content,
+      conversation_id: copilotConversationId,
+      evidence: [],
+    }),
+  });
+  $("#copilotChatStatus").textContent =
+    `Memory proposal ${result.proposal.id} is waiting for human review.`;
+}
+
+$("#copilotMessages")?.addEventListener("click", async event => {
+  const copyButton = event.target.closest("[data-copy-copilot]");
+  const saveButton = event.target.closest("[data-save-copilot]");
+  if (copyButton) {
+    await navigator.clipboard.writeText(copyButton.dataset.copyCopilot || "");
+    $("#copilotChatStatus").textContent = "Response copied.";
+  }
+  if (saveButton) {
+    await saveCopilotMemory(saveButton.dataset.saveCopilot || "");
+  }
+});
+
+$("#stopCopilotGeneration")?.addEventListener("click", () => copilotAbortController?.abort());
+$("#retryCopilotMessage")?.addEventListener("click", () => {
+  if (!lastCopilotUserMessage) {
+    $("#copilotChatStatus").textContent = "No prior message is available to retry.";
+    return;
+  }
+  $("#copilotMessageInput").value = lastCopilotUserMessage;
+  $("#copilotChatForm").requestSubmit();
+});
+$("#copyLatestCopilotResponse")?.addEventListener("click", async () => {
+  const message = latestAssistantMessage();
+  if (!message) return;
+  await navigator.clipboard.writeText(message.content || "");
+  $("#copilotChatStatus").textContent = "Latest response copied.";
+});
+$("#saveLatestCopilotMemory")?.addEventListener("click", async () => {
+  await saveCopilotMemory(latestAssistantMessage()?.content || "");
+});
+$("#openCopilotEvidence")?.addEventListener("click", () => {
+  const message = latestAssistantMessage();
+  const drawer = $("#copilotEvidenceDrawer");
+  $("#copilotEvidenceContent").textContent = message
+    ? JSON.stringify({
+        citations: message.citations || [],
+        tool_calls: message.tool_calls || [],
+        evidence: message.evidence || [],
+        provider: message.provider || "unknown",
+        model: message.model || "unknown",
+        specialist: message.specialist || "copilot-manager",
+        gateway_error: message.gateway_error || "",
+      }, null, 2)
+    : "No response evidence yet.";
+  drawer.open = true;
+});
+
+async function loadCopilotRuntimeState() {
+  if (!$("#copilotAvatar")) return;
+  try {
+    const payload = await api("/api/copilot/runtime-state");
+    const avatar = $("#copilotAvatar");
+    avatar.dataset.state = payload.state;
+    avatar.setAttribute("aria-label", `AIOS Copilot is ${payload.state.replaceAll("_", " ")}`);
+    $("#copilotAvatarState").textContent = payload.state.replaceAll("_", " ").toUpperCase();
+    $("#copilotTaskStatus").textContent = payload.task
+      ? `${payload.task.task_id}: ${payload.task.current_execution_step || payload.task.status}`
+      : "Waiting for an authorized task.";
+    $("#copilotWorkerIndicator").textContent =
+      `Worker: ${payload.worker.status} · ${payload.worker.evidence.worker_id || "unassigned"}`;
+    $("#copilotMemoryIndicator").textContent =
+      `Memory: ${payload.memory.connected ? "connected" : "unavailable"}`;
+  } catch (error) {
+    $("#copilotAvatar").dataset.state = "offline";
+    $("#copilotAvatarState").textContent = "OFFLINE";
+    $("#copilotTaskStatus").textContent = error.message;
+  }
+}
+
+const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
+let copilotRecognition = null;
+if (SpeechRecognitionApi) {
+  copilotRecognition = new SpeechRecognitionApi();
+  copilotRecognition.continuous = false;
+  copilotRecognition.interimResults = true;
+  copilotRecognition.onstart = () => {
+    $("#copilotAvatar").dataset.state = "listening";
+    $("#startCopilotListening").disabled = true;
+    $("#stopCopilotListening").disabled = false;
+    $("#copilotVoiceStatus").textContent = "Listening now. Stop to review before sending.";
+  };
+  copilotRecognition.onresult = event => {
+    const transcript = [...event.results].map(result => result[0].transcript).join(" ");
+    $("#copilotMessageInput").value = transcript;
+    $("#copilotVoiceStatus").textContent = "Transcript ready. Review it, then press Send.";
+  };
+  copilotRecognition.onerror = event => {
+    $("#copilotVoiceStatus").textContent =
+      event.error === "not-allowed"
+        ? "Microphone permission was denied. Voice remains off; text input is available."
+        : `Voice recognition unavailable: ${event.error}.`;
+  };
+  copilotRecognition.onend = () => {
+    $("#startCopilotListening").disabled = false;
+    $("#stopCopilotListening").disabled = true;
+    loadCopilotRuntimeState();
+  };
+} else if ($("#copilotVoiceStatus")) {
+  $("#copilotVoiceStatus").textContent =
+    "Voice recognition is unavailable in this browser. Text input remains available.";
+  $("#startCopilotListening").disabled = true;
+}
+
+$("#startCopilotListening")?.addEventListener("click", () => {
+  $("#copilotVoiceStatus").textContent =
+    "Requesting microphone permission. Recording only begins after browser approval.";
+  copilotRecognition?.start();
+});
+$("#stopCopilotListening")?.addEventListener("click", () => copilotRecognition?.stop());
+$("#muteCopilotVoice")?.addEventListener("click", event => {
+  copilotVoiceMuted = !copilotVoiceMuted;
+  event.currentTarget.setAttribute("aria-pressed", String(copilotVoiceMuted));
+  event.currentTarget.textContent = copilotVoiceMuted ? "Unmute" : "Mute";
+  if (copilotVoiceMuted) speechSynthesis.cancel();
+});
+$("#speakCopilotResponse")?.addEventListener("click", () => {
+  const content = latestAssistantMessage()?.content;
+  if (!content || copilotVoiceMuted || !("speechSynthesis" in window)) {
+    $("#copilotVoiceStatus").textContent =
+      "Speech is unavailable, muted, or there is no assistant response.";
+    return;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(content);
+  utterance.onstart = () => { $("#copilotAvatar").dataset.state = "speaking"; };
+  utterance.onend = loadCopilotRuntimeState;
+  speechSynthesis.speak(utterance);
+});
+$("#staticAvatarMode")?.addEventListener("change", event => {
+  document.body.classList.toggle("static-avatar", event.currentTarget.checked);
+  localStorage.setItem("aios-static-avatar", String(event.currentTarget.checked));
+});
+if (localStorage.getItem("aios-static-avatar") === "true" || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  document.body.classList.add("static-avatar");
+  if ($("#staticAvatarMode")) $("#staticAvatarMode").checked = true;
+}
+
+function healthComponentMarkup(item) {
+  return `<div class="health-component" data-status="${escapeHtml(item.status)}">
+    <span aria-hidden="true"></span><div><strong>${escapeHtml(item.name)}</strong>
+    <small>${escapeHtml(item.status.toUpperCase())} · ${escapeHtml(item.detail)}</small></div>
+  </div>`;
+}
+
+async function loadHealthOperations(run = false) {
+  if (!$("#healthDomainGrid")) return;
+  $("#healthDomainGrid").innerHTML = `<article class="panel"><p>Running truthful checks…</p></article>`;
+  try {
+    const payload = await api(run ? "/api/health/check" : "/api/health/full", {
+      method: run ? "POST" : "GET",
+      body: run ? "{}" : undefined,
+    });
+    const score = $("#healthScore");
+    score.dataset.status = payload.status;
+    score.innerHTML = `<strong>${Number(payload.score)}</strong><span>${escapeHtml(payload.status.toUpperCase())}</span>`;
+    $("#healthDomainGrid").innerHTML = Object.entries(payload.domains).map(([name, domain]) => `
+      <article class="panel health-domain-card">
+        <p class="eyebrow">${escapeHtml(domain.status.toUpperCase())}</p>
+        <h3>${escapeHtml(name)}</h3>
+        ${(domain.components || []).map(healthComponentMarkup).join("")}
+      </article>`).join("");
+    const pathMap = [
+      ["Browser", payload.domains.frontend.status],
+      ["Cloudflare", payload.domains.network.components.find(item => item.id === "cloudflare-tunnel")?.status || "unknown"],
+      ["Tunnel", payload.domains.network.components.find(item => item.id === "public-route")?.status || "unknown"],
+      ["FastAPI", payload.domains.backend.status],
+      ["Worker", payload.domains.worker.status],
+      ["Model", payload.domains.models.status],
+      ["Output", payload.domains.storage.status],
+      ["Brain Vault", payload.domains.storage.components.find(item => item.id === "brain-vault")?.status || "unknown"],
+    ];
+    $("#healthDependencyPath").innerHTML = pathMap.map(([name, status]) =>
+      `<div class="health-path-node" data-status="${escapeHtml(status)}"><strong>${name}</strong><br><small>${escapeHtml(status)}</small></div>`
+    ).join("");
+    $("#healthRecommendations").innerHTML = payload.recommendations.length
+      ? payload.recommendations.map(item => `<div class="health-recommendation">
+          <strong>${escapeHtml(item.severity.toUpperCase())}: ${escapeHtml(item.component)}</strong>
+          <p>${escapeHtml(item.evidence)}</p><small>${escapeHtml(item.next_step)} · Approval required</small>
+        </div>`).join("")
+      : "<p>No evidence-based recommendations.</p>";
+    const history = await api("/api/health/history?limit=20");
+    $("#healthHistory").innerHTML = history.items.length
+      ? history.items.map(item => `<div class="health-history-item"><strong>${escapeHtml(item.status.toUpperCase())} · ${item.score}</strong><small>${escapeHtml(item.checked_at)}</small></div>`).join("")
+      : "<p>No snapshots recorded yet.</p>";
+    window.latestHealthReport = payload;
+  } catch (error) {
+    $("#healthDomainGrid").innerHTML = `<article class="panel"><h3>Health check unavailable</h3><p>${escapeHtml(error.message)}</p></article>`;
+  }
+}
+
+$("#runFullHealthCheck")?.addEventListener("click", () => loadHealthOperations(true));
+$("#runSolidConnectionGate")?.addEventListener("click", async () => {
+  const gate = await api("/api/health/solid-connection-gate");
+  $("#solidConnectionGateResults").innerHTML = gate.checks.map(item =>
+    `<div class="health-gate-item" data-passed="${item.passed}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.status.toUpperCase())}</span></div>`
+  ).join("");
+});
+$("#exportHealthReport")?.addEventListener("click", () => {
+  if (!window.latestHealthReport) return;
+  const blob = new Blob([JSON.stringify(window.latestHealthReport, null, 2)], {type: "application/json"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `aios-health-${new Date().toISOString().replaceAll(":", "-")}.json`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+
+async function loadTrustedSkills() {
+  const query = encodeURIComponent($("#skillsSearch")?.value || "");
+  const [payload, legacy] = await Promise.all([
+    api(`/api/skills/trusted?query=${query}`),
+    api(`/api/knowledge/skills?q=${query}`),
+  ]);
+  const items = [
+    ...payload.items,
+    ...(legacy.skills || []).map(item => ({
+      ...item,
+      status:"legacy_reference",
+      source_repository:"local/brain-vault",
+      commit_sha:"unversioned",
+      permissions:{},
+      scripts:[],
+      scan_findings:[],
+      checksums:{},
+      enabled:false,
+      approved:false,
+      purpose:item.purpose || "Brain Vault skill reference; review before trusted import.",
+    })),
+  ];
+  $("#skillsLibraryList").innerHTML = items.length
+    ? items.map(item => `<article class="panel">
+        <p class="eyebrow">${escapeHtml(item.status.toUpperCase())}</p>
+        <h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.purpose)}</p>
+        <p><code>${escapeHtml(item.source_repository)} @ ${escapeHtml(item.commit_sha)}</code></p>
+        <details><summary>Permissions and scan</summary><pre>${escapeHtml(JSON.stringify({
+          permissions:item.permissions,
+          scripts:item.scripts,
+          findings:item.scan_findings,
+          checksums:item.checksums
+        }, null, 2))}</pre></details>
+        <div class="dialog-actions">
+          ${item.enabled
+            ? `<button data-disable-skill="${item.id}">Disable</button>`
+            : item.approved && item.sandbox_test === "passed"
+              ? `<button data-enable-skill="${item.id}" class="primary">Enable</button>`
+              : "<span>Human approval and a real sandbox pass are required before enablement.</span>"}
+          ${item.history?.length ? `<button data-rollback-skill="${item.id}">Rollback for review</button>` : ""}
+        </div>
+      </article>`).join("")
+    : `<div class="empty-approval"><p>No matching trusted skills.</p></div>`;
+}
+
+$("#skillsLibraryList")?.addEventListener("click", async event => {
+  const action = event.target.closest("[data-enable-skill],[data-disable-skill],[data-rollback-skill]");
+  if (!action) return;
+  const pair = action.dataset.enableSkill
+    ? [action.dataset.enableSkill, "enable"]
+    : action.dataset.disableSkill
+      ? [action.dataset.disableSkill, "disable"]
+      : [action.dataset.rollbackSkill, "rollback"];
+  await api(`/api/skills/trusted/${encodeURIComponent(pair[0])}/${pair[1]}`, {method:"POST",body:"{}"});
+  await loadTrustedSkills();
+});
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#copilot") {
+    loadCopilotRuntimeState();
+    loadCopilotConversation();
+  }
+  if (location.hash === "#health-operations") loadHealthOperations();
+});
+setInterval(() => {
+  if (location.hash === "#copilot") loadCopilotRuntimeState();
+}, 5000);

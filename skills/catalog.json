@@ -1,0 +1,137 @@
+{
+  "fastapi-backend-health": {
+    "id": "fastapi-backend-health",
+    "name": "FastAPI Backend Health",
+    "purpose": "Inspect liveness, readiness, route registration, configuration, logs, and stores.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["http_read", "process_read", "file_read"], "network": ["loopback"], "filesystem": ["data:read"]}
+  },
+  "windows-desktop-diagnostics": {
+    "id": "windows-desktop-diagnostics",
+    "name": "Windows Desktop Diagnostics",
+    "purpose": "Collect read-only Windows process, service, storage, and event evidence.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["process_read", "service_read"], "network": [], "filesystem": ["logs:read"]}
+  },
+  "network-ccna-check": {
+    "id": "network-ccna-check",
+    "name": "Network and CCNA Check",
+    "purpose": "Inspect adapters, gateway, DNS, latency, listeners, and authorized routes.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["network_read", "ping"], "network": ["diagnostic_targets"], "filesystem": []}
+  },
+  "playwright-ui-regression": {
+    "id": "playwright-ui-regression",
+    "name": "Playwright UI Regression",
+    "purpose": "Run deterministic desktop browser smoke and interaction checks.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["playwright"], "network": ["loopback"], "filesystem": ["test-artifacts:write"]}
+  },
+  "mobile-responsive-audit": {
+    "id": "mobile-responsive-audit",
+    "name": "Mobile Responsive Audit",
+    "purpose": "Detect mobile overflow, inaccessible controls, and viewport regressions.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["playwright"], "network": ["loopback"], "filesystem": ["test-artifacts:write"]}
+  },
+  "accessibility-audit": {
+    "id": "accessibility-audit",
+    "name": "Accessibility Audit",
+    "purpose": "Check keyboard access, labels, reduced motion, focus, and semantic state.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["playwright", "dom_read"], "network": ["loopback"], "filesystem": []}
+  },
+  "github-quality-gate-repair": {
+    "id": "github-quality-gate-repair",
+    "name": "GitHub Quality Gate Repair",
+    "purpose": "Inspect and repair CI failures with owner-reviewed changes.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["git_read", "github_read", "test_runner"], "network": ["github.com"], "filesystem": ["workspace:write"]}
+  },
+  "cloudflare-tunnel-check": {
+    "id": "cloudflare-tunnel-check",
+    "name": "Cloudflare Tunnel Check",
+    "purpose": "Inspect tunnel process, route, public reachability, TLS, and Access behavior.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["process_read", "http_read"], "network": ["configured_public_url"], "filesystem": ["config:read"]}
+  },
+  "ollama-health-model-check": {
+    "id": "ollama-health-model-check",
+    "name": "Ollama Health and Model Check",
+    "purpose": "Inspect Ollama availability, installed models, expected model, and latency.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["http_read"], "network": ["127.0.0.1:11434"], "filesystem": []}
+  },
+  "brain-vault-memory-retrieval": {
+    "id": "brain-vault-memory-retrieval",
+    "name": "Brain Vault Memory Retrieval",
+    "purpose": "Retrieve relevant memories with provenance and no arbitrary file access.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["vault_search", "vault_read"], "network": [], "filesystem": ["brain-vault:read"]}
+  },
+  "output-validation": {
+    "id": "output-validation",
+    "name": "Output Validation",
+    "purpose": "Validate task outputs against acceptance criteria and linked evidence.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["output_read", "evidence_read"], "network": [], "filesystem": ["outputs:read"]}
+  },
+  "osint-evidence-collection": {
+    "id": "osint-evidence-collection",
+    "name": "OSINT Evidence Collection",
+    "purpose": "Collect authorized public evidence with timestamps, citations, and confidence.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["web_read", "evidence_write"], "network": ["public_sources"], "filesystem": ["case-evidence:write"]}
+  },
+  "secure-dependency-review": {
+    "id": "secure-dependency-review",
+    "name": "Secure Dependency Review",
+    "purpose": "Review dependency metadata, advisories, licenses, and pinning without installation.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["manifest_read", "advisory_read"], "network": ["official_registries"], "filesystem": ["workspace:read"]}
+  },
+  "performance-profiling": {
+    "id": "performance-profiling",
+    "name": "Performance Profiling",
+    "purpose": "Measure latency, resource use, polling, and bottlenecks with bounded probes.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["process_read", "metrics_read"], "network": ["loopback"], "filesystem": ["logs:read"]}
+  },
+  "backup-restore-verification": {
+    "id": "backup-restore-verification",
+    "name": "Backup and Restore Verification",
+    "purpose": "Verify backup freshness and non-production restore integrity.",
+    "source_repository": "local/aios-one",
+    "commit_sha": "local",
+    "license": "Project license",
+    "permissions": {"tools": ["archive_read", "checksum"], "network": [], "filesystem": ["backups:read", "temporary:write"]}
+  }
+}

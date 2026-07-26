@@ -48,6 +48,7 @@ def test_critical_browser_flow() -> None:
     )
     env["AIOS_SECURE_COOKIES"] = "0"
     env["AIOS_SECURITY_TEST_BYPASS"] = "0"
+    env["AIOS_BACKEND_URL"] = f"http://127.0.0.1:{port}"
     process = subprocess.Popen(
         [
             sys.executable,
@@ -61,9 +62,8 @@ def test_critical_browser_flow() -> None:
         ],
         cwd=ROOT,
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
-        text=True,
     )
 
     try:
@@ -93,6 +93,34 @@ def test_critical_browser_flow() -> None:
             page.locator('[data-view="connectors"]').first.click()
             page.wait_for_timeout(300)
             assert page.locator("#desktopCompanionRequests").is_visible()
+
+            page.locator('.nav-item[data-view="copilot"]').click()
+            page.wait_for_timeout(300)
+            assert page.locator("#copilotAvatar").is_visible()
+            assert page.locator("#startCopilotListening").is_visible()
+
+            page.locator('.nav-item[data-view="health-operations"]').click()
+            page.wait_for_timeout(300)
+            assert page.locator("#view-health-operations").is_visible()
+            assert page.locator("#runFullHealthCheck").is_visible()
+
+            mobile = browser.new_page(viewport={"width": 390, "height": 844})
+            mobile.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
+            mobile.locator("#securityUsername").fill("owner")
+            mobile.locator("#securityPassword").fill("correct horse battery staple")
+            mobile.locator("#securityLoginForm button[type=submit]").click()
+            mobile.wait_for_timeout(500)
+            mobile.locator("#mobileMoreBtn").click()
+            mobile.locator('#mobileMoreMenu [data-view="copilot"]').click()
+            mobile.wait_for_timeout(250)
+            assert mobile.locator("#copilotAvatar").is_visible()
+            assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+            mobile.locator("#mobileMoreBtn").click()
+            mobile.locator('#mobileMoreMenu [data-view="health-operations"]').click()
+            mobile.wait_for_timeout(250)
+            assert mobile.locator("#view-health-operations").is_visible()
+            assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+            mobile.close()
 
             browser.close()
     finally:

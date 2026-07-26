@@ -56,6 +56,7 @@
     <summary>Workspace</summary>
 
     <button class="nav-item" data-view="command-center">Command Center</button>
+    <button class="nav-item" data-view="copilot">AIOS Copilot</button>
     <button class="nav-item" data-view="projects">Projects</button>
     <button class="nav-item" data-view="file-explorer">File Explorer</button>
     <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
@@ -71,6 +72,7 @@
 
     <button class="nav-item" data-view="reliability">Reliability</button>
     <button class="nav-item" data-view="network-health">Network Health</button>
+    <button class="nav-item" data-view="health-operations">Health Operations</button>
 
   </details>
   <details class="nav-group" open>
@@ -301,8 +303,8 @@
 <section id="view-skills-library" class="app-view">
   <article class="panel">
     <div class="panel-title">
-      <div><p class="eyebrow">REUSABLE PROCEDURES</p><h2>Skills Library</h2></div>
-      <button id="seedDefaultSkills" type="button">Install default skills</button>
+      <div><p class="eyebrow">TRUSTED PROCEDURES</p><h2>Skills Library</h2></div>
+      <button id="seedDefaultSkills" type="button">Review local defaults</button>
     </div>
     <div class="workspace-toolbar">
       <input id="skillsSearch" placeholder="Search skills">
@@ -310,6 +312,43 @@
     </div>
   </article>
   <section id="skillsLibraryList" class="workspace-item-list"></section>
+</section>
+
+<section id="view-health-operations" class="app-view">
+  <article class="panel health-hero">
+    <div>
+      <p class="eyebrow">TRUTHFUL SYSTEM OBSERVABILITY</p>
+      <h2>Health Operations Center</h2>
+      <p class="muted-copy">Unavailable checks remain unknown. Repairs always require owner review.</p>
+    </div>
+    <div class="health-score" id="healthScore" data-status="unknown">
+      <strong>—</strong><span>UNKNOWN</span>
+    </div>
+    <div class="health-actions">
+      <button id="runFullHealthCheck" class="primary" type="button">Run full check</button>
+      <button id="runSolidConnectionGate" type="button">Solid Connection Gate</button>
+      <button id="exportHealthReport" type="button">Export report</button>
+    </div>
+  </article>
+  <article class="panel">
+    <p class="eyebrow">DEPENDENCY PATH</p>
+    <div id="healthDependencyPath" class="health-dependency-path" aria-label="System dependency path"></div>
+  </article>
+  <section id="healthDomainGrid" class="health-domain-grid" aria-live="polite"></section>
+  <div class="health-lower-grid">
+    <article class="panel">
+      <div class="panel-title"><div><p class="eyebrow">INCIDENT TIMELINE</p><h2>History</h2></div></div>
+      <div id="healthHistory" class="health-history"></div>
+    </article>
+    <article class="panel">
+      <div class="panel-title"><div><p class="eyebrow">EVIDENCE-BASED</p><h2>Recommendations</h2></div></div>
+      <div id="healthRecommendations" class="health-recommendations"></div>
+    </article>
+  </div>
+  <article class="panel">
+    <div class="panel-title"><div><p class="eyebrow">RELEASE EVIDENCE</p><h2>AIOS Solid Connection Gate</h2></div></div>
+    <div id="solidConnectionGateResults" class="health-gate-results"></div>
+  </article>
 </section>
 
 <section id="view-llm-wiki" class="app-view">
@@ -511,6 +550,48 @@
               </div>
             </div>
 
+            <section class="hologram-console" aria-labelledby="copilotAvatarTitle">
+              <div id="copilotAvatar" class="aios-hologram" data-state="idle" role="img" aria-label="AIOS Copilot is idle">
+                <svg viewBox="0 0 240 240" aria-hidden="true">
+                  <circle class="holo-ring ring-outer" cx="120" cy="120" r="98"></circle>
+                  <circle class="holo-ring ring-mid" cx="120" cy="120" r="73"></circle>
+                  <path class="holo-wave" d="M42 126 C62 82 78 170 96 112 S132 156 151 104 S181 154 199 116"></path>
+                  <g class="holo-network">
+                    <line x1="80" y1="78" x2="120" y2="54"></line>
+                    <line x1="120" y1="54" x2="163" y2="82"></line>
+                    <line x1="80" y1="78" x2="71" y2="132"></line>
+                    <line x1="163" y1="82" x2="171" y2="134"></line>
+                    <line x1="71" y1="132" x2="119" y2="174"></line>
+                    <line x1="171" y1="134" x2="119" y2="174"></line>
+                    <circle cx="80" cy="78" r="5"></circle><circle cx="120" cy="54" r="5"></circle>
+                    <circle cx="163" cy="82" r="5"></circle><circle cx="71" cy="132" r="5"></circle>
+                    <circle cx="171" cy="134" r="5"></circle><circle cx="119" cy="174" r="5"></circle>
+                  </g>
+                  <circle class="holo-core" cx="120" cy="116" r="25"></circle>
+                  <circle class="holo-eye" cx="120" cy="116" r="7"></circle>
+                </svg>
+              </div>
+              <div class="hologram-status">
+                <p class="eyebrow">CONNECTED OPERATING STATE</p>
+                <h2 id="copilotAvatarTitle">AIOS Copilot</h2>
+                <strong id="copilotAvatarState">IDLE</strong>
+                <p id="copilotTaskStatus" class="muted-copy">Waiting for an authorized task.</p>
+                <div class="copilot-indicators">
+                  <span id="copilotWorkerIndicator">Worker: unknown</span>
+                  <span id="copilotMemoryIndicator">Memory: checking</span>
+                  <span>Privacy: local-first</span>
+                </div>
+              </div>
+              <div class="voice-controls" aria-label="Voice controls">
+                <button id="startCopilotListening" type="button" aria-label="Start microphone listening">Listen</button>
+                <button id="stopCopilotListening" type="button" disabled>Stop listening</button>
+                <button id="speakCopilotResponse" type="button">Speak response</button>
+                <button id="muteCopilotVoice" type="button" aria-pressed="false">Mute</button>
+                <label><input id="staticAvatarMode" type="checkbox"> Static avatar</label>
+              </div>
+              <p id="copilotVoiceStatus" class="brain-action-status" aria-live="polite">Voice is off. Audio is never stored.</p>
+            </section>
+
             <div id="copilotMessages" class="copilot-messages">
               <div class="copilot-empty">
                 <div class="orb">C</div>
@@ -540,6 +621,8 @@
                   <option value="gpt-5.4">GPT-5.4</option>
                 </select>
                 <button id="sendCopilotMessage" class="primary" type="submit">Send</button>
+                <button id="stopCopilotGeneration" type="button" disabled>Stop</button>
+                <button id="retryCopilotMessage" type="button">Retry</button>
               </div>
             </form>
           </article>
@@ -548,7 +631,14 @@
             <div class="panel-title"><div><p class="eyebrow">SESSION</p><h2>Controls</h2></div></div>
             <button id="newCopilotConversation">New conversation</button>
             <button id="createMissionFromChat" class="primary">Create mission from message</button>
+            <button id="copyLatestCopilotResponse" type="button">Copy latest response</button>
+            <button id="saveLatestCopilotMemory" type="button">Propose as memory</button>
+            <button id="openCopilotEvidence" type="button">View evidence &amp; tools</button>
             <div class="brain-action-status" id="copilotChatStatus">Ready.</div>
+            <details id="copilotEvidenceDrawer">
+              <summary>Evidence, citations, tools, and routing</summary>
+              <pre id="copilotEvidenceContent">No response evidence yet.</pre>
+            </details>
             
             <div class="pm-router-card">
               <h3>PM Model Router</h3>
@@ -1868,6 +1958,8 @@
   </nav>
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
+    <button type="button" data-view="health-operations">Health Operations</button>
+    <button type="button" data-view="skills-library">Trusted Skills</button>
     <button type="button" data-view="copilot">✦ Copilot Chat</button>
     <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>
     <button type="button" data-view="approvals">✓ Approval Center</button>

@@ -47,7 +47,9 @@ def test_single_worker_claim_prevents_duplicate(tmp_path: Path):
     task = create_task(data, vault)
     first = AgentWorker(data, vault, executor=FakeOllama(), worker_id="one")
     second = AgentWorker(data, vault, executor=FakeOllama(), worker_id="two")
-    assert first.claim()["task_id"] == task["task_id"]
+    claimed = first.claim()
+    assert claimed is not None
+    assert claimed["task_id"] == task["task_id"]
     assert second.claim() is None
 
 
@@ -96,7 +98,9 @@ def test_restart_recovery_requeues_stale_claim(tmp_path: Path):
         task_heartbeat_at="2000-01-01T00:00:00+00:00",
     )
     assert worker.recover_abandoned() == 1
-    assert worker.store.get(task["task_id"])["status"] == "QUEUED"
+    stored = worker.store.get(task["task_id"])
+    assert stored is not None
+    assert stored["status"] == "QUEUED"
 
 
 def test_empty_response_retries_then_fails(tmp_path: Path):
@@ -104,9 +108,12 @@ def test_empty_response_retries_then_fails(tmp_path: Path):
     task = create_task(data, vault)
     worker = AgentWorker(data, vault, executor=FakeOllama(answer=""))
     worker.run_once()
-    assert worker.store.get(task["task_id"])["status"] == "QUEUED"
+    queued = worker.store.get(task["task_id"])
+    assert queued is not None
+    assert queued["status"] == "QUEUED"
     worker.run_once()
     worker.run_once()
     stored = worker.store.get(task["task_id"])
+    assert stored is not None
     assert stored["status"] == "FAILED"
     assert "empty answer" in stored["last_error"]

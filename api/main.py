@@ -53,6 +53,7 @@ from api.brain_vault_tree_routes import router as brain_vault_tree_router
 from api.final_system_routes import router as final_system_router
 from api.knowledge_routes import router as knowledge_router
 from api.live_task_routes import router as live_task_router
+from api.operations_routes import router as operations_router
 from api.quantum_solver_routes import router as quantum_solver_router
 from api.workspace_routes import router as workspace_router
 from security.app_security import (
@@ -149,6 +150,7 @@ app.include_router(quantum_solver_router)
 app.include_router(final_system_router)
 app.include_router(knowledge_router)
 app.include_router(live_task_router)
+app.include_router(operations_router)
 app.mount("/assets", StaticFiles(directory=WEB_DIR), name="assets")
 
 SPECIALISTS = [
@@ -1240,6 +1242,7 @@ def auth_audit(request: Request, limit: int = 100):
 SECURITY_PUBLIC_PATHS = {
     "/",
     "/health",
+    "/api/health/live",
     "/api/auth/status",
     "/api/auth/login",
 }
@@ -1279,7 +1282,7 @@ async def security_boundary(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "same-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: https:; "
         "style-src 'self' 'unsafe-inline'; script-src 'self'; "
