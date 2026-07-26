@@ -1074,10 +1074,12 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
 
     token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
     forwarded_scheme = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
+    client_host = request.client.host if request.client else ""
+    loopback_request = client_host in {"127.0.0.1", "::1", "testclient"}
     cookie_secure = (
-        SECURE_COOKIES
-        or request.url.scheme == "https"
+        request.url.scheme == "https"
         or forwarded_scheme.casefold() == "https"
+        or (SECURE_COOKIES and not loopback_request)
     )
     response.set_cookie(
         SESSION_COOKIE,

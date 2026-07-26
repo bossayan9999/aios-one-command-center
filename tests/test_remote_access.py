@@ -9,6 +9,8 @@ def test_remote_https_forces_secure_auth_cookies() -> None:
     source = (ROOT / "api" / "main.py").read_text(encoding="utf-8")
     assert 'request.headers.get("x-forwarded-proto"' in source
     assert 'forwarded_scheme.casefold() == "https"' in source
+    assert 'loopback_request = client_host in {"127.0.0.1", "::1", "testclient"}' in source
+    assert "SECURE_COOKIES and not loopback_request" in source
     assert source.count("secure=cookie_secure") == 2
 
 

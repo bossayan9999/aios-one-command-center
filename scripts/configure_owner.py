@@ -31,5 +31,12 @@ env_path.write_text(
     ]),
     encoding="utf-8",
 )
+for session_file in (
+    root / "data" / "security_sessions.json",
+    root / "data" / "security_login_attempts.json",
+):
+    if session_file.exists():
+        session_file.replace(session_file.with_suffix(f"{session_file.suffix}.pre-reset"))
 print(f"Created {env_path}")
+print("Revoked existing sessions and cleared failed-login counters.")
 print("Do not commit this file.")
