@@ -107,10 +107,24 @@ def test_critical_browser_flow() -> None:
             page.wait_for_timeout(300)
             assert page.locator("#desktopCompanionRequests").is_visible()
 
-            page.locator('.nav-item[data-view="copilot"]').click()
+            page.locator('.nav-item[data-view="command-center"]').click()
+            page.locator('[data-command-module="copilot"]').first.click()
             page.wait_for_timeout(300)
             assert page.locator("#copilotAvatar").is_visible()
             assert page.locator("#startCopilotListening").is_visible()
+            assert page.locator("#copilotConnectivityGrid").is_visible()
+            page.locator(
+                '#copilotConnectivityGrid [data-check="backend"][data-status="healthy"]'
+            ).wait_for(timeout=20_000)
+            page.locator("#testCopilotAssistantResponse").click()
+            page.locator(
+                '#copilotConnectivityGrid [data-check="assistant"][data-status="warning"], '
+                '#copilotConnectivityGrid [data-check="assistant"][data-status="healthy"]'
+            ).wait_for(timeout=30_000)
+
+            page.locator('#view-copilot [data-command-module="projects"]').click()
+            page.wait_for_timeout(300)
+            assert page.locator("#projectGrid").is_visible()
 
             page.locator('.nav-item[data-view="health-operations"]').click()
             page.wait_for_timeout(300)
@@ -124,7 +138,8 @@ def test_critical_browser_flow() -> None:
             mobile.locator("#securityLoginForm button[type=submit]").click()
             mobile.wait_for_timeout(500)
             mobile.locator("#mobileMoreBtn").click()
-            mobile.locator('#mobileMoreMenu [data-view="copilot"]').click()
+            mobile.locator('#mobileMoreMenu [data-view="command-center"]').click()
+            mobile.locator('#view-command-center [data-command-module="copilot"]').click()
             mobile.wait_for_timeout(250)
             assert mobile.locator("#copilotAvatar").is_visible()
             assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")

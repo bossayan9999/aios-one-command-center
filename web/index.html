@@ -63,8 +63,6 @@
     <summary>Workspace</summary>
 
     <button class="nav-item" data-view="command-center">Command Center</button>
-    <button class="nav-item" data-view="copilot">AIOS Copilot</button>
-    <button class="nav-item" data-view="projects">Projects</button>
     <button class="nav-item" data-view="file-explorer">File Explorer</button>
     <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
 
@@ -372,6 +370,11 @@
 </section>
 
 <section id="view-command-center" class="app-view">
+  <nav class="command-center-tabs" aria-label="Command Center workspace">
+    <button class="active" type="button" data-command-module="command-center">Operations</button>
+    <button type="button" data-command-module="copilot">AIOS Copilot</button>
+    <button type="button" data-command-module="projects">Projects</button>
+  </nav>
 
 <section id="liveTaskControlCenter" class="panel live-task-control-center">
   <div class="panel-title">
@@ -484,6 +487,11 @@
 </section>
 
 <section id="view-projects" class="app-view">
+  <nav class="command-center-tabs" aria-label="Command Center workspace">
+    <button type="button" data-command-module="command-center">Operations</button>
+    <button type="button" data-command-module="copilot">AIOS Copilot</button>
+    <button class="active" type="button" data-command-module="projects">Projects</button>
+  </nav>
   <article class="panel project-hero">
     <div class="panel-title">
       <div>
@@ -532,6 +540,11 @@
 </section>
 
       <section id="view-copilot" class="app-view">
+        <nav class="command-center-tabs" aria-label="Command Center workspace">
+          <button type="button" data-command-module="command-center">Operations</button>
+          <button class="active" type="button" data-command-module="copilot">AIOS Copilot</button>
+          <button type="button" data-command-module="projects">Projects</button>
+        </nav>
 
           <article id="copilotReminderCenter" class="panel copilot-reminder-center">
             <div class="panel-title">
@@ -542,6 +555,30 @@
               <span id="copilotReminderCount" class="status-chip">0</span>
             </div>
             <div id="copilotReminderList"></div>
+          </article>
+
+          <article class="panel copilot-connectivity-center">
+            <div class="panel-title">
+              <div>
+                <p class="eyebrow">LIVE CONNECTION DIAGNOSTICS</p>
+                <h2>Copilot connectivity and responses</h2>
+              </div>
+              <button id="runCopilotConnectivity" class="primary" type="button">Check connections</button>
+            </div>
+            <div id="copilotConnectivityGrid" class="copilot-connectivity-grid" aria-live="polite">
+              <div data-check="backend"><strong>Backend</strong><span>Not checked</span></div>
+              <div data-check="network"><strong>Network &amp; search</strong><span>Not checked</span></div>
+              <div data-check="models"><strong>AI model routing</strong><span>Not checked</span></div>
+              <div data-check="speech"><strong>Speak response</strong><span>Not checked</span></div>
+              <div data-check="assistant"><strong>Assistant response</strong><span>Use the test button</span></div>
+            </div>
+            <div class="dialog-actions">
+              <button id="testCopilotAssistantResponse" type="button">Test assistant response</button>
+              <button id="testCopilotSpeech" type="button">Test speak response</button>
+            </div>
+            <p id="copilotConnectivityStatus" class="brain-action-status">
+              Checks report actual availability; unavailable services are never marked connected.
+            </p>
           </article>
 
         <div class="copilot-chat-layout">
@@ -1967,7 +2004,7 @@
   <div class="mobile-more-menu" id="mobileMoreMenu">
     <button type="button" data-view="health-operations">Health Operations</button>
     <button type="button" data-view="skills-library">Trusted Skills</button>
-    <button type="button" data-view="copilot">✦ Copilot Chat</button>
+    <button type="button" data-view="command-center">Command Center</button>
     <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>
     <button type="button" data-view="approvals">✓ Approval Center</button>
     <button type="button" data-view="budget">₱ Budget & Usage</button>

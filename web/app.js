@@ -76,19 +76,26 @@ async function api(path, options = {}) {
 
 function switchView(view) {
   view = LEGACY_VIEW_REDIRECTS[view] || view;
+  const commandCenterModule = ["command-center", "copilot", "projects"].includes(view);
   document.querySelectorAll(".app-view").forEach(section => section.classList.remove("active"));
   document.querySelectorAll(".nav-item, .mobile-nav-item").forEach(button => button.classList.remove("active"));
 
   const section = document.querySelector(`#view-${view}`);
-  const button = document.querySelector(`.nav-item[data-view="${view}"]`);
-  const mobileButton = document.querySelector(`.mobile-nav-item[data-view="${view}"]`);
+  const navigationView = commandCenterModule ? "command-center" : view;
+  const button = document.querySelector(`.nav-item[data-view="${navigationView}"]`);
+  const mobileButton = document.querySelector(`.mobile-nav-item[data-view="${navigationView}"]`);
   if (!section) return;
 
   section.classList.add("active");
   if (button) button.classList.add("active");
   if (mobileButton) mobileButton.classList.add("active");
-  $("#pageTitle").textContent = viewTitles[view] || "AIOS ONE";
-  window.location.hash = view;
+  document.querySelectorAll("[data-command-module]").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.commandModule === view);
+  });
+  $("#pageTitle").textContent = commandCenterModule ? "Command Center" : (viewTitles[view] || "AIOS ONE");
+  window.location.hash = commandCenterModule && view !== "command-center"
+    ? `command-center/${view}`
+    : view;
 }
 
 function renderSpecialists(items) {
@@ -357,6 +364,13 @@ document.querySelectorAll(".nav-item").forEach(button => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
+document.querySelectorAll("[data-command-module]").forEach(button => {
+  button.addEventListener("click", () => {
+    switchView(button.dataset.commandModule);
+    if (button.dataset.commandModule === "projects") loadProjects();
+    if (button.dataset.commandModule === "copilot") runCopilotConnectivityChecks();
+  });
+});
 
 document.querySelectorAll(".mobile-nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => {
@@ -2675,7 +2689,10 @@ if (mobileToken()) {
 }
 
 loadDashboard().then(() => {
-  const startView = window.location.hash.replace("#", "");
+  const hashView = window.location.hash.replace("#", "");
+  const startView = hashView.startsWith("command-center/")
+    ? hashView.split("/", 2)[1]
+    : hashView;
   switchView(viewTitles[startView] ? startView : "mission");
 }).catch(error => {
   console.error(error);
@@ -4312,6 +4329,115 @@ $("#speakCopilotResponse")?.addEventListener("click", () => {
   utterance.onend = loadCopilotRuntimeState;
   speechSynthesis.speak(utterance);
 });
+
+function setCopilotConnectivityCheck(name, status, detail) {
+  const card = document.querySelector(`#copilotConnectivityGrid [data-check="${name}"]`);
+  if (!card) return;
+  card.dataset.status = status;
+  card.querySelector("span").textContent = detail;
+}
+
+async function runCopilotConnectivityChecks() {
+  const status = $("#copilotConnectivityStatus");
+  status.textContent = "Checking backend, network, model catalog, routing, and browser speech…";
+  ["backend", "network", "models"].forEach(name =>
+    setCopilotConnectivityCheck(name, "unknown", "Checking…"));
+
+  const [backend, network, models, providers, catalog] = await Promise.allSettled([
+    api("/health"),
+    api("/api/health/network"),
+    api("/api/health/models"),
+    api("/api/copilot/status"),
+    api("/api/models/catalog?query=&provider="),
+  ]);
+
+  if (backend.status === "fulfilled") {
+    setCopilotConnectivityCheck("backend", "healthy", "FastAPI responded successfully.");
+  } else {
+    setCopilotConnectivityCheck("backend", "offline", backend.reason.message);
+  }
+
+  if (network.status === "fulfilled") {
+    const searchCount = catalog.status === "fulfilled" ? Number(catalog.value.count || 0) : 0;
+    setCopilotConnectivityCheck(
+      "network",
+      network.value.status || "unknown",
+      `${network.value.status || "unknown"} · model auto-search returned ${searchCount} result(s).`,
+    );
+  } else {
+    setCopilotConnectivityCheck("network", "offline", network.reason.message);
+  }
+
+  if (models.status === "fulfilled" && providers.status === "fulfilled") {
+    const connected = Object.entries(providers.value.providers || {})
+      .filter(([, available]) => available)
+      .map(([name]) => name);
+    setCopilotConnectivityCheck(
+      "models",
+      models.value.status || "unknown",
+      `${models.value.status || "unknown"} · route: ${providers.value.provider} · connected: ${connected.join(", ") || "fallback only"}.`,
+    );
+  } else {
+    const reason = models.status === "rejected" ? models.reason : providers.reason;
+    setCopilotConnectivityCheck("models", "offline", reason?.message || "Model routing unavailable.");
+  }
+
+  const speechAvailable = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  setCopilotConnectivityCheck(
+    "speech",
+    speechAvailable ? "healthy" : "unknown",
+    speechAvailable
+      ? "Browser speech synthesis is available; use Test speak response."
+      : "This browser does not provide speech synthesis.",
+  );
+  status.textContent = "Connectivity check finished. Open Health Operations for full evidence.";
+}
+
+$("#runCopilotConnectivity")?.addEventListener("click", runCopilotConnectivityChecks);
+$("#testCopilotAssistantResponse")?.addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  setCopilotConnectivityCheck("assistant", "unknown", "Waiting for a routed response…");
+  try {
+    const result = await api("/api/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation_id: `connectivity-${Date.now()}`,
+        message: "Connectivity test: reply briefly that the AIOS Copilot response channel is working.",
+        image_url: null,
+        model: $("#copilotModel")?.value || "claude-sonnet-5",
+        preferred_provider: $("#copilotProvider")?.value || null,
+      }),
+    });
+    const live = Boolean(result.provider_status?.live);
+    setCopilotConnectivityCheck(
+      "assistant",
+      live ? "healthy" : "warning",
+      `${live ? "Live" : "Fallback"} response received from ${result.provider_status?.provider || "deterministic"} / ${result.provider_status?.model || "unknown"}.`,
+    );
+  } catch (error) {
+    setCopilotConnectivityCheck("assistant", "offline", error.message);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+$("#testCopilotSpeech")?.addEventListener("click", () => {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+    setCopilotConnectivityCheck("speech", "unknown", "Speech synthesis is unavailable in this browser.");
+    return;
+  }
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance("AIOS Copilot speech response is connected.");
+  utterance.onstart = () =>
+    setCopilotConnectivityCheck("speech", "healthy", "Speaking the test response now.");
+  utterance.onend = () =>
+    setCopilotConnectivityCheck("speech", "healthy", "Speech response completed.");
+  utterance.onerror = event =>
+    setCopilotConnectivityCheck("speech", "warning", `Speech failed: ${event.error}.`);
+  speechSynthesis.speak(utterance);
+});
+
 $("#staticAvatarMode")?.addEventListener("change", event => {
   document.body.classList.toggle("static-avatar", event.currentTarget.checked);
   localStorage.setItem("aios-static-avatar", String(event.currentTarget.checked));

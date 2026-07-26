@@ -725,6 +725,38 @@ button,
 .health-state.good{color:var(--green);border:1px solid var(--green)}
 .health-state.bad{color:#ff9c98;border:1px solid #a84e4b}
 .health-card-body progress{width:100%;height:13px}
+.command-center-tabs{
+  position:sticky;top:0;z-index:20;display:flex;gap:8px;margin:0 0 14px;
+  padding:8px;border:1px solid var(--line);border-radius:14px;
+  background:rgba(7,19,16,.94);backdrop-filter:blur(14px)
+}
+.command-center-tabs button{flex:1;min-height:42px}
+.command-center-tabs button.active{
+  border-color:var(--accent);color:var(--accent);
+  box-shadow:inset 0 -2px 0 var(--accent)
+}
+.copilot-connectivity-grid{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0
+}
+.copilot-connectivity-grid>div{
+  display:grid;gap:6px;min-height:84px;padding:12px;border:1px solid var(--line);
+  border-radius:12px;background:rgba(4,15,13,.65)
+}
+.copilot-connectivity-grid span{color:var(--muted);font-size:.78rem;line-height:1.4}
+.copilot-connectivity-grid [data-status="healthy"]{border-color:#2ea98b}
+.copilot-connectivity-grid [data-status="warning"],
+.copilot-connectivity-grid [data-status="unknown"]{border-color:var(--accent)}
+.copilot-connectivity-grid [data-status="offline"],
+.copilot-connectivity-grid [data-status="critical"]{border-color:#d85c55}
+@media(max-width:900px){
+  .copilot-connectivity-grid{grid-template-columns:1fr 1fr}
+  .command-center-tabs{top:4px}
+}
+@media(max-width:520px){
+  .copilot-connectivity-grid{grid-template-columns:1fr}
+  .command-center-tabs{overflow:auto}
+  .command-center-tabs button{min-width:105px}
+}
 .emergency-state{font-weight:700;border-radius:8px;padding:10px}
 .emergency-state.running{color:var(--green);background:rgba(68,220,148,.08);border:1px solid rgba(68,220,148,.35)}
 .emergency-state.stopped{color:#ff9c98;background:rgba(255,100,100,.08);border:1px solid rgba(255,100,100,.35)}
