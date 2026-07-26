@@ -70,6 +70,19 @@ def test_critical_browser_flow() -> None:
         wait_for_server(port)
         with playwright.sync_playwright() as context:
             browser = context.chromium.launch(headless=True)
+            file_launch = browser.new_page()
+            file_launch.route(
+                "http://127.0.0.1:8000/",
+                lambda route: route.fulfill(
+                    status=200,
+                    content_type="text/html",
+                    body="<title>AIOS server</title>",
+                ),
+            )
+            file_launch.goto((ROOT / "web" / "index.html").as_uri())
+            file_launch.wait_for_url("http://127.0.0.1:8000/", timeout=5_000)
+            file_launch.close()
+
             page = browser.new_page(viewport={"width": 1440, "height": 1000})
             page.goto(f"http://127.0.0.1:{port}/", wait_until="networkidle")
 

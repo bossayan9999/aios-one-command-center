@@ -3,6 +3,13 @@
 <head>
   <meta name="aios-build" content="phase1p-real-worker-webapp-1">
   <meta charset="utf-8" />
+  <script>
+    // AIOS is a server application. Redirect accidental Explorer/file launches so
+    // styles, authentication, and protected APIs are loaded from FastAPI.
+    if (window.location.protocol === "file:") {
+      window.location.replace("http://127.0.0.1:8000/");
+    }
+  </script>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
