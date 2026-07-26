@@ -154,6 +154,7 @@ def test_critical_browser_flow() -> None:
             assert page.locator("#copilotQuickMessageForm").is_visible()
             assert page.locator("#startCopilotQuickListening").is_visible()
             assert page.locator("#copilotQuickAutoSpeak").is_checked()
+            assert page.locator("#openCopilotQuickCamera").is_visible()
 
             page.locator('.nav-item[data-view="health-operations"]').click()
             page.wait_for_timeout(300)
@@ -202,6 +203,7 @@ def test_critical_browser_flow() -> None:
             assert mobile_avatar_box["width"] <= 54
             assert mobile_avatar_box["height"] <= 54
             assert mobile.locator("#startCopilotQuickListening").is_visible()
+            assert mobile.locator("#openCopilotQuickCamera").is_visible()
             assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
             mobile.close()
 

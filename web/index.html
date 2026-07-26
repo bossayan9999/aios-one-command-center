@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase-jarvis-voice-4">
+  <meta name="aios-build" content="phase-jarvis-camera-5">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-voice-4" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-camera-5" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -201,12 +201,23 @@
       <button id="startCopilotQuickListening" type="button" aria-label="Start voice input">🎙 Voice</button>
       <button id="stopCopilotQuickListening" type="button" disabled>Stop</button>
       <button id="muteCopilotQuickVoice" type="button" aria-pressed="false">🔊 Sound on</button>
+      <button id="openCopilotQuickCamera" type="button">📷 Camera</button>
       <label><input id="copilotQuickAutoSend" type="checkbox"> Send after voice</label>
       <label><input id="copilotQuickAutoSpeak" type="checkbox" checked> Speak replies</label>
     </div>
     <p id="copilotQuickVoiceStatus" class="compact-voice-status" aria-live="polite">
       Voice ready. Audio stays in this browser and is never stored.
     </p>
+    <div id="copilotCameraPreview" class="copilot-camera-preview hidden">
+      <img id="copilotCameraPreviewImage" alt="Photo ready for Copilot">
+      <div>
+        <strong>Photo ready</strong>
+        <small>It will be sent only with your next Copilot message.</small>
+        <button id="clearCopilotCamera" type="button">Remove photo</button>
+      </div>
+    </div>
+    <input id="copilotCameraInput" type="file" hidden
+      accept="image/jpeg,image/png,image/webp" capture="environment">
     <div id="copilotQuickResponse" class="copilot-quick-response" aria-live="polite">
       Ready for your message.
     </div>
@@ -751,6 +762,7 @@
               <textarea id="copilotMessageInput" rows="3" placeholder="Message Copilot…" required></textarea>
               <div class="copilot-composer-options">
                 <input id="copilotImageUrl" type="url" placeholder="Optional public image URL for analysis">
+                <button id="openCopilotCamera" type="button">📷 Take photo</button>
                 <select id="copilotProvider">
                   <option value="">Automatic provider</option>
                   <option value="openrouter">OpenRouter</option>
@@ -2133,7 +2145,7 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase-jarvis-voice-4"></script>
+  <script src="/assets/app.js?v=phase-jarvis-camera-5"></script>
 
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
 

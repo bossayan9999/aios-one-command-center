@@ -598,6 +598,62 @@ let copilotAbortController = null;
 let latestCopilotMessages = [];
 let lastCopilotUserMessage = "";
 let copilotVoiceMuted = false;
+let copilotCameraImageData = null;
+
+function clearCopilotCameraPhoto() {
+  copilotCameraImageData = null;
+  const input = $("#copilotCameraInput");
+  if (input) input.value = "";
+  $("#copilotCameraPreview")?.classList.add("hidden");
+  $("#copilotCameraPreviewImage")?.removeAttribute("src");
+}
+
+async function prepareCopilotCameraPhoto(file) {
+  if (!file?.type?.startsWith("image/")) {
+    throw new Error("Choose a JPEG, PNG, or WebP image.");
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    throw new Error("The selected photo is larger than 12 MB.");
+  }
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = sourceUrl;
+    await image.decode();
+    const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
+    if (dataUrl.length > 2_400_000) {
+      throw new Error("The compressed photo is still too large. Try a lower-resolution photo.");
+    }
+    copilotCameraImageData = dataUrl;
+    $("#copilotCameraPreviewImage").src = dataUrl;
+    $("#copilotCameraPreview").classList.remove("hidden");
+    $("#copilotQuickVoiceStatus").textContent =
+      "Photo ready. Add a message describing what Copilot should inspect.";
+    if ($("#copilotChatStatus")) {
+      $("#copilotChatStatus").textContent =
+        "Camera photo ready. It will be sent only with your next Copilot message.";
+    }
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+$("#openCopilotQuickCamera")?.addEventListener("click", () => $("#copilotCameraInput")?.click());
+$("#openCopilotCamera")?.addEventListener("click", () => $("#copilotCameraInput")?.click());
+$("#clearCopilotCamera")?.addEventListener("click", clearCopilotCameraPhoto);
+$("#copilotCameraInput")?.addEventListener("change", async event => {
+  try {
+    await prepareCopilotCameraPhoto(event.currentTarget.files?.[0]);
+  } catch (error) {
+    clearCopilotCameraPhoto();
+    $("#copilotQuickVoiceStatus").textContent = `Camera photo unavailable: ${error.message}`;
+  }
+});
 
 function escapeChatHtml(value) {
   return String(value ?? "")
@@ -674,10 +730,11 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
   if (!message) return;
   lastCopilotUserMessage = message;
 
+  const selectedImage = copilotCameraImageData || image.value.trim() || null;
   const pending = {
     role: "user",
     content: message,
-    image_url: image.value.trim() || null,
+    image_url: selectedImage,
     created_at: new Date().toISOString(),
   };
   const existing = await api(`/api/copilot/conversations/${copilotConversationId}`);
@@ -695,7 +752,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
       body: JSON.stringify({
         conversation_id: copilotConversationId,
         message,
-        image_url: image.value.trim() || null,
+        image_url: selectedImage,
         model: $("#copilotModel").value,
         preferred_provider: $("#copilotProvider").value || null,
       }),
@@ -703,6 +760,7 @@ $("#copilotChatForm")?.addEventListener("submit", async event => {
     });
     input.value = "";
     image.value = "";
+    clearCopilotCameraPhoto();
     await loadCopilotConversation();
     await loadCopilotStatus();
     await loadBudget();
@@ -4420,7 +4478,7 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
       body: JSON.stringify({
         conversation_id: copilotConversationId,
         message,
-        image_url: null,
+        image_url: copilotCameraImageData,
         model: $("#copilotModel")?.value || "claude-sonnet-5",
         preferred_provider: $("#copilotProvider")?.value || null,
       }),
@@ -4430,6 +4488,7 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
       <strong>AIOS Copilot · ${escapeHtml(response.provider || "deterministic")} / ${escapeHtml(response.model || "fallback")}</strong>
       <p>${escapeHtml(response.content || "No response content was returned.")}</p>`;
     input.value = "";
+    clearCopilotCameraPhoto();
     if ($("#copilotQuickAutoSpeak")?.checked) {
       speakCopilotText(response.content, "#copilotQuickVoiceStatus");
     } else {

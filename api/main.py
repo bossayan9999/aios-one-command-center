@@ -1296,7 +1296,7 @@ async def security_boundary(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "same-origin"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), geolocation=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; img-src 'self' data: https:; "
         "style-src 'self' 'unsafe-inline'; script-src 'self'; "
@@ -2098,7 +2098,7 @@ def scan_budget_reminders():
 class CopilotChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=20_000)
     conversation_id: str = Field(default="default", min_length=1, max_length=80)
-    image_url: str | None = Field(default=None, max_length=4000)
+    image_url: str | None = Field(default=None, max_length=2_500_000)
     model: str = Field(default="claude-sonnet-5", min_length=1, max_length=80)
     preferred_provider: str | None = Field(default=None, pattern="^(openrouter|anthropic|openai)$")
 

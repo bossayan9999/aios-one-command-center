@@ -778,6 +778,15 @@ button,
 }
 .compact-voice-controls input{width:auto;margin:0}
 .compact-voice-status{grid-column:2/-1;margin:0;color:var(--muted);font-size:.72rem}
+.copilot-camera-preview{
+  grid-column:2/-1;display:flex;align-items:center;gap:10px;padding:9px;
+  border:1px solid var(--line);border-radius:10px;background:rgba(4,15,13,.7)
+}
+.copilot-camera-preview.hidden{display:none}
+.copilot-camera-preview img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+.copilot-camera-preview div{display:grid;gap:4px}
+.copilot-camera-preview small{color:var(--muted)}
+.copilot-camera-preview button{justify-self:start;padding:5px 8px}
 .copilot-search-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .copilot-search-form input{min-height:46px}
 .copilot-search-sources{display:flex;gap:7px;flex-wrap:wrap}
@@ -820,7 +829,7 @@ button,
   .copilot-search-results{grid-template-columns:1fr 1fr}
   .compact-copilot-manager{grid-template-columns:70px 1fr}
   .copilot-quick-message,.copilot-quick-response,
-  .compact-voice-controls,.compact-voice-status{grid-column:1/-1}
+  .compact-voice-controls,.compact-voice-status,.copilot-camera-preview{grid-column:1/-1}
   .command-center-tabs{top:4px}
 }
 @media(max-width:520px){
