@@ -571,7 +571,12 @@ function renderCopilotMessages(messages) {
   container.innerHTML = messages.map(message => `
     <article class="copilot-message ${message.role}">
       <div class="copilot-message-head">
-        <strong>${message.role === "assistant" ? "AIOS Copilot" : "You"}</strong>
+        <span class="copilot-message-identity">
+          ${message.role === "assistant"
+            ? '<img src="/assets/copilot-jarvis.webp" alt="" aria-hidden="true">'
+            : ""}
+          <strong>${message.role === "assistant" ? "AIOS Copilot" : "You"}</strong>
+        </span>
         <small>${message.created_at ? new Date(message.created_at).toLocaleString() : ""}</small>
       </div>
       ${message.image_url ? `<img class="copilot-input-image" src="${escapeChatHtml(message.image_url)}" alt="Submitted image">` : ""}

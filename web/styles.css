@@ -6,6 +6,9 @@
 radial-gradient(circle at 75% 10%,rgba(255,181,71,.08),transparent 28%),
 linear-gradient(135deg,#06100e,#091311 50%,#07100f);color:var(--text);
 font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;min-height:100vh}
+html{font-size:clamp(14px,calc(13px + .2vw),16px);text-size-adjust:100%}
+img,video{display:block;max-width:100%;height:auto}
+h1,h2,h3,p,pre,code{overflow-wrap:anywhere}
 button,input,textarea,select{font:inherit}.app-shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 .sidebar{border-right:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;background:rgba(5,13,12,.86);backdrop-filter:blur(18px);position:sticky;top:0;height:100vh}
 .brand{display:flex;align-items:center;gap:12px;padding:0 8px 28px}.brand-mark{width:42px;height:42px;border:1px solid var(--amber);display:grid;place-items:center;color:var(--amber);font-weight:900;box-shadow:0 0 22px rgba(255,181,71,.18)}
@@ -14,7 +17,7 @@ nav{display:grid;gap:7px}.nav-item{border:0;background:transparent;color:var(--m
 .nav-item:hover,.nav-item.active{background:linear-gradient(90deg,rgba(255,181,71,.14),transparent);color:var(--text);box-shadow:inset 2px 0 var(--amber)}
 .side-status{margin-top:auto;border-top:1px solid var(--line);padding-top:18px;font-size:12px;color:var(--muted);display:grid;gap:10px}
 .pulse,.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;background:var(--green);box-shadow:0 0 12px var(--green)}.dot.muted{background:#62736e;box-shadow:none}
-main{padding:28px;max-width:1600px;width:100%;margin:auto}.topbar{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}.topbar h1{margin:2px 0 0;font-size:32px}
+main{padding:clamp(15px,2.2vw,28px);max-width:1600px;width:100%;min-width:0;margin:auto}.topbar{display:flex;justify-content:space-between;align-items:end;margin-bottom:22px}.topbar h1{margin:2px 0 0;font-size:clamp(24px,3vw,32px)}
 .eyebrow{color:var(--amber);font-size:10px;letter-spacing:.17em;margin:0 0 5px;font-weight:800}.top-actions{display:flex;gap:10px;align-items:center}.mode-pill,.status-badge,.online,.live{font-size:10px;letter-spacing:.12em;border:1px solid var(--line);padding:7px 10px;border-radius:999px;color:var(--green)}
 button{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:8px;cursor:pointer}.primary{background:linear-gradient(135deg,var(--amber),var(--amber2));border-color:transparent;color:#171006;font-weight:800}
 .panel{background:linear-gradient(145deg,rgba(16,33,30,.94),rgba(9,22,20,.94));border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.2)}
@@ -307,7 +310,26 @@ button,
   text-align:center;
   color:var(--muted);
 }
-.copilot-empty h3{color:var(--text);margin-bottom:5px}
+.copilot-empty h3{color:var(--text);font-size:clamp(1rem,2vw,1.25rem);margin:12px 0 5px}
+.copilot-empty p{max-width:52ch;margin-inline:auto}
+.copilot-portrait{
+  width:clamp(112px,18vw,190px);
+  margin:0;
+  display:grid;
+  justify-items:center;
+  gap:7px;
+}
+.copilot-portrait img{
+  width:100%;
+  aspect-ratio:1;
+  object-fit:cover;
+  object-position:center;
+  border:1px solid rgba(89,227,170,.5);
+  border-radius:50%;
+  box-shadow:0 0 32px rgba(89,227,170,.18);
+}
+.copilot-portrait figcaption{font-size:.65rem;color:var(--muted)}
+.copilot-portrait a{color:inherit}
 .copilot-message{
   width:min(88%,780px);
   border:1px solid var(--line);
@@ -324,8 +346,18 @@ button,
 .copilot-message-head{
   display:flex;
   justify-content:space-between;
+  align-items:center;
   gap:10px;
   margin-bottom:9px;
+}
+.copilot-message-identity{display:flex;align-items:center;gap:8px;min-width:0}
+.copilot-message-identity img{
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  object-fit:cover;
+  border:1px solid rgba(89,227,170,.45);
+  border-radius:50%;
 }
 .copilot-message-head small{color:var(--muted)}
 .copilot-message-content{
@@ -347,8 +379,10 @@ button,
   text-transform:uppercase;
 }
 .copilot-input-image{
-  max-width:100%;
-  max-height:380px;
+  width:min(100%,720px);
+  max-height:min(45vh,380px);
+  object-fit:contain;
+  object-position:left center;
   border-radius:9px;
   margin-bottom:10px;
 }
