@@ -322,18 +322,6 @@ async def create_unified_task(request: Request):
     return task
 
 
-@app.post("/api/tasks/{task_id}/advance")
-async def advance_unified_task(task_id: str, request: Request):
-    require_owner(request, SECURITY_STORE)
-    require_csrf(request, SECURITY_STORE)
-    try:
-        task = UNIFIED_TASKS.advance(task_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Task not found") from exc
-    SECURITY_STORE.audit("task.advanced", request, task_id=task_id)
-    return task
-
-
 @app.post("/api/tasks/{task_id}/approvals")
 async def create_task_approval(task_id: str, request: Request):
     require_owner(request, SECURITY_STORE)

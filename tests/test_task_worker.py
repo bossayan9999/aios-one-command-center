@@ -64,6 +64,10 @@ def test_successful_execution_creates_evidence_and_outputs(tmp_path: Path):
     assert result["outputs"][0]["provider"] == "ollama"
     assert result["outputs"][0]["model"] == "qwen2.5-coder:1.5b"
     assert result["validation"]["status"] == "passed"
+    assert len(result["specialists"]) == 1
+    assert [item["state"] for item in result["execution_history"]] == [
+        "QUEUED", "CLAIMED", "PLANNING", "WORKING", "VALIDATING", "COMPLETED"
+    ]
     evidence = result["evidence"][0]
     assert evidence["task_id"] == task["task_id"]
     assert evidence["worker_id"]

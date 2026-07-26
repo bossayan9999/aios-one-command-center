@@ -11,9 +11,10 @@ def test_task_has_specialists_and_deadlines(tmp_path: Path):
     assert all(item["hard_deadline"] for item in task["specialists"])
     assert (tmp_path/"vault"/"01-Projects"/"AIOS-ONE"/"Tasks"/task["task_id"]/"Overview.md").exists()
 
-def test_task_advances_and_requests_approval(tmp_path: Path):
+def test_simple_task_uses_one_specialist_and_requests_approval(tmp_path: Path):
     store=UnifiedTaskStore(tmp_path/"data",tmp_path/"vault")
     task=store.create({"message":"Check a public domain"})
-    assert store.advance(task["task_id"])["workflow_stage"]=="UNDERSTAND"
+    assert len(task["specialists"]) == 1
+    assert task["status"] == "QUEUED"
     approval=store.request_approval(task["task_id"],{"action":"Open public source","reason":"Collection","risk":"low"})
     assert approval["status"]=="PENDING"
