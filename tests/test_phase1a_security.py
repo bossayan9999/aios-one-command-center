@@ -15,6 +15,21 @@ def configured_client(monkeypatch, tmp_path):
         "OWNER_PASSWORD_HASH",
         app_security.hash_password(password, salt),
     )
+    security_file = tmp_path / ".env.security"
+    security_file.write_text(
+        "AIOS_OWNER_USERNAME=owner\n"
+        f"AIOS_OWNER_PASSWORD_SALT={salt}\n"
+        "AIOS_OWNER_PASSWORD_HASH="
+        f"{app_security.hash_password(password, salt)}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_security, "SECURITY_PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(app_security, "SECURITY_ENV_PATH", security_file)
+    monkeypatch.setattr(
+        app_security,
+        "_OWNER_CONFIG_MTIME_NS",
+        security_file.stat().st_mtime_ns,
+    )
     monkeypatch.setattr(app_security, "SECURE_COOKIES", False)
 
     import api.main as main
@@ -59,6 +74,29 @@ def test_owner_login_and_authenticated_read(monkeypatch, tmp_path):
     login(client, password)
     response = client.get("/api/dashboard")
     assert response.status_code == 200
+
+
+def test_password_file_rotation_is_loaded_without_restart(monkeypatch, tmp_path):
+    client, old_password = configured_client(monkeypatch, tmp_path)
+    security_file = tmp_path / ".env.security"
+    new_password = "new password loaded without restart"
+    new_salt = "fresh-test-salt"
+    security_file.write_text(
+        "AIOS_OWNER_USERNAME=owner\n"
+        f"AIOS_OWNER_PASSWORD_SALT={new_salt}\n"
+        "AIOS_OWNER_PASSWORD_HASH="
+        f"{app_security.hash_password(new_password, new_salt)}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(app_security, "SECURITY_PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(app_security, "SECURITY_ENV_PATH", security_file)
+    monkeypatch.setattr(app_security, "_OWNER_CONFIG_MTIME_NS", None)
+    monkeypatch.setenv("AIOS_OWNER_USERNAME", app_security.OWNER_USERNAME)
+    monkeypatch.setenv("AIOS_OWNER_PASSWORD_SALT", app_security.OWNER_PASSWORD_SALT)
+    monkeypatch.setenv("AIOS_OWNER_PASSWORD_HASH", app_security.OWNER_PASSWORD_HASH)
+
+    assert app_security.verify_owner("owner", new_password)
+    assert not app_security.verify_owner("owner", old_password)
 
 
 def test_local_http_login_cookie_is_not_secure(monkeypatch, tmp_path):

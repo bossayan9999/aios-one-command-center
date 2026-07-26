@@ -14,7 +14,8 @@ from fastapi import HTTPException, Request
 
 from security.env_loader import load_security_environment
 
-load_security_environment(Path(__file__).resolve().parents[1])
+SECURITY_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SECURITY_ENV_PATH = load_security_environment(SECURITY_PROJECT_ROOT)
 
 SESSION_COOKIE = "aios_session"
 CSRF_COOKIE = "aios_csrf"
@@ -25,6 +26,31 @@ OWNER_PASSWORD_SALT = os.getenv("AIOS_OWNER_PASSWORD_SALT", "")
 SECURE_COOKIES = os.getenv("AIOS_SECURE_COOKIES", "1") == "1"
 LOGIN_WINDOW_SECONDS = 300
 LOGIN_MAX_ATTEMPTS = 5
+_OWNER_CONFIG_MTIME_NS = (
+    SECURITY_ENV_PATH.stat().st_mtime_ns if SECURITY_ENV_PATH.is_file() else None
+)
+
+
+def refresh_owner_credentials() -> bool:
+    """Reload locally rotated owner credentials without requiring a server restart."""
+    global OWNER_USERNAME
+    global OWNER_PASSWORD_HASH
+    global OWNER_PASSWORD_SALT
+    global _OWNER_CONFIG_MTIME_NS
+
+    try:
+        current_mtime_ns = SECURITY_ENV_PATH.stat().st_mtime_ns
+    except OSError:
+        return False
+    if current_mtime_ns == _OWNER_CONFIG_MTIME_NS:
+        return False
+
+    load_security_environment(SECURITY_PROJECT_ROOT, override=True)
+    OWNER_USERNAME = os.getenv("AIOS_OWNER_USERNAME", "owner")
+    OWNER_PASSWORD_HASH = os.getenv("AIOS_OWNER_PASSWORD_HASH", "")
+    OWNER_PASSWORD_SALT = os.getenv("AIOS_OWNER_PASSWORD_SALT", "")
+    _OWNER_CONFIG_MTIME_NS = current_mtime_ns
+    return True
 
 
 @dataclass
@@ -220,6 +246,7 @@ def hash_password(password: str, salt: str) -> str:
 
 
 def owner_is_configured() -> bool:
+    refresh_owner_credentials()
     return bool(OWNER_PASSWORD_HASH and OWNER_PASSWORD_SALT)
 
 

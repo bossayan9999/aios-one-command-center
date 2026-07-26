@@ -12,7 +12,7 @@ REQUIRED_SECURITY_VARIABLES = (
 )
 
 
-def load_security_environment(project_root: Path) -> Path:
+def load_security_environment(project_root: Path, *, override: bool = False) -> Path:
     path = Path(project_root) / ".env.security"
     if not path.is_file():
         return path
@@ -27,7 +27,10 @@ def load_security_environment(project_root: Path) -> Path:
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
             value = value[1:-1]
-        os.environ.setdefault(name, value)
+        if override:
+            os.environ[name] = value
+        else:
+            os.environ.setdefault(name, value)
     return path
 
 

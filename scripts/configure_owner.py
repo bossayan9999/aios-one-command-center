@@ -35,5 +35,12 @@ env_path.write_text(
     ]),
     encoding="utf-8",
 )
+
+data_dir = root / "data"
+data_dir.mkdir(parents=True, exist_ok=True)
+for state_file in ("security_sessions.json", "security_login_attempts.json"):
+    (data_dir / state_file).write_text("{}\n", encoding="utf-8")
+
 print(f"Created {env_path}")
+print("Revoked existing sessions and cleared stale login attempts.")
 print("Do not commit this file.")

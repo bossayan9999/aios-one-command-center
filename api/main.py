@@ -1187,7 +1187,9 @@ def security_rotate_password(
 
     salt = secrets.token_hex(16)
     password_hash = hash_password(req.new_password, salt)
-    env_path = WEB_DIR.parent / ".env.security"
+    import security.app_security as security_module
+
+    env_path = security_module.SECURITY_ENV_PATH
     existing: dict[str, str] = {}
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -1206,7 +1208,6 @@ def security_rotate_password(
         encoding="utf-8",
     )
 
-    import security.app_security as security_module
     security_module.OWNER_USERNAME = username
     security_module.OWNER_PASSWORD_SALT = salt
     security_module.OWNER_PASSWORD_HASH = password_hash
