@@ -39,12 +39,19 @@ def test_mobile_camera_is_user_initiated_previewed_and_size_limited():
     assert 'id="copilotCameraInput"' in html
     assert 'capture="environment"' in html
     assert 'accept="image/jpeg,image/png,image/webp"' in html
-    assert "getUserMedia" not in script
+    assert 'window.matchMedia("(pointer:fine)")' in script
+    assert '$("#copilotCameraInput")?.click()' in script
     assert 'canvas.toDataURL("image/jpeg", 0.72)' in script
     assert "12 * 1024 * 1024" in script
     assert "copilotCameraImageData" in script
     assert 'camera=(self), microphone=(self)' in backend
     assert "max_length=2_500_000" in backend
+    assert 'id="copilotDesktopCameraDialog"' in html
+    assert 'id="copilotDesktopCameraVideo"' in html
+    assert "navigator.mediaDevices.getUserMedia" in script
+    assert "audio: false" in script
+    assert "getTracks().forEach(track => track.stop())" in script
+    assert '"NotAllowedError"' in script
 
 
 def test_reduced_motion_mobile_layout_and_connected_health_controls():

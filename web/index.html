@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase-jarvis-camera-5">
+  <meta name="aios-build" content="phase-jarvis-camera-6">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-camera-5" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-camera-6" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -2145,9 +2145,34 @@
     <button type="button" data-view="budget">₱ Budget & Usage</button>
   </div>
 
-  <script src="/assets/app.js?v=phase-jarvis-camera-5"></script>
-
   <div id="aiosToastRegion" class="aios-toast-region" aria-live="polite"></div>
+
+  <dialog id="copilotDesktopCameraDialog" class="copilot-camera-dialog">
+    <form method="dialog">
+      <div class="dialog-head">
+        <div>
+          <p class="eyebrow">DESKTOP CAMERA</p>
+          <h2>Attach a webcam photo</h2>
+        </div>
+        <button id="closeCopilotDesktopCamera" type="button" aria-label="Close camera">×</button>
+      </div>
+      <p class="muted-copy">
+        The camera starts only after permission. Capture one frame or cancel; no video is stored.
+      </p>
+      <div class="desktop-camera-stage">
+        <video id="copilotDesktopCameraVideo" autoplay playsinline muted></video>
+        <div id="copilotDesktopCameraPlaceholder">Press Start camera to begin.</div>
+      </div>
+      <p id="copilotDesktopCameraStatus" class="brain-action-status" aria-live="polite">
+        Camera is off.
+      </p>
+      <div class="dialog-actions">
+        <button id="startCopilotDesktopCamera" type="button">Start camera</button>
+        <button id="cancelCopilotDesktopCamera" type="button">Cancel</button>
+        <button id="captureCopilotDesktopCamera" class="primary" type="button" disabled>Capture photo</button>
+      </div>
+    </form>
+  </dialog>
 
 
   <dialog id="missionLifecycleDialog" class="mission-lifecycle-dialog">
@@ -2177,6 +2202,7 @@
     </form>
   </dialog>
 
+  <script src="/assets/app.js?v=phase-jarvis-camera-6"></script>
 </body>
 </html>
 

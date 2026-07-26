@@ -599,6 +599,7 @@ let latestCopilotMessages = [];
 let lastCopilotUserMessage = "";
 let copilotVoiceMuted = false;
 let copilotCameraImageData = null;
+let copilotDesktopCameraStream = null;
 
 function clearCopilotCameraPhoto() {
   copilotCameraImageData = null;
@@ -643,8 +644,79 @@ async function prepareCopilotCameraPhoto(file) {
   }
 }
 
-$("#openCopilotQuickCamera")?.addEventListener("click", () => $("#copilotCameraInput")?.click());
-$("#openCopilotCamera")?.addEventListener("click", () => $("#copilotCameraInput")?.click());
+function stopCopilotDesktopCamera() {
+  copilotDesktopCameraStream?.getTracks().forEach(track => track.stop());
+  copilotDesktopCameraStream = null;
+  const video = $("#copilotDesktopCameraVideo");
+  if (video) video.srcObject = null;
+  $(".desktop-camera-stage")?.removeAttribute("data-active");
+  $("#captureCopilotDesktopCamera").disabled = true;
+  $("#copilotDesktopCameraStatus").textContent = "Camera is off.";
+}
+
+function openCopilotCameraCapture() {
+  const desktopCameraAvailable =
+    window.matchMedia("(pointer:fine)").matches && navigator.mediaDevices?.getUserMedia;
+  if (!desktopCameraAvailable) {
+    $("#copilotCameraInput")?.click();
+    return;
+  }
+  $("#copilotDesktopCameraDialog")?.showModal();
+}
+
+async function startCopilotDesktopCamera() {
+  const status = $("#copilotDesktopCameraStatus");
+  try {
+    stopCopilotDesktopCamera();
+    status.textContent = "Requesting camera permission…";
+    copilotDesktopCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {width: {ideal: 1280}, height: {ideal: 720}},
+      audio: false,
+    });
+    const video = $("#copilotDesktopCameraVideo");
+    video.srcObject = copilotDesktopCameraStream;
+    await video.play();
+    $(".desktop-camera-stage").dataset.active = "true";
+    $("#captureCopilotDesktopCamera").disabled = false;
+    status.textContent = "Camera is live. Capture one frame or cancel.";
+  } catch (error) {
+    stopCopilotDesktopCamera();
+    status.textContent = error.name === "NotAllowedError"
+      ? "Camera permission was denied. You can continue using text, voice, or a file."
+      : `Camera unavailable: ${error.message}`;
+  }
+}
+
+function captureCopilotDesktopPhoto() {
+  const video = $("#copilotDesktopCameraVideo");
+  if (!video?.videoWidth || !video?.videoHeight) return;
+  const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+  canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  copilotCameraImageData = canvas.toDataURL("image/jpeg", 0.72);
+  $("#copilotCameraPreviewImage").src = copilotCameraImageData;
+  $("#copilotCameraPreview").classList.remove("hidden");
+  $("#copilotQuickVoiceStatus").textContent =
+    "Desktop camera photo ready. It will be sent only with your next message.";
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+}
+
+$("#openCopilotQuickCamera")?.addEventListener("click", openCopilotCameraCapture);
+$("#openCopilotCamera")?.addEventListener("click", openCopilotCameraCapture);
+$("#startCopilotDesktopCamera")?.addEventListener("click", startCopilotDesktopCamera);
+$("#captureCopilotDesktopCamera")?.addEventListener("click", captureCopilotDesktopPhoto);
+$("#closeCopilotDesktopCamera")?.addEventListener("click", () => {
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+});
+$("#cancelCopilotDesktopCamera")?.addEventListener("click", () => {
+  stopCopilotDesktopCamera();
+  $("#copilotDesktopCameraDialog").close();
+});
+$("#copilotDesktopCameraDialog")?.addEventListener("close", stopCopilotDesktopCamera);
 $("#clearCopilotCamera")?.addEventListener("click", clearCopilotCameraPhoto);
 $("#copilotCameraInput")?.addEventListener("change", async event => {
   try {

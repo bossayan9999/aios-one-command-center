@@ -787,6 +787,15 @@ button,
 .copilot-camera-preview div{display:grid;gap:4px}
 .copilot-camera-preview small{color:var(--muted)}
 .copilot-camera-preview button{justify-self:start;padding:5px 8px}
+.copilot-camera-dialog{width:min(720px,94vw)}
+.desktop-camera-stage{
+  position:relative;display:grid;place-items:center;min-height:280px;margin-top:14px;
+  overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#020706
+}
+.desktop-camera-stage video{display:none;width:100%;max-height:60vh;object-fit:contain}
+.desktop-camera-stage[data-active="true"] video{display:block}
+.desktop-camera-stage[data-active="true"] #copilotDesktopCameraPlaceholder{display:none}
+#copilotDesktopCameraPlaceholder{color:var(--muted)}
 .copilot-search-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .copilot-search-form input{min-height:46px}
 .copilot-search-sources{display:flex;gap:7px;flex-wrap:wrap}

@@ -155,6 +155,10 @@ def test_critical_browser_flow() -> None:
             assert page.locator("#startCopilotQuickListening").is_visible()
             assert page.locator("#copilotQuickAutoSpeak").is_checked()
             assert page.locator("#openCopilotQuickCamera").is_visible()
+            page.locator("#openCopilotQuickCamera").click()
+            assert page.locator("#copilotDesktopCameraDialog").is_visible()
+            page.locator("#cancelCopilotDesktopCamera").click()
+            page.locator("#copilotDesktopCameraDialog").wait_for(state="hidden")
 
             page.locator('.nav-item[data-view="health-operations"]').click()
             page.wait_for_timeout(300)
