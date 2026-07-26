@@ -63,13 +63,7 @@
     <summary>Workspace</summary>
 
     <button class="nav-item" data-view="command-center">Command Center</button>
-    <button class="nav-item" data-view="file-explorer">File Explorer</button>
-    <button class="nav-item" data-view="osint-workspace">OSINT Workspace</button>
-
-    <button class="nav-item" data-view="brain-vault">Brain Vault</button>
-    <button class="nav-item" data-view="outputs">Outputs</button>
-    <button class="nav-item" data-view="skills-library">Skills Library</button>
-    <button class="nav-item" data-view="llm-wiki">LLM Wiki</button>
+    <button class="nav-item" data-view="copilot-search">Copilot Search</button>
 
   </details>
   <details class="nav-group" open>
@@ -176,6 +170,46 @@
   </form>
 </section>
 
+
+<section id="view-copilot-search" class="app-view">
+  <article class="panel copilot-search-shell">
+    <div class="panel-title">
+      <div>
+        <p class="eyebrow">UNIFIED COPILOT KNOWLEDGE</p>
+        <h2>Search everything AIOS knows</h2>
+      </div>
+      <span id="copilotSearchSummary" class="status-chip">6 SOURCES</span>
+    </div>
+    <form id="copilotSearchForm" class="copilot-search-form">
+      <input id="copilotSearchInput" type="search" required
+        placeholder="Search files, research, memory, outputs, skills, and wiki…" />
+      <button class="primary" type="submit">Search</button>
+    </form>
+    <div class="copilot-search-sources" aria-label="Search sources">
+      <label><input type="checkbox" value="files" checked> Files</label>
+      <label><input type="checkbox" value="osint" checked> OSINT</label>
+      <label><input type="checkbox" value="brain-vault" checked> Brain Vault</label>
+      <label><input type="checkbox" value="outputs" checked> Outputs</label>
+      <label><input type="checkbox" value="skills" checked> Skills</label>
+      <label><input type="checkbox" value="wiki" checked> LLM Wiki</label>
+    </div>
+    <p id="copilotSearchStatus" class="brain-action-status">
+      Results stay inside AIOS and include their source and path.
+    </p>
+  </article>
+  <section id="copilotSearchResults" class="copilot-search-results"></section>
+  <details class="panel copilot-search-tools">
+    <summary>Open a specialist workspace</summary>
+    <div class="copilot-search-workspaces">
+      <button type="button" data-search-workspace="file-explorer">File Explorer</button>
+      <button type="button" data-search-workspace="osint-workspace">OSINT Workspace</button>
+      <button type="button" data-search-workspace="brain-vault">Brain Vault</button>
+      <button type="button" data-search-workspace="outputs">Outputs</button>
+      <button type="button" data-search-workspace="skills-library">Skills Library</button>
+      <button type="button" data-search-workspace="llm-wiki">LLM Wiki</button>
+    </div>
+  </details>
+</section>
 
 <section id="view-file-explorer" class="app-view">
   <article class="panel">
@@ -2012,6 +2046,7 @@
   </nav>
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
+    <button type="button" data-view="copilot-search">Copilot Search</button>
     <button type="button" data-view="health-operations">Health Operations</button>
     <button type="button" data-view="skills-library">Trusted Skills</button>
     <button type="button" data-view="command-center">Command Center</button>

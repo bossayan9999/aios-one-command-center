@@ -135,6 +135,15 @@ def test_critical_browser_flow() -> None:
             page.wait_for_timeout(300)
             assert page.locator("#projectGrid").is_visible()
 
+            page.locator('.nav-item[data-view="copilot-search"]').click()
+            page.locator("#copilotSearchInput").fill("AIOS")
+            page.locator("#copilotSearchForm button[type=submit]").click()
+            page.wait_for_function(
+                "document.querySelector('#copilotSearchSummary').textContent.includes('RESULTS')",
+                timeout=30_000,
+            )
+            assert page.locator("#copilotSearchResults").is_visible()
+
             page.locator('.nav-item[data-view="health-operations"]').click()
             page.wait_for_timeout(300)
             assert page.locator("#view-health-operations").is_visible()
@@ -156,6 +165,10 @@ def test_critical_browser_flow() -> None:
             mobile.locator('#mobileMoreMenu [data-view="health-operations"]').click()
             mobile.wait_for_timeout(250)
             assert mobile.locator("#view-health-operations").is_visible()
+            assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+            mobile.locator("#mobileMoreBtn").click()
+            mobile.locator('#mobileMoreMenu [data-view="copilot-search"]').click()
+            assert mobile.locator("#copilotSearchForm").is_visible()
             assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
             mobile.close()
 

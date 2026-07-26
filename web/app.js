@@ -8,6 +8,7 @@ const viewTitles = {
   mission: "Mission Control",
   copilot: "Copilot Chat",
   "command-center": "Command Center",
+  "copilot-search": "Copilot Search",
   "file-explorer": "File Explorer",
   "osint-workspace": "OSINT Research Desktop",
   settings: "Settings",
@@ -4189,6 +4190,104 @@ window.addEventListener("hashchange", () => {
 function latestAssistantMessage() {
   return [...latestCopilotMessages].reverse().find(message => message.role === "assistant");
 }
+
+function normalizeCopilotSearchItem(source, item, index, sourceView) {
+  const title = item.title || item.name || item.label || item.case_id
+    || item.task_id || item.id || `${source} result ${index + 1}`;
+  const path = item.path || item.brain_vault_path || item.workspace_path
+    || item.output_path || item.source || "";
+  const description = item.snippet || item.summary || item.description
+    || item.objective || item.purpose || item.content_preview || item.final_answer
+    || item.status || path || "Matching AIOS record.";
+  return {source, title, path, description, sourceView};
+}
+
+async function searchCopilotKnowledge(event) {
+  event?.preventDefault();
+  const query = ($("#copilotSearchInput")?.value || "").trim();
+  if (!query) return;
+  const selected = new Set(
+    [...document.querySelectorAll('.copilot-search-sources input:checked')]
+      .map(input => input.value)
+  );
+  const status = $("#copilotSearchStatus");
+  const resultsHost = $("#copilotSearchResults");
+  status.textContent = `Searching ${selected.size} AIOS source(s)…`;
+  resultsHost.innerHTML = '<article class="panel"><p>Searching connected knowledge sources…</p></article>';
+
+  const sourceSearches = {
+    files: async () => {
+      const payload = await api(`/api/workspace/items?bucket=&query=${encodeURIComponent(query)}`);
+      return (payload.items || []).map((item, index) =>
+        normalizeCopilotSearchItem("Files", item, index, "file-explorer"));
+    },
+    osint: async () => {
+      const payload = await api("/api/osint/cases");
+      const cases = payload.cases || payload.items || payload || [];
+      const needle = query.toLowerCase();
+      return cases.filter(item => JSON.stringify(item).toLowerCase().includes(needle))
+        .map((item, index) => normalizeCopilotSearchItem("OSINT", item, index, "osint-workspace"));
+    },
+    "brain-vault": async () => {
+      const payload = await api(`/api/brain-vault/tree/search?q=${encodeURIComponent(query)}`);
+      return (payload.results || []).map((item, index) =>
+        normalizeCopilotSearchItem("Brain Vault", item, index, "brain-vault"));
+    },
+    outputs: async () => {
+      const payload = await api("/api/knowledge/outputs");
+      const needle = query.toLowerCase();
+      return (payload.outputs || [])
+        .filter(item => JSON.stringify(item).toLowerCase().includes(needle))
+        .map((item, index) => normalizeCopilotSearchItem("Outputs", item, index, "outputs"));
+    },
+    skills: async () => {
+      const payload = await api(`/api/skills/trusted?query=${encodeURIComponent(query)}`);
+      return (payload.items || []).map((item, index) =>
+        normalizeCopilotSearchItem("Skills", item, index, "skills-library"));
+    },
+    wiki: async () => {
+      const payload = await api(`/api/knowledge/wiki/search?q=${encodeURIComponent(query)}`);
+      return (payload.results || []).map((item, index) =>
+        normalizeCopilotSearchItem("LLM Wiki", item, index, "llm-wiki"));
+    },
+  };
+  const names = [...selected];
+  const settled = await Promise.allSettled(names.map(name => sourceSearches[name]()));
+  const items = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  const failures = settled
+    .map((result, index) => result.status === "rejected"
+      ? {source:names[index], message:result.reason?.message || "Unavailable"}
+      : null)
+    .filter(Boolean);
+
+  resultsHost.innerHTML = [
+    ...items.slice(0, 120).map(item => `
+      <article class="panel copilot-search-result">
+        <div><span>${escapeHtml(item.source)}</span><h3>${escapeHtml(item.title)}</h3></div>
+        <p>${escapeHtml(String(item.description).slice(0, 500))}</p>
+        ${item.path ? `<code>${escapeHtml(item.path)}</code>` : ""}
+        <button type="button" data-search-result-view="${item.sourceView}">Open source</button>
+      </article>`),
+    ...failures.map(item => `
+      <article class="panel copilot-search-result source-error">
+        <div><span>${escapeHtml(item.source)}</span><h3>Source unavailable</h3></div>
+        <p>${escapeHtml(item.message)}</p>
+      </article>`),
+  ].join("") || '<article class="panel"><h3>No matches</h3><p>Try a broader search or another source.</p></article>';
+  $("#copilotSearchSummary").textContent = `${items.length} RESULTS · ${failures.length} ERRORS`;
+  status.textContent = failures.length
+    ? `Search completed with ${failures.length} unavailable source(s).`
+    : `Search completed across ${selected.size} source(s).`;
+}
+
+$("#copilotSearchForm")?.addEventListener("submit", searchCopilotKnowledge);
+$("#copilotSearchResults")?.addEventListener("click", event => {
+  const button = event.target.closest("[data-search-result-view]");
+  if (button) switchView(button.dataset.searchResultView);
+});
+document.querySelectorAll("[data-search-workspace]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.searchWorkspace));
+});
 
 async function saveCopilotMemory(content) {
   if (!content) return;
