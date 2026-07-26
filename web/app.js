@@ -749,6 +749,42 @@ function renderCopilotText(value) {
     .replaceAll("\n", "<br>");
 }
 
+function safeResearchUrl(value, imageOnly = false) {
+  try {
+    const url = new URL(String(value || ""));
+    if (url.protocol !== "https:" && (!imageOnly && url.protocol !== "http:")) return "";
+    return escapeChatHtml(url.href);
+  } catch {
+    return "";
+  }
+}
+
+function renderResearchMedia(research) {
+  if (!research) return "";
+  const sources = (research.sources || []).filter(item => safeResearchUrl(item.url));
+  const cards = sources.slice(0, 12).map(item => {
+    const href = safeResearchUrl(item.url);
+    const thumbnail = safeResearchUrl(item.thumbnail_url, true);
+    return `<a class="copilot-research-source" data-kind="${escapeChatHtml(item.kind || "source")}"
+      href="${href}" target="_blank" rel="noopener noreferrer">
+      ${thumbnail
+        ? `<img src="${thumbnail}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+        : ""}
+      <div>
+        <strong>${escapeChatHtml(item.kind === "video" ? `▶ ${item.title}` : item.title)}</strong>
+        <small>${escapeChatHtml(item.source || "Source")}${item.published_at ? ` · ${escapeChatHtml(item.published_at)}` : ""}</small>
+      </div>
+    </a>`;
+  }).join("");
+  const links = (research.navigation_links || [])
+    .filter(item => safeResearchUrl(item.url))
+    .map(item => `<a href="${safeResearchUrl(item.url)}" target="_blank"
+      rel="noopener noreferrer">${escapeChatHtml(item.label)}</a>`).join("");
+  return `
+    ${cards ? `<div class="copilot-research-gallery">${cards}</div>` : ""}
+    ${links ? `<div class="copilot-research-links">${links}</div>` : ""}`;
+}
+
 function renderCopilotMessages(messages) {
   const container = $("#copilotMessages");
   if (!container) return;
@@ -771,6 +807,7 @@ function renderCopilotMessages(messages) {
       </div>
       ${message.image_url ? `<img class="copilot-input-image" src="${escapeChatHtml(message.image_url)}" alt="Submitted image">` : ""}
       <div class="copilot-message-content">${renderCopilotText(message.content)}</div>
+      ${message.live_research ? renderResearchMedia(message.live_research) : ""}
       ${message.role === "assistant" ? `
         <div class="copilot-message-meta">
           <span>${escapeChatHtml(message.provider || "")}</span>
@@ -4734,7 +4771,8 @@ $("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
       ${response.live_research
         ? `<small>LIVE RESEARCH · ${Number(response.live_research.source_count || 0)} SOURCES · ${escapeHtml(response.live_research.collected_at || "")}</small>`
         : ""}
-      <p>${renderCopilotText(response.content || "No response content was returned.")}</p>`;
+      <p>${renderCopilotText(response.content || "No response content was returned.")}</p>
+      ${renderResearchMedia(response.live_research)}`;
     input.value = "";
     clearCopilotCameraPhoto();
     if ($("#copilotQuickAutoSpeak")?.checked) {

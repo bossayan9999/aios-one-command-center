@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 import traceback
+import urllib.parse
 import urllib.request
 import zipfile
 from datetime import UTC, date, datetime
@@ -2373,9 +2374,44 @@ def live_copilot_chat(req: CopilotChatRequest):
                     len(live_research["quotes"])
                     + len(live_research["news"])
                     + len(live_research["web"])
+                    + len(live_research["videos"])
                 ),
                 "web_provider": live_research["web_provider"],
                 "errors": live_research["errors"],
+                "sources": [
+                    {
+                        "kind": item.get("kind", "source"),
+                        "title": item.get("title") or item.get("name") or item.get("source"),
+                        "url": item.get("url", ""),
+                        "source": item.get("source", ""),
+                        "thumbnail_url": item.get("thumbnail_url", ""),
+                        "published_at": item.get("published_at") or item.get("observed_at", ""),
+                    }
+                    for item in (
+                        live_research["quotes"]
+                        + live_research["news"]
+                        + live_research["web"]
+                        + live_research["videos"]
+                    )
+                ][:20],
+                "navigation_links": [
+                    {
+                        "label": "Google Search",
+                        "url": "https://www.google.com/search?q="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {
+                        "label": "Google News",
+                        "url": "https://news.google.com/search?q="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {
+                        "label": "YouTube",
+                        "url": "https://www.youtube.com/results?search_query="
+                        + urllib.parse.quote_plus(req.message),
+                    },
+                    {"label": "Yahoo Finance", "url": "https://finance.yahoo.com/"},
+                ],
             }
             if live_research is not None
             else None

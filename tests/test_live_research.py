@@ -3,6 +3,7 @@ import json
 from agentic.live_research import (
     deterministic_research_answer,
     fetch_brave_search,
+    fetch_brave_videos,
     requires_live_research,
     research_context,
 )
@@ -75,6 +76,7 @@ def test_brave_search_normalizes_clickable_sources(monkeypatch):
                     "url": "https://example.com/research",
                     "description": "Evidence summary",
                     "age": "2 hours ago",
+                    "thumbnail": {"src": "https://example.com/image.jpg"},
                 }
             ]
         }
@@ -100,5 +102,36 @@ def test_brave_search_normalizes_clickable_sources(monkeypatch):
             "snippet": "Evidence summary",
             "published_at": "2 hours ago",
             "source": "Brave Search",
+            "thumbnail_url": "https://example.com/image.jpg",
         }
     ]
+
+
+def test_brave_video_results_keep_source_links_and_thumbnails(monkeypatch):
+    payload = {
+        "results": [
+            {
+                "title": "Technology briefing",
+                "url": "https://video.example.com/watch/1",
+                "description": "Current technology analysis",
+                "age": "1 hour ago",
+                "thumbnail": {"src": "https://video.example.com/thumb.jpg"},
+            }
+        ]
+    }
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self):
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *_args, **_kwargs: Response())
+    videos = fetch_brave_videos("technology news", "test-api-key-value")
+    assert videos[0]["kind"] == "video"
+    assert videos[0]["url"] == "https://video.example.com/watch/1"
+    assert videos[0]["thumbnail_url"] == "https://video.example.com/thumb.jpg"

@@ -85,3 +85,7 @@ def test_copilot_surfaces_live_research_capability():
     assert "Get Tavily API key" in html
     assert "loadResearchProviders" in script
     assert "renderCopilotText" in script
+    assert "renderResearchMedia" in script
+    assert "copilot-research-gallery" in script
+    assert "Google Search" in backend
+    assert "YouTube" in backend

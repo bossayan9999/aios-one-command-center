@@ -133,8 +133,41 @@ def fetch_brave_search(
             "snippet": item.get("description", ""),
             "published_at": item.get("age", ""),
             "source": "Brave Search",
+            "thumbnail_url": (item.get("thumbnail") or {}).get("src", ""),
         }
         for item in payload.get("web", {}).get("results", [])[:limit]
+        if item.get("url")
+    ]
+
+
+def fetch_brave_videos(
+    query: str, api_key: str, limit: int = 4, timeout: float = 10
+) -> list[dict[str, Any]]:
+    url = (
+        "https://api.search.brave.com/res/v1/videos/search?"
+        + urllib.parse.urlencode({"q": query, "count": min(limit, 20), "safesearch": "moderate"})
+    )
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "X-Subscription-Token": api_key,
+            "User-Agent": "AIOS-LiveResearch/1.0",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return [
+        {
+            "kind": "video",
+            "title": item.get("title", ""),
+            "url": item.get("url", ""),
+            "snippet": item.get("description", ""),
+            "published_at": item.get("age", ""),
+            "source": "Brave Video Search",
+            "thumbnail_url": (item.get("thumbnail") or {}).get("src", ""),
+        }
+        for item in payload.get("results", [])[:limit]
         if item.get("url")
     ]
 
@@ -179,6 +212,7 @@ def collect_live_research(
     quotes: list[dict[str, Any]] = []
     news: list[dict[str, Any]] = []
     web: list[dict[str, Any]] = []
+    videos: list[dict[str, Any]] = []
     errors: list[str] = []
     for metadata in _market_matches(query):
         try:
@@ -194,6 +228,10 @@ def collect_live_research(
             web = fetch_brave_search(query, brave_key)
         except Exception as exc:
             errors.append(f"Brave Search unavailable: {type(exc).__name__}")
+        try:
+            videos = fetch_brave_videos(query, brave_key)
+        except Exception as exc:
+            errors.append(f"Brave Video Search unavailable: {type(exc).__name__}")
     elif tavily_key:
         try:
             web = fetch_tavily_search(query, tavily_key)
@@ -205,9 +243,10 @@ def collect_live_research(
         "quotes": quotes,
         "news": news,
         "web": web,
+        "videos": videos,
         "web_provider": "brave-search" if brave_key else "tavily" if tavily_key else "not-configured",
         "errors": errors,
-        "is_live": bool(quotes or news or web),
+        "is_live": bool(quotes or news or web or videos),
     }
 
 
@@ -240,6 +279,12 @@ def research_context(result: dict[str, Any]) -> str:
             f"[{source_number}] {item['title']} — {item['source']}; "
             f"published {item['published_at'] or 'not supplied'}; "
             f"summary {item['snippet']}; URL {item['url']}"
+        )
+        source_number += 1
+    for item in result.get("videos", []):
+        lines.append(
+            f"[{source_number}] VIDEO: {item['title']} — {item['source']}; "
+            f"published {item['published_at'] or 'not supplied'}; URL {item['url']}"
         )
         source_number += 1
     for error in result["errors"]:
@@ -278,11 +323,19 @@ def deterministic_research_answer(result: dict[str, Any]) -> str:
             f"- {item['title']} — {item['source']} [{web_offset + index}]"
             for index, item in enumerate(web, 1)
         )
+    videos = result.get("videos", [])
+    if videos:
+        lines.append("Related videos:")
+        video_offset = len(result["quotes"]) + len(result["news"]) + len(web)
+        lines.extend(
+            f"- {item['title']} — {item['source']} [{video_offset + index}]"
+            for index, item in enumerate(videos, 1)
+        )
     if not result["is_live"]:
         lines.append("I could not retrieve a live source, so I will not guess the current value.")
     if result["errors"]:
         lines.append("Data warnings: " + "; ".join(result["errors"]))
-    sources = result["quotes"] + result["news"] + web
+    sources = result["quotes"] + result["news"] + web + videos
     if sources:
         lines.append("Sources:")
         lines.extend(f"[{index}] {item['url']}" for index, item in enumerate(sources, 1))
