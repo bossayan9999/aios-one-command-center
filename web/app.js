@@ -24,6 +24,7 @@ const viewTitles = {
   reliability: "Reliability Center",
   "network-health": "Network & Desktop Health",
   "health-operations": "Health Operations Center",
+  "operations-terminal": "Operations Terminal",
   "brain-vault": "Obsidian Brain Vault",
   "roadmap": "Roadmap & Progress",
   "system-model": "Final AIOS System Model",
@@ -78,11 +79,16 @@ async function api(path, options = {}) {
 function switchView(view) {
   view = LEGACY_VIEW_REDIRECTS[view] || view;
   const commandCenterModule = ["command-center", "copilot", "projects"].includes(view);
+  const operationsModule = [
+    "reliability", "network-health", "health-operations", "operations-terminal"
+  ].includes(view);
   document.querySelectorAll(".app-view, .view").forEach(section => section.classList.remove("active"));
   document.querySelectorAll(".nav-item, .mobile-nav-item").forEach(button => button.classList.remove("active"));
 
   const section = document.querySelector(`#view-${view}`);
-  const navigationView = commandCenterModule ? "command-center" : view;
+  const navigationView = commandCenterModule
+    ? "command-center"
+    : operationsModule ? "health-operations" : view;
   const button = document.querySelector(`.nav-item[data-view="${navigationView}"]`);
   const mobileButton = document.querySelector(`.mobile-nav-item[data-view="${navigationView}"]`);
   if (!section) return;
@@ -93,10 +99,20 @@ function switchView(view) {
   document.querySelectorAll("[data-command-module]").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.commandModule === view);
   });
-  $("#pageTitle").textContent = commandCenterModule ? "Command Center" : (viewTitles[view] || "AIOS ONE");
+  document.querySelectorAll("[data-operations-module]").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.operationsModule === view);
+  });
+  $("#pageTitle").textContent = commandCenterModule
+    ? "Command Center"
+    : operationsModule ? "Operations Center" : (viewTitles[view] || "AIOS ONE");
   window.location.hash = commandCenterModule && view !== "command-center"
     ? `command-center/${view}`
-    : view;
+    : operationsModule ? `operations/${view}` : view;
+
+  if (view === "reliability") loadReliability();
+  if (view === "network-health") loadNetworkHealth();
+  if (view === "health-operations") loadHealthOperations();
+  if (view === "operations-terminal") loadOperationsTerminal();
 }
 
 function renderSpecialists(items) {
@@ -374,6 +390,20 @@ document.querySelectorAll("[data-command-module]").forEach(button => {
       runCopilotConnectivityChecks();
     }
   });
+});
+
+const operationsTabs = `
+  <nav class="command-center-tabs operations-center-tabs" aria-label="Operations Center">
+    <button type="button" data-operations-module="reliability">Reliability</button>
+    <button type="button" data-operations-module="network-health">Network</button>
+    <button type="button" data-operations-module="health-operations">Health</button>
+    <button type="button" data-operations-module="operations-terminal">Terminal</button>
+  </nav>`;
+["reliability", "network-health", "health-operations", "operations-terminal"].forEach(view => {
+  document.querySelector(`#view-${view}`)?.insertAdjacentHTML("afterbegin", operationsTabs);
+});
+document.querySelectorAll("[data-operations-module]").forEach(button => {
+  button.addEventListener("click", () => switchView(button.dataset.operationsModule));
 });
 
 document.querySelectorAll(".mobile-nav-item[data-view]").forEach(button => {
@@ -2696,7 +2726,7 @@ loadDashboard().then(() => {
   const hashView = window.location.hash.replace("#", "");
   const startView = hashView.startsWith("command-center/")
     ? hashView.split("/", 2)[1]
-    : hashView;
+    : hashView.startsWith("operations/") ? hashView.split("/", 2)[1] : hashView;
   switchView(viewTitles[startView] ? startView : "mission");
 }).catch(error => {
   console.error(error);
@@ -4287,6 +4317,80 @@ $("#copilotSearchResults")?.addEventListener("click", event => {
 });
 document.querySelectorAll("[data-search-workspace]").forEach(button => {
   button.addEventListener("click", () => switchView(button.dataset.searchWorkspace));
+});
+
+$("#openFullCopilot")?.addEventListener("click", () => switchView("copilot"));
+$("#copilotQuickMessageForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const input = $("#copilotQuickMessage");
+  const output = $("#copilotQuickResponse");
+  const button = event.submitter;
+  const message = input.value.trim();
+  if (!message) return;
+  button.disabled = true;
+  output.textContent = "AIOS Copilot is thinking…";
+  try {
+    const result = await api("/api/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({
+        conversation_id: copilotConversationId,
+        message,
+        image_url: null,
+        model: $("#copilotModel")?.value || "claude-sonnet-5",
+        preferred_provider: $("#copilotProvider")?.value || null,
+      }),
+    });
+    const response = result.message || {};
+    output.innerHTML = `
+      <strong>AIOS Copilot · ${escapeHtml(response.provider || "deterministic")} / ${escapeHtml(response.model || "fallback")}</strong>
+      <p>${escapeHtml(response.content || "No response content was returned.")}</p>`;
+    input.value = "";
+    await loadCopilotConversation();
+  } catch (error) {
+    output.innerHTML = `<strong>Copilot unavailable</strong><p>${escapeHtml(error.message)}</p>`;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+function operationsTerminalLine(label, payload) {
+  return `[${label.toUpperCase()}]\n${JSON.stringify(payload, null, 2)}`;
+}
+
+async function loadOperationsTerminal() {
+  const output = $("#operationsTerminalOutput");
+  if (!output) return;
+  output.textContent = `${new Date().toISOString()}  Running authenticated read-only diagnostics…`;
+  const checks = [
+    ["liveness", "/api/health/live"],
+    ["readiness", "/api/health/ready"],
+    ["network", "/api/health/network"],
+    ["worker", "/api/health/worker"],
+    ["models", "/api/health/models"],
+    ["connectors", "/api/health/connectors"],
+    ["security", "/api/health/security"],
+  ];
+  const settled = await Promise.allSettled(checks.map(([, endpoint]) => api(endpoint)));
+  const sections = settled.map((result, index) => {
+    const [label, endpoint] = checks[index];
+    return result.status === "fulfilled"
+      ? operationsTerminalLine(label, result.value)
+      : operationsTerminalLine(label, {
+          status: "unavailable",
+          endpoint,
+          detail: result.reason?.message || "Request failed",
+        });
+  });
+  output.textContent = [
+    `AIOS OPERATIONS TERMINAL · ${new Date().toISOString()}`,
+    "MODE: READ ONLY · arbitrary shell execution blocked",
+    ...sections,
+  ].join("\n\n");
+}
+
+$("#refreshOperationsTerminal")?.addEventListener("click", loadOperationsTerminal);
+$("#copyOperationsTerminal")?.addEventListener("click", async () => {
+  await navigator.clipboard.writeText($("#operationsTerminalOutput")?.textContent || "");
 });
 
 async function saveCopilotMemory(content) {

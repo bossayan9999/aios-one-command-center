@@ -143,11 +143,29 @@ def test_critical_browser_flow() -> None:
                 timeout=30_000,
             )
             assert page.locator("#copilotSearchResults").is_visible()
+            assert page.locator(".compact-copilot-avatar").is_visible()
+            assert page.locator("#copilotQuickMessageForm").is_visible()
 
             page.locator('.nav-item[data-view="health-operations"]').click()
             page.wait_for_timeout(300)
             assert page.locator("#view-health-operations").is_visible()
             assert page.locator("#runFullHealthCheck").is_visible()
+            page.locator(
+                '#view-health-operations [data-operations-module="operations-terminal"]'
+            ).click()
+            page.locator("#operationsTerminalOutput").wait_for()
+            page.wait_for_function(
+                "document.querySelector('#operationsTerminalOutput').textContent.includes('[LIVENESS]')",
+                timeout=30_000,
+            )
+            page.locator(
+                '#view-operations-terminal [data-operations-module="network-health"]'
+            ).click()
+            assert page.locator("#runNetworkHealth").is_visible()
+            page.locator(
+                '#view-network-health [data-operations-module="reliability"]'
+            ).click()
+            assert page.locator("#runReliabilityDiagnostics").is_visible()
 
             mobile = browser.new_page(viewport={"width": 390, "height": 844})
             mobile.goto(f"http://127.0.0.1:{port}/", wait_until="domcontentloaded")
@@ -169,6 +187,7 @@ def test_critical_browser_flow() -> None:
             mobile.locator("#mobileMoreBtn").click()
             mobile.locator('#mobileMoreMenu [data-view="copilot-search"]').click()
             assert mobile.locator("#copilotSearchForm").is_visible()
+            assert mobile.locator(".compact-copilot-avatar").is_visible()
             assert mobile.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
             mobile.close()
 

@@ -69,9 +69,7 @@
   <details class="nav-group" open>
     <summary>Operations</summary>
 
-    <button class="nav-item" data-view="reliability">Reliability</button>
-    <button class="nav-item" data-view="network-health">Network Health</button>
-    <button class="nav-item" data-view="health-operations">Health Operations</button>
+    <button class="nav-item" data-view="health-operations">Operations Center</button>
 
   </details>
   <details class="nav-group" open>
@@ -172,6 +170,29 @@
 
 
 <section id="view-copilot-search" class="app-view">
+  <article class="panel compact-copilot-manager">
+    <div class="compact-copilot-avatar" aria-hidden="true">
+      <svg viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="48"></circle>
+        <circle cx="60" cy="60" r="31"></circle>
+        <path d="M20 62 C34 34 43 88 56 52 S78 82 99 52"></path>
+        <circle class="compact-copilot-core" cx="60" cy="57" r="9"></circle>
+      </svg>
+    </div>
+    <div class="compact-copilot-copy">
+      <p class="eyebrow">AIOS COPILOT MANAGER</p>
+      <h2>Ask, search, and delegate</h2>
+      <p class="muted-copy">Message Copilot here or open the full voice and task workspace.</p>
+    </div>
+    <form id="copilotQuickMessageForm" class="copilot-quick-message">
+      <input id="copilotQuickMessage" required placeholder="Message your AIOS Copilot…" />
+      <button class="primary" type="submit">Send</button>
+      <button id="openFullCopilot" type="button">Open full Copilot</button>
+    </form>
+    <div id="copilotQuickResponse" class="copilot-quick-response" aria-live="polite">
+      Ready for your message.
+    </div>
+  </article>
   <article class="panel copilot-search-shell">
     <div class="panel-title">
       <div>
@@ -209,6 +230,25 @@
       <button type="button" data-search-workspace="llm-wiki">LLM Wiki</button>
     </div>
   </details>
+</section>
+
+<section id="view-operations-terminal" class="app-view">
+  <article class="panel operations-terminal">
+    <div class="panel-title">
+      <div>
+        <p class="eyebrow">READ-ONLY OPERATIONS TERMINAL</p>
+        <h2>Connection and runtime details</h2>
+      </div>
+      <div class="dialog-actions">
+        <button id="copyOperationsTerminal" type="button">Copy</button>
+        <button id="refreshOperationsTerminal" class="primary" type="button">Refresh</button>
+      </div>
+    </div>
+    <p class="muted-copy">
+      This terminal displays authenticated diagnostics. It does not accept arbitrary shell commands.
+    </p>
+    <pre id="operationsTerminalOutput" tabindex="0">Select Refresh to inspect AIOS operations.</pre>
+  </article>
 </section>
 
 <section id="view-file-explorer" class="app-view">
@@ -2047,7 +2087,7 @@
 
   <div class="mobile-more-menu" id="mobileMoreMenu">
     <button type="button" data-view="copilot-search">Copilot Search</button>
-    <button type="button" data-view="health-operations">Health Operations</button>
+    <button type="button" data-view="health-operations">Operations Center</button>
     <button type="button" data-view="skills-library">Trusted Skills</button>
     <button type="button" data-view="command-center">Command Center</button>
     <button type="button" data-view="knowledge">⌘ Knowledge Graph</button>

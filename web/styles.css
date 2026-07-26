@@ -736,6 +736,24 @@ button,
   box-shadow:inset 0 -2px 0 var(--accent)
 }
 .copilot-search-shell{display:grid;gap:12px}
+.compact-copilot-manager{
+  display:grid;grid-template-columns:84px minmax(180px,.8fr) minmax(320px,1.5fr);
+  gap:16px;align-items:center;margin-bottom:12px
+}
+.compact-copilot-avatar{width:78px;height:78px}
+.compact-copilot-avatar svg{width:100%;height:100%;overflow:visible}
+.compact-copilot-avatar circle,.compact-copilot-avatar path{
+  fill:none;stroke:#44d6c2;stroke-width:2;filter:drop-shadow(0 0 5px rgba(68,214,194,.35))
+}
+.compact-copilot-avatar .compact-copilot-core{fill:#44d6c2;stroke:#a6fff2}
+.compact-copilot-copy h2,.compact-copilot-copy p{margin:3px 0}
+.copilot-quick-message{display:grid;grid-template-columns:1fr auto auto;gap:7px}
+.copilot-quick-response{
+  grid-column:2/-1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  color:var(--muted);font-size:11px
+}
+.copilot-quick-response strong{color:var(--text)}
+.copilot-quick-response p{margin:5px 0 0;line-height:1.5}
 .copilot-search-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .copilot-search-form input{min-height:46px}
 .copilot-search-sources{display:flex;gap:7px;flex-wrap:wrap}
@@ -755,6 +773,11 @@ button,
 .copilot-search-tools{margin-top:10px}
 .copilot-search-tools summary{cursor:pointer;font-weight:700}
 .copilot-search-workspaces{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.operations-terminal pre{
+  min-height:60vh;max-height:72vh;overflow:auto;margin:14px 0 0;padding:16px;
+  border:1px solid var(--line);border-radius:12px;background:#020907;color:#8ee8d5;
+  font:11px/1.55 "Cascadia Code","SFMono-Regular",Consolas,monospace;white-space:pre-wrap
+}
 .copilot-connectivity-grid{
   display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0
 }
@@ -771,12 +794,17 @@ button,
 @media(max-width:900px){
   .copilot-connectivity-grid{grid-template-columns:1fr 1fr}
   .copilot-search-results{grid-template-columns:1fr 1fr}
+  .compact-copilot-manager{grid-template-columns:70px 1fr}
+  .copilot-quick-message,.copilot-quick-response{grid-column:1/-1}
   .command-center-tabs{top:4px}
 }
 @media(max-width:520px){
   .copilot-connectivity-grid{grid-template-columns:1fr}
   .copilot-search-form{grid-template-columns:1fr}
   .copilot-search-results{grid-template-columns:1fr}
+  .compact-copilot-manager{grid-template-columns:56px 1fr}
+  .compact-copilot-avatar{width:52px;height:52px}
+  .copilot-quick-message{grid-template-columns:1fr}
   .command-center-tabs{overflow:auto}
   .command-center-tabs button{min-width:105px}
 }
