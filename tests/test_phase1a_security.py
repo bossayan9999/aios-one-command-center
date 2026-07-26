@@ -58,6 +58,35 @@ def test_owner_login_and_authenticated_read(monkeypatch, tmp_path):
     assert response.status_code == 200
 
 
+def test_local_http_login_cookie_is_not_secure(monkeypatch, tmp_path):
+    client, password = configured_client(monkeypatch, tmp_path)
+    import api.main as main
+
+    monkeypatch.setattr(main, "SECURE_COOKIES", True)
+    local_client = TestClient(main.app, base_url="http://127.0.0.1")
+    response = local_client.post(
+        "/api/auth/login",
+        json={"username": "owner", "password": password},
+    )
+    assert response.status_code == 200
+    assert all("Secure" not in value for value in response.headers.get_list("set-cookie"))
+    assert local_client.get("/api/dashboard").status_code == 200
+
+
+def test_forwarded_https_login_cookie_is_secure(monkeypatch, tmp_path):
+    client, password = configured_client(monkeypatch, tmp_path)
+    import api.main as main
+
+    monkeypatch.setattr(main, "SECURE_COOKIES", True)
+    response = client.post(
+        "/api/auth/login",
+        headers={"X-Forwarded-Proto": "https"},
+        json={"username": "owner", "password": password},
+    )
+    assert response.status_code == 200
+    assert all("Secure" in value for value in response.headers.get_list("set-cookie"))
+
+
 def test_write_requires_csrf(monkeypatch, tmp_path):
     client, password = configured_client(monkeypatch, tmp_path)
     login(client, password)

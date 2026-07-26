@@ -1059,11 +1059,16 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
     token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
+    forwarded_scheme = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
+    request_scheme = forwarded_scheme or request.url.scheme
+    hostname = (request.url.hostname or "").casefold()
+    loopback = hostname in {"127.0.0.1", "localhost", "::1"}
+    secure_cookie = SECURE_COOKIES and (request_scheme == "https" or not loopback)
     response.set_cookie(
         SESSION_COOKIE,
         token,
         httponly=True,
-        secure=SECURE_COOKIES,
+        secure=secure_cookie,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",
@@ -1072,7 +1077,7 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         CSRF_COOKIE,
         csrf,
         httponly=False,
-        secure=SECURE_COOKIES,
+        secure=secure_cookie,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",

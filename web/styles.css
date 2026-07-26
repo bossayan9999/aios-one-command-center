@@ -1122,6 +1122,12 @@ button,
   border-radius:8px;padding:11px;background:var(--bg);color:var(--text)
 }
 .security-login-error{min-height:20px;margin:0;color:#ff9c98}
+.security-recovery-link{width:100%;margin-top:10px;border:0;background:transparent;color:var(--amber);text-decoration:underline;text-underline-offset:3px}
+.security-recovery-panel{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#071310;color:var(--muted);font-size:12px;line-height:1.5}
+.security-recovery-panel strong{color:var(--text)}
+.security-recovery-panel p{margin:8px 0}
+.security-recovery-panel code{display:block;padding:10px;border-radius:7px;background:#030907;color:var(--green);overflow-wrap:anywhere}
+.security-recovery-panel button{width:100%;margin-top:8px}
 
 
 .security-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}

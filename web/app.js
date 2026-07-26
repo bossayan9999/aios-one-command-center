@@ -2443,6 +2443,20 @@ $("#securityLoginForm")?.addEventListener("submit", async event => {
   }
 });
 
+$("#showPasswordRecovery")?.addEventListener("click", () => {
+  $("#passwordRecoveryPanel")?.classList.toggle("hidden");
+});
+
+$("#copyRecoveryCommand")?.addEventListener("click", async event => {
+  const command = "python scripts\\configure_owner.py";
+  try {
+    await navigator.clipboard.writeText(command);
+    event.currentTarget.textContent = "Copied";
+  } catch {
+    event.currentTarget.textContent = command;
+  }
+});
+
 $("#securityLogout")?.addEventListener("click", async () => {
   try {
     await api("/api/auth/logout", {method: "POST"});

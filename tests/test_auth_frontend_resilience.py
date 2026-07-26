@@ -10,6 +10,8 @@ def test_frontend_handles_cloudflare_html_without_json_crash() -> None:
     assert 'await api("/api/auth/login"' in app
     assert "phase1p-real-worker-webapp-1" in index
     assert "Critical shell" in index
+    assert "showPasswordRecovery" in index
+    assert "python scripts\\configure_owner.py" in index
     assert "headers,\n    headers:" not in app
 
 

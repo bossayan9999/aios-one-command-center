@@ -41,6 +41,19 @@
         <input id="securityPassword" type="password" autocomplete="current-password" required>
       </label>
       <button type="submit" class="primary">Sign in</button>
+      <button id="showPasswordRecovery" type="button" class="security-recovery-link">
+        Forgot your password?
+      </button>
+      <section id="passwordRecoveryPanel" class="security-recovery-panel hidden" aria-live="polite">
+        <strong>Secure local recovery</strong>
+        <p>
+          Password recovery stays on this computer. Open PowerShell in the AIOS ONE
+          folder and run:
+        </p>
+        <code>python scripts\configure_owner.py</code>
+        <p>This rotates the owner password and revokes existing sessions.</p>
+        <button id="copyRecoveryCommand" type="button">Copy recovery command</button>
+      </section>
       <p id="securityLoginError" class="security-login-error"></p>
     </form>
   </section>
