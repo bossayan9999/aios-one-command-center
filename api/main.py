@@ -322,18 +322,6 @@ async def create_unified_task(request: Request):
     return task
 
 
-@app.post("/api/tasks/{task_id}/advance")
-async def advance_unified_task(task_id: str, request: Request):
-    require_owner(request, SECURITY_STORE)
-    require_csrf(request, SECURITY_STORE)
-    try:
-        task = UNIFIED_TASKS.advance(task_id)
-    except KeyError as exc:
-        raise HTTPException(status_code=404, detail="Task not found") from exc
-    SECURITY_STORE.audit("task.advanced", request, task_id=task_id)
-    return task
-
-
 @app.post("/api/tasks/{task_id}/approvals")
 async def create_task_approval(task_id: str, request: Request):
     require_owner(request, SECURITY_STORE)
@@ -1049,10 +1037,13 @@ def invoke_registered_tool(req: ToolInvokeRequest, request: Request):
 
 @app.get("/api/auth/status")
 def auth_status(request: Request):
+    import security.app_security as security_module
+
     token = request.cookies.get(SESSION_COOKIE, "")
     session = SECURITY_STORE.get_session(token)
     return {
         "configured": owner_is_configured(),
+        "username_hint": security_module.OWNER_USERNAME if owner_is_configured() else "",
         "authenticated": bool(session),
         "user": (
             {"username": session.get("username"), "role": session.get("role")}
@@ -1071,11 +1062,16 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid username or password.")
 
     token, csrf, expires_at = SECURITY_STORE.create_session(req.username)
+    forwarded_scheme = request.headers.get("x-forwarded-proto", "").split(",", 1)[0].strip()
+    request_scheme = forwarded_scheme or request.url.scheme
+    hostname = (request.url.hostname or "").casefold()
+    loopback = hostname in {"127.0.0.1", "localhost", "::1"}
+    secure_cookie = SECURE_COOKIES and (request_scheme == "https" or not loopback)
     response.set_cookie(
         SESSION_COOKIE,
         token,
         httponly=True,
-        secure=SECURE_COOKIES,
+        secure=secure_cookie,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",
@@ -1084,7 +1080,7 @@ def auth_login(req: LoginRequest, request: Request, response: Response):
         CSRF_COOKIE,
         csrf,
         httponly=False,
-        secure=SECURE_COOKIES,
+        secure=secure_cookie,
         samesite="strict",
         max_age=SESSION_SECONDS,
         path="/",
@@ -1191,7 +1187,9 @@ def security_rotate_password(
 
     salt = secrets.token_hex(16)
     password_hash = hash_password(req.new_password, salt)
-    env_path = WEB_DIR.parent / ".env.security"
+    import security.app_security as security_module
+
+    env_path = security_module.SECURITY_ENV_PATH
     existing: dict[str, str] = {}
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -1210,7 +1208,6 @@ def security_rotate_password(
         encoding="utf-8",
     )
 
-    import security.app_security as security_module
     security_module.OWNER_USERNAME = username
     security_module.OWNER_PASSWORD_SALT = salt
     security_module.OWNER_PASSWORD_HASH = password_hash

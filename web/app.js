@@ -571,7 +571,12 @@ function renderCopilotMessages(messages) {
   container.innerHTML = messages.map(message => `
     <article class="copilot-message ${message.role}">
       <div class="copilot-message-head">
-        <strong>${message.role === "assistant" ? "AIOS Copilot" : "You"}</strong>
+        <span class="copilot-message-identity">
+          ${message.role === "assistant"
+            ? '<img src="/assets/copilot-jarvis.webp" alt="" aria-hidden="true">'
+            : ""}
+          <strong>${message.role === "assistant" ? "AIOS Copilot" : "You"}</strong>
+        </span>
         <small>${message.created_at ? new Date(message.created_at).toLocaleString() : ""}</small>
       </div>
       ${message.image_url ? `<img class="copilot-input-image" src="${escapeChatHtml(message.image_url)}" alt="Submitted image">` : ""}
@@ -2402,6 +2407,9 @@ async function loadSecuritySession() {
         "Owner login is not configured. Run scripts\\configure_owner.py first.";
       return false;
     }
+    if (status.username_hint) {
+      $("#securityUsername").value = status.username_hint;
+    }
     if (!status.authenticated) {
       $("#securityLogin").classList.remove("hidden");
       return false;
@@ -2440,6 +2448,20 @@ $("#securityLoginForm")?.addEventListener("submit", async event => {
     } else {
       $("#securityLoginError").textContent = error.message || "Login failed";
     }
+  }
+});
+
+$("#showPasswordRecovery")?.addEventListener("click", () => {
+  $("#passwordRecoveryPanel")?.classList.toggle("hidden");
+});
+
+$("#copyRecoveryCommand")?.addEventListener("click", async event => {
+  const command = "python scripts\\configure_owner.py";
+  try {
+    await navigator.clipboard.writeText(command);
+    event.currentTarget.textContent = "Copied";
+  } catch {
+    event.currentTarget.textContent = command;
   }
 });
 
@@ -3496,8 +3518,8 @@ let pendingTaskFiles=[];
 function taskWorkflowHtml(active){return UNIFIED_WORKFLOW.map((stage,index)=>`<div class="task-stage ${stage===active?"active":""}"><span>${index+1}</span><strong>${stage}</strong></div>`).join("");}
 function deadlineRemaining(value){const ms=new Date(value).getTime()-Date.now();if(ms<=0)return"Overdue";const minutes=Math.ceil(ms/60000);return minutes<60?`${minutes} min`:`${Math.floor(minutes/60)}h ${minutes%60}m`;}
 function specialistRows(items){return(items||[]).map(item=>`<tr><td>${item.specialist}</td><td>${item.status}</td><td>${item.progress}%</td><td>${deadlineRemaining(item.target_completion)}</td><td>${item.current_action}</td></tr>`).join("");}
-function unifiedTaskCard(task){return`<article class="panel unified-task-card"><div class="project-card-head"><div><p class="eyebrow">${task.task_type} / ${task.priority}</p><h2>${task.task_id}</h2></div><span class="status-chip">${task.deadline_state}</span></div><p>${task.message}</p><div class="task-manager-summary"><strong>Copilot Manager</strong><span>${task.manager.summary}</span><span>Deadline: ${deadlineRemaining(task.hard_deadline)}</span></div>${renderTokenBudget(task)}<div class="task-workflow">${taskWorkflowHtml(task.workflow_stage)}</div><details open><summary>Specialists</summary><div class="table-wrap"><table><thead><tr><th>Specialist</th><th>Status</th><th>Progress</th><th>Remaining</th><th>Current action</th></tr></thead><tbody>${specialistRows(task.specialists)}</tbody></table></div></details><details><summary>Approvals (${(task.approvals||[]).length})</summary><p>${task.manager.requires_approval?"Waiting for approval":"No approval required"}</p></details><div class="dialog-actions"><button class="advance-unified-task primary" data-task="${task.task_id}">Advance workflow</button><button class="request-task-approval" data-task="${task.task_id}">Request approval</button><button class="open-task-vault">Brain Vault</button></div></article>`;}
-async function loadUnifiedTasks(){const grid=$("#unifiedTaskGrid");if(!grid)return;try{const[ready,payload]=await Promise.all([api("/api/tasks/readiness"),api("/api/tasks")]);$("#unifiedTaskReadiness").textContent=ready.status||"UNKNOWN";const tasks=payload.tasks||[];grid.innerHTML=tasks.length?tasks.map(unifiedTaskCard).join(""):`<article class="panel"><h2>No tasks yet</h2></article>`;document.querySelectorAll(".advance-unified-task").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/tasks/${button.dataset.task}/advance`,{method:"POST",body:"{}"});await loadUnifiedTasks();}));document.querySelectorAll(".request-task-approval").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/tasks/${button.dataset.task}/approvals`,{method:"POST",body:JSON.stringify({action:"Open external public source",reason:"External public-source collection",risk:"low",specialist:"copilot-manager"})});await loadUnifiedTasks();}));document.querySelectorAll(".open-task-vault").forEach(button=>button.addEventListener("click",()=>switchView("brain-vault")));}catch(error){grid.innerHTML=`<article class="panel"><h2>Task workspace unavailable</h2><p>${error.message}</p></article>`;}}
+function unifiedTaskCard(task){return`<article class="panel unified-task-card"><div class="project-card-head"><div><p class="eyebrow">${task.task_type} / ${task.priority}</p><h2>${task.task_id}</h2></div><span class="status-chip">${task.deadline_state}</span></div><p>${task.message}</p><div class="task-manager-summary"><strong>Copilot Manager</strong><span>${task.manager.summary}</span><span>Deadline: ${deadlineRemaining(task.hard_deadline)}</span></div>${renderTokenBudget(task)}<div class="task-workflow">${taskWorkflowHtml(task.workflow_stage)}</div><details open><summary>Specialists</summary><div class="table-wrap"><table><thead><tr><th>Specialist</th><th>Status</th><th>Progress</th><th>Remaining</th><th>Current action</th></tr></thead><tbody>${specialistRows(task.specialists)}</tbody></table></div></details><details><summary>Approvals (${(task.approvals||[]).length})</summary><p>${task.manager.requires_approval?"Waiting for approval":"No approval required"}</p></details><div class="dialog-actions"><button class="request-task-approval" data-task="${task.task_id}">Request approval</button><button class="open-task-vault">Brain Vault</button></div></article>`;}
+async function loadUnifiedTasks(){const grid=$("#unifiedTaskGrid");if(!grid)return;try{const[ready,payload]=await Promise.all([api("/api/tasks/readiness"),api("/api/tasks")]);$("#unifiedTaskReadiness").textContent=ready.status||"UNKNOWN";const tasks=payload.tasks||[];grid.innerHTML=tasks.length?tasks.map(unifiedTaskCard).join(""):`<article class="panel"><h2>No tasks yet</h2></article>`;document.querySelectorAll(".request-task-approval").forEach(button=>button.addEventListener("click",async()=>{await api(`/api/tasks/${button.dataset.task}/approvals`,{method:"POST",body:JSON.stringify({action:"Open external public source",reason:"External public-source collection",risk:"low",specialist:"copilot-manager"})});await loadUnifiedTasks();}));document.querySelectorAll(".open-task-vault").forEach(button=>button.addEventListener("click",()=>switchView("brain-vault")));}catch(error){grid.innerHTML=`<article class="panel"><h2>Task workspace unavailable</h2><p>${error.message}</p></article>`;}}
 document.addEventListener("DOMContentLoaded",()=>{const drop=$("#taskDropZone"),input=$("#taskFileInput");drop?.addEventListener("click",()=>input?.click());drop?.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragging");});drop?.addEventListener("dragleave",()=>drop.classList.remove("dragging"));drop?.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragging");pendingTaskFiles=[...event.dataTransfer.files];$("#taskAttachmentList").textContent=pendingTaskFiles.map(file=>file.name).join(", ");});input?.addEventListener("change",()=>{pendingTaskFiles=[...input.files];$("#taskAttachmentList").textContent=pendingTaskFiles.map(file=>file.name).join(", ");});$("#recordTaskVoice")?.addEventListener("click",()=>{$("#unifiedTaskStatus").textContent="Voice runtime prepared; transcription will be enabled in the voice update.";});$("#unifiedTaskForm")?.addEventListener("submit",async event=>{event.preventDefault();const deadline=$("#taskDeadline").value;const payload={message:$("#taskMessage").value.trim(),project_id:$("#taskProjectId").value.trim(),priority:$("#taskPriority").value,output_type:$("#taskOutput").value,deadline:deadline?new Date(deadline).toISOString():"",voice_transcript:$("#taskVoiceInput").value.trim(),urls:$("#taskUrl").value.trim()?[$("#taskUrl").value.trim()]:[],input_type:pendingTaskFiles.length?"mixed":"message",budget_mode:$("#taskBudgetMode").value,memory_mode:$("#taskMemoryMode").value};const task=await api("/api/tasks",{method:"POST",body:JSON.stringify(payload)});$("#unifiedTaskStatus").textContent=`Created ${task.task_id} with ${task.specialists.length} specialists.`;pendingTaskFiles=[];$("#taskAttachmentList").textContent="";event.target.reset();await loadUnifiedTasks();});$("#refreshUnifiedTasks")?.addEventListener("click",loadUnifiedTasks);document.querySelector('.nav-item[data-view="command-center"]')?.addEventListener("click",loadUnifiedTasks);if(window.location.hash==="#command-center")loadUnifiedTasks();});
 function renderTokenBudget(task) {
   const budget = task.token_budget || {};

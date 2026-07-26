@@ -137,7 +137,24 @@ class AgentWorker:
         with UnifiedTaskStore._lock:
             tasks = self.store._load()
             task = tasks[task_id]
+            previous = str(task.get("status", "")).upper()
+            target = str(changes.get("status", previous)).upper()
+            if target and target != previous:
+                task.setdefault("execution_history", []).append({"state": target, "at": utc_now()})
             task.update(changes)
+            stage = str(changes.get("current_execution_step", "")).upper()
+            stage_progress = {
+                "CLAIMED": 10,
+                "PLANNING": 25,
+                "WORKING": 60,
+                "VALIDATING": 85,
+                "COMPLETED": 100,
+            }
+            if stage in stage_progress:
+                for specialist in task.get("specialists", []):
+                    if str(specialist.get("status", "")).upper() == "WORKING":
+                        specialist["progress"] = stage_progress[stage]
+                        specialist["current_action"] = stage.title()
             task["updated_at"] = utc_now()
             tasks[task_id] = task
             self.store._save(tasks)
@@ -194,6 +211,7 @@ class AgentWorker:
                 started_at=task.get("started_at") or now,
                 cancel_requested=False,
             )
+            task.setdefault("execution_history", []).append({"state": "CLAIMED", "at": now})
             for item in task.get("specialists", []):
                 item["status"] = "WORKING" if item.get("specialist") == specialist else "WAITING"
                 item["current_action"] = "Claimed by persistent worker" if item["status"] == "WORKING" else "Waiting"

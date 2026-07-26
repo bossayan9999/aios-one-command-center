@@ -255,10 +255,20 @@ class LiveTaskWorkspace:
         )
         task.setdefault("outputs", []).append(output)
         task["status"] = "COMPLETED"
+        task.setdefault("execution_history", []).append(
+            {"state": "COMPLETED", "at": self._now()}
+        )
         task["workflow_stage"] = "LEARN"
         task["deadline_state"] = "COMPLETED"
         task["updated_at"] = self._now()
         task.setdefault("manager", {})["current_action"] = "Final output validated and stored"
+        for specialist in task.get("specialists", []):
+            if str(specialist.get("status", "")).upper() == "WORKING":
+                specialist.update(
+                    status="COMPLETED",
+                    progress=100,
+                    current_action="Validated output stored",
+                )
         tasks[task_id] = task
         self._save_tasks(tasks)
         self._audit(

@@ -74,6 +74,18 @@ class UnifiedTaskStore:
             return "business", ["copilot-manager", "business", "governance"]
         return "general", ["copilot-manager", "research", "governance"]
 
+    @staticmethod
+    def _simple_specialists(message: str, names: list[str]) -> list[str]:
+        words = message.split()
+        complex_markers = (
+            " then ", " after ", " compare ", " investigate ", " deploy ",
+            " repair ", " multiple ", " sources ",
+        )
+        normalized = f" {message.casefold()} "
+        if len(words) <= 30 and not any(marker in normalized for marker in complex_markers):
+            return [names[1] if len(names) > 1 else names[0]]
+        return names
+
     def _specialists(self, names: list[str], now: datetime, deadline: datetime) -> list[dict[str, Any]]:
         minutes = max(5, int((deadline - now).total_seconds() // 60) // max(1, len(names)))
         result = []
@@ -146,6 +158,7 @@ class UnifiedTaskStore:
         else:
             deadline = now + timedelta(minutes=self.PRIORITY_MINUTES[priority])
         task_type, names = self._classify(message)
+        names = self._simple_specialists(message, names)
         budget_mode = str(payload.get("budget_mode", "balanced")).strip().lower()
         custom_ceiling = payload.get("custom_token_ceiling")
         custom_ceiling = None if custom_ceiling in ("", None) else int(str(custom_ceiling))
@@ -191,6 +204,7 @@ class UnifiedTaskStore:
             "max_retries": int(payload.get("max_retries", 2)),
             "last_error": "",
             "cancel_requested": False,
+            "execution_history": [{"state": "QUEUED", "at": self._iso(now)}],
         }
         route = self.model_router.route(task)
         task["model_route"] = {
@@ -211,29 +225,6 @@ class UnifiedTaskStore:
 
     def get(self, task_id: str) -> dict[str, Any] | None:
         return self._load().get(task_id)
-
-    def advance(self, task_id: str) -> dict[str, Any]:
-        tasks = self._load()
-        task = tasks.get(task_id)
-        if not task:
-            raise KeyError(task_id)
-        index = self.WORKFLOW.index(task["workflow_stage"])
-        if index < len(self.WORKFLOW) - 1:
-            task["workflow_stage"] = self.WORKFLOW[index + 1]
-        if task["workflow_stage"] == "APPROVE":
-            task["deadline_state"] = "WAITING_APPROVAL"
-            task["manager"]["requires_approval"] = True
-        if task["workflow_stage"] == "LEARN":
-            task["status"] = "COMPLETED"
-            task["deadline_state"] = "COMPLETED"
-        for specialist in task["specialists"]:
-            if specialist["status"] == "WORKING":
-                specialist["progress"] = min(100, specialist["progress"] + 15)
-        task["updated_at"] = self._iso(datetime.now(UTC))
-        tasks[task_id] = task
-        self._save(tasks)
-        self._ensure_memory(task)
-        return task
 
     def request_approval(self, task_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         tasks = self._load()

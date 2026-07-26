@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import getpass
 import secrets
+import sys
 from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
 
 from security.app_security import hash_password
 
-root = Path(__file__).resolve().parents[1]
 env_path = root / ".env.security"
 
 username = input("Owner username [owner]: ").strip() or "owner"
@@ -31,5 +35,12 @@ env_path.write_text(
     ]),
     encoding="utf-8",
 )
+
+data_dir = root / "data"
+data_dir.mkdir(parents=True, exist_ok=True)
+for state_file in ("security_sessions.json", "security_login_attempts.json"):
+    (data_dir / state_file).write_text("{}\n", encoding="utf-8")
+
 print(f"Created {env_path}")
+print("Revoked existing sessions and cleared stale login attempts.")
 print("Do not commit this file.")
