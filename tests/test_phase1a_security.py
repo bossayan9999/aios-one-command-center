@@ -53,6 +53,9 @@ def test_unauthenticated_api_is_blocked(monkeypatch, tmp_path):
 
 def test_owner_login_and_authenticated_read(monkeypatch, tmp_path):
     client, password = configured_client(monkeypatch, tmp_path)
+    status = client.get("/api/auth/status")
+    assert status.status_code == 200
+    assert status.json()["username_hint"] == "owner"
     login(client, password)
     response = client.get("/api/dashboard")
     assert response.status_code == 200

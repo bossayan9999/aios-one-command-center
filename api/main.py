@@ -1037,10 +1037,13 @@ def invoke_registered_tool(req: ToolInvokeRequest, request: Request):
 
 @app.get("/api/auth/status")
 def auth_status(request: Request):
+    import security.app_security as security_module
+
     token = request.cookies.get(SESSION_COOKIE, "")
     session = SECURITY_STORE.get_session(token)
     return {
         "configured": owner_is_configured(),
+        "username_hint": security_module.OWNER_USERNAME if owner_is_configured() else "",
         "authenticated": bool(session),
         "user": (
             {"username": session.get("username"), "role": session.get("role")}

@@ -2402,6 +2402,9 @@ async function loadSecuritySession() {
         "Owner login is not configured. Run scripts\\configure_owner.py first.";
       return false;
     }
+    if (status.username_hint) {
+      $("#securityUsername").value = status.username_hint;
+    }
     if (!status.authenticated) {
       $("#securityLogin").classList.remove("hidden");
       return false;
