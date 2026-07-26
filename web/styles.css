@@ -796,6 +796,21 @@ button,
 .desktop-camera-stage[data-active="true"] video{display:block}
 .desktop-camera-stage[data-active="true"] #copilotDesktopCameraPlaceholder{display:none}
 #copilotDesktopCameraPlaceholder{color:var(--muted)}
+.iot-device-form{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0
+}
+.iot-device-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.iot-device-card{padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(4,15,13,.62)}
+.iot-device-card h3,.iot-device-card p{margin:4px 0}
+.iot-device-card small{display:block;color:var(--muted);overflow-wrap:anywhere}
+.iot-policy-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.iot-policy-row span{padding:4px 7px;border:1px solid var(--line);border-radius:999px;font-size:.65rem}
+.iot-command-builder{margin-top:14px}.iot-command-builder summary{cursor:pointer;font-weight:700}
+.iot-command-builder form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 0}
+.iot-command-proposal{margin-top:8px;padding:9px;border-left:3px solid var(--accent);background:rgba(255,174,46,.07)}
+@media(max-width:760px){
+  .iot-device-form,.iot-command-builder form{grid-template-columns:1fr}
+}
 .copilot-search-form{display:grid;grid-template-columns:1fr auto;gap:8px}
 .copilot-search-form input{min-height:46px}
 .copilot-search-sources{display:flex;gap:7px;flex-wrap:wrap}

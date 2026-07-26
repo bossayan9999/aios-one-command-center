@@ -110,6 +110,9 @@ def test_critical_browser_flow() -> None:
             page.locator('[data-view="connectors"]').first.click()
             page.wait_for_timeout(300)
             assert page.locator("#desktopCompanionRequests").is_visible()
+            assert page.locator("#iotDeviceForm").is_visible()
+            page.locator(".iot-command-builder > summary").click()
+            assert page.locator("#iotCommandForm").is_visible()
 
             page.locator('.nav-item[data-view="command-center"]').click()
             page.locator('[data-command-module="copilot"]').first.click()

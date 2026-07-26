@@ -113,6 +113,10 @@ function switchView(view) {
   if (view === "network-health") loadNetworkHealth();
   if (view === "health-operations") loadHealthOperations();
   if (view === "operations-terminal") loadOperationsTerminal();
+  if (view === "connectors") {
+    loadConnectors();
+    loadIoTDevices();
+  }
 }
 
 function renderSpecialists(items) {
@@ -3884,10 +3888,109 @@ async function loadConnectors() {
   }
 }
 
+function renderIoTDevice(device) {
+  return `<article class="iot-device-card">
+    <p class="eyebrow">${escapeHtml(device.protocol || "unknown")}</p>
+    <h3>${escapeHtml(device.name)}</h3>
+    <small>${escapeHtml(device.endpoint || "Endpoint not configured")}</small>
+    <small>${escapeHtml(device.location || "Location not assigned")}</small>
+    <p>${(device.capabilities || []).map(item =>
+      `<span class="status-chip">${escapeHtml(item)}</span>`).join(" ") || "No capabilities"}</p>
+    <div class="iot-policy-row">
+      <span>${device.enabled ? "ENABLED" : "DISABLED"}</span>
+      <span>${device.read_only ? "READ ONLY" : "WRITE GATED"}</span>
+      <span>${escapeHtml(String(device.status || "unverified").toUpperCase())}</span>
+    </div>
+  </article>`;
+}
+
+function renderIoTProposals(proposals) {
+  const host = $("#iotCommandProposals");
+  host.innerHTML = (proposals || []).slice(0, 10).map(item => `
+    <article class="iot-command-proposal">
+      <strong>${escapeHtml(item.device_name)} · ${escapeHtml(item.capability)}</strong>
+      <p>${escapeHtml(item.command)}</p>
+      <small>${escapeHtml(String(item.status).replaceAll("_", " ").toUpperCase())}
+        · NOT EXECUTED</small>
+    </article>`).join("") || '<p class="muted-copy">No hardware commands proposed.</p>';
+}
+
+async function loadIoTDevices() {
+  if (!$("#iotDeviceGrid")) return;
+  try {
+    const [registry, commands] = await Promise.all([
+      api("/api/iot/devices"),
+      api("/api/iot/command-proposals"),
+    ]);
+    const devices = registry.devices || [];
+    $("#iotDeviceCount").textContent = `${devices.length} DEVICE${devices.length === 1 ? "" : "S"}`;
+    $("#iotDeviceGrid").innerHTML = devices.map(renderIoTDevice).join("") ||
+      '<p class="muted-copy">No IoT devices registered yet.</p>';
+    $("#iotCommandDevice").innerHTML =
+      '<option value="">Select device</option>' +
+      devices.map(item => `<option value="${escapeHtml(item.device_id)}">${escapeHtml(item.name)}</option>`).join("");
+    renderIoTProposals(commands.proposals || []);
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `IoT registry unavailable: ${error.message}`;
+  }
+}
+
+$("#iotDeviceForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const capabilities = $("#iotDeviceCapabilities").value
+    .split(",").map(item => item.trim()).filter(Boolean);
+  try {
+    const device = await api("/api/iot/devices", {
+      method: "POST",
+      body: JSON.stringify({
+        name: $("#iotDeviceName").value.trim(),
+        protocol: $("#iotDeviceProtocol").value,
+        endpoint: $("#iotDeviceEndpoint").value.trim(),
+        location: $("#iotDeviceLocation").value.trim(),
+        capabilities,
+        credential_source: $("#iotCredentialSource").value.trim(),
+      }),
+    });
+    $("#iotAutomationStatus").textContent =
+      `${device.name} registered disabled and read-only. Verify its connector before enabling it.`;
+    event.currentTarget.reset();
+    await loadIoTDevices();
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `Registration failed: ${error.message}`;
+  }
+});
+
+$("#iotCommandForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  try {
+    const proposal = await api("/api/iot/command-proposals", {
+      method: "POST",
+      body: JSON.stringify({
+        device_id: $("#iotCommandDevice").value,
+        capability: $("#iotCommandCapability").value.trim(),
+        command: $("#iotCommandValue").value.trim(),
+        reason: $("#iotCommandReason").value.trim(),
+      }),
+    });
+    $("#iotAutomationStatus").textContent =
+      `${proposal.proposal_id} created. Nothing was sent to the hardware.`;
+    event.currentTarget.reset();
+    await loadIoTDevices();
+  } catch (error) {
+    $("#iotAutomationStatus").textContent = `Command proposal failed: ${error.message}`;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   $("#refreshConnectorHealth")?.addEventListener("click", loadConnectors);
-  document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", loadConnectors);
-  if (location.hash === "#connectors") loadConnectors();
+  document.querySelector('.nav-item[data-view="connectors"]')?.addEventListener("click", () => {
+    loadConnectors();
+    loadIoTDevices();
+  });
+  if (location.hash === "#connectors") {
+    loadConnectors();
+    loadIoTDevices();
+  }
 });
 
 

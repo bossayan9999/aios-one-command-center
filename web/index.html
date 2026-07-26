@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta name="aios-build" content="phase-jarvis-camera-6">
+  <meta name="aios-build" content="phase-iot-automation-7">
   <meta charset="utf-8" />
   <script>
     // AIOS is a server application. Redirect accidental Explorer/file launches so
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#08100f" />
   <title>AIOS ONE — Hybrid Agentic Command Center</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=phase-jarvis-camera-6" />
+  <link rel="stylesheet" href="/assets/styles.css?v=phase-iot-automation-7" />
   <style>
     /* Critical shell: keeps authentication usable and private if the main CSS is stale. */
     :root{color-scheme:dark;--critical-bg:#06100e;--critical-panel:#0d1c19;--critical-line:#25423a;--critical-text:#edf7f2;--critical-muted:#91aaa2;--critical-accent:#ffb547}
@@ -1641,6 +1641,53 @@
 
       <section id="view-connectors" class="app-view"><button id="refreshConnectorHealth" type="button">Refresh health</button>
 
+        <article class="panel iot-automation-panel">
+          <div class="panel-title">
+            <div>
+              <p class="eyebrow">HARDWARE AUTOMATION</p>
+              <h2>IoT Automation Center</h2>
+              <p class="muted-copy">
+                Prepare MQTT, HTTP, webhook, Home Assistant, Matter bridge, and
+                Modbus TCP devices. New hardware is disabled and read-only by default.
+              </p>
+            </div>
+            <span id="iotDeviceCount" class="status-chip">0 DEVICES</span>
+          </div>
+          <form id="iotDeviceForm" class="iot-device-form">
+            <input id="iotDeviceName" required placeholder="Device name">
+            <select id="iotDeviceProtocol">
+              <option value="mqtt">MQTT</option>
+              <option value="http">HTTP API</option>
+              <option value="webhook">Webhook</option>
+              <option value="home-assistant">Home Assistant</option>
+              <option value="matter-bridge">Matter bridge</option>
+              <option value="modbus-tcp">Modbus TCP</option>
+            </select>
+            <input id="iotDeviceEndpoint" placeholder="Endpoint or broker address">
+            <input id="iotDeviceLocation" placeholder="Location">
+            <input id="iotDeviceCapabilities" required
+              placeholder="Capabilities: temperature, switch, camera">
+            <input id="iotCredentialSource"
+              placeholder="Credential env name (secret is not stored)">
+            <button class="primary" type="submit">Register safely</button>
+          </form>
+          <p id="iotAutomationStatus" class="brain-action-status">
+            No command can execute until the device is verified, enabled, allowlisted, and approved.
+          </p>
+          <div id="iotDeviceGrid" class="iot-device-grid"></div>
+          <details class="iot-command-builder">
+            <summary>Prepare an approval-controlled device command</summary>
+            <form id="iotCommandForm">
+              <select id="iotCommandDevice" required><option value="">Select device</option></select>
+              <input id="iotCommandCapability" required placeholder="Declared capability">
+              <input id="iotCommandValue" required placeholder="Requested command or value">
+              <input id="iotCommandReason" required minlength="5" placeholder="Why this hardware action is needed">
+              <button type="submit">Create approval proposal</button>
+            </form>
+            <div id="iotCommandProposals"></div>
+          </details>
+        </article>
+
         <article class="panel desktop-companion-panel">
           <div class="panel-title">
             <div>
@@ -2202,7 +2249,7 @@
     </form>
   </dialog>
 
-  <script src="/assets/app.js?v=phase-jarvis-camera-6"></script>
+  <script src="/assets/app.js?v=phase-iot-automation-7"></script>
 </body>
 </html>
 

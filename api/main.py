@@ -35,6 +35,7 @@ from agentic.brain_vault import BrainVault
 from agentic.ccna_specialist import build_ccna_analysis
 from agentic.connector_registry import ConnectorRegistry
 from agentic.governance import GovernanceEngine, ValidationDecision
+from agentic.iot_registry import SUPPORTED_PROTOCOLS, IoTRegistry
 from agentic.mcp_runtime import MCPRuntime
 from agentic.model_gateway import (
     MODEL_CAPABILITIES,
@@ -145,6 +146,7 @@ PAIRING_FILE = DATA_DIR / "mobile_pairing.json"
 COMMANDS_FILE = DATA_DIR / "mobile_commands.json"
 BUDGET_FILE = DATA_DIR / "budget.json"
 COPILOT_CHAT_FILE = DATA_DIR / "copilot_chat.json"
+IOT_REGISTRY = IoTRegistry(DATA_DIR)
 app.include_router(workspace_router)
 app.include_router(brain_vault_tree_router)
 app.include_router(quantum_solver_router)
@@ -2093,6 +2095,82 @@ def scan_budget_reminders():
     _save_budget(state)
     return {"alerts": alerts, "email_results": email_results}
 
+
+
+class IoTDeviceRegistration(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    protocol: str = Field(min_length=1, max_length=40)
+    endpoint: str = Field(default="", max_length=500)
+    location: str = Field(default="", max_length=100)
+    capabilities: list[str] = Field(default_factory=list, max_length=50)
+    credential_source: str = Field(default="", max_length=100)
+
+
+class IoTCommandProposal(BaseModel):
+    device_id: str = Field(min_length=1, max_length=80)
+    capability: str = Field(min_length=1, max_length=80)
+    command: str = Field(min_length=1, max_length=500)
+    reason: str = Field(min_length=5, max_length=1000)
+
+
+@app.get("/api/iot/devices")
+def list_iot_devices(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {
+        "devices": IOT_REGISTRY.list_devices(),
+        "supported_protocols": sorted(SUPPORTED_PROTOCOLS),
+        "policy": {
+            "default_enabled": False,
+            "default_read_only": True,
+            "credentials_stored": False,
+            "commands_require_approval": True,
+        },
+    }
+
+
+@app.post("/api/iot/devices")
+def register_iot_device(payload: IoTDeviceRegistration, request: Request):
+    require_owner(request, SECURITY_STORE)
+    try:
+        device = IOT_REGISTRY.register(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit(
+        "iot.device_registered",
+        request,
+        device_id=device["device_id"],
+        protocol=device["protocol"],
+    )
+    return device
+
+
+@app.get("/api/iot/command-proposals")
+def list_iot_command_proposals(request: Request):
+    require_owner(request, SECURITY_STORE)
+    return {"proposals": IOT_REGISTRY.list_proposals()}
+
+
+@app.post("/api/iot/command-proposals")
+def create_iot_command_proposal(payload: IoTCommandProposal, request: Request):
+    require_owner(request, SECURITY_STORE)
+    try:
+        proposal = IOT_REGISTRY.propose_command(
+            payload.device_id,
+            payload.capability,
+            payload.command,
+            payload.reason,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="IoT device not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    SECURITY_STORE.audit(
+        "iot.command_proposed",
+        request,
+        proposal_id=proposal["proposal_id"],
+        device_id=proposal["device_id"],
+    )
+    return proposal
 
 
 class CopilotChatRequest(BaseModel):
